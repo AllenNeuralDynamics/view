@@ -1,0 +1,11 @@
+device_widgets:
+    vp-151mx:
+      type: camera
+      driver: device_widgets.camera_widget
+      module: CameraWidget
+    638:
+      type: laser
+      driver: device_widgets.laser_widget
+      module: LaserWidget
+      init:
+          color: red

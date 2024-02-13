@@ -1,0 +1,134 @@
+acquisition:
+  metadata:
+    subject_id: 123456
+    experimenter_name: adam glaser
+    immersion_medium: 0.05X SSC
+    immersion_medium_refractive_index: 1.33
+    x_anatomical_direction: Anterior_to_posterior
+    y_anatomical_direction: Inferior_to_superior
+    z_anatomical_direction: Left_to_right
+#  storage:
+#    - camera_name: vp-151mx
+#      filename_prefix: tile
+#      local_drive: C:\Users\svc_aind_imaging\Desktop
+#      external_drive: C:\Users\svc_aind_imaging\Desktop\test
+#    - camera_name: vnp-604mx
+#      filename_prefix: tile
+#      local_drive: C:\Users\svc_aind_imaging\Desktop
+#      external_drive: C:\Users\svc_aind_imaging\Desktop\test
+  operations:
+    transfers:
+      vp-151mx:
+        driver: exa_spim_refactor.processes.file_transfer
+        module: FileTransfer
+        init:
+          external_drive: C:\Users\micah.woodard\Downloads\exaspim-test
+        settings:
+          protocol: robocopy
+      vnp-604mx:
+        driver: exa_spim_refactor.processes.file_transfer
+        module: FileTransfer
+        init:
+          external_drive: C:\Users\micah.woodard\Downloads\exaspim-test
+        settings:
+          protocol: robocopy
+
+    writers:
+      vp-151mx:
+        driver: exa_spim_refactor.writers.imaris
+        module: Writer
+        init:
+          path: C:\Users\micah.woodard\Downloads
+        settings:
+          compression: lz4shuffle
+          data_type: uint16
+      vnp-604mx:
+        driver: exa_spim_refactor.writers.imaris
+        module: Writer
+        init:
+          path: C:\Users\micah.woodard\Downloads
+        settings:
+          compression: lz4shuffle
+          data_type: uint16
+    #processes:
+    pre_processes:
+      background collection:
+        driver: exa_spim_refactor.processes.background_collection
+        module: BackgroundCollection
+        settings:
+          frames: 10
+    intra_processes:
+      max projection:
+        driver: exa_spim_refactor.processes.max_projection
+        module: MaxProjection
+    post_processes:
+      {}
+  tiles:
+    - tile_number:
+        x: 0
+        y: 0
+        z: 0
+      position_mm: # interactively populate from grid
+        x: 0
+        y: 0
+        z: 0
+      voxel_size_um:
+        x: 0.748 # grayed out -> comes from instrument
+        y: 0.748 # grayed out -> comes from instrument
+        z: 1.000 # editable -> integer values only
+      filename_prefix: tile
+      frame_count: 64 # editable -> force multiple of 2048
+      binning: 1 # editable -> force power of 2
+      channel: 488 # editable -> 
+      power_mw: 1000 # editable -> range to laser device range(s)
+      filter: BP405 # editable -> limit to filter wheel device filters
+      hex_color: "#00ff92"
+      devices:
+        - name: PCIe-6738
+          ports:
+            name: tunable lens
+            parameters:
+              amplitude_volts:
+                value: 0, 1, 2, 3
+                z_position_um: 0, 1, 2, 3
+              offset_volts:
+                value: 4, 5, 6, 7
+                z_position_um: 3, 6, 9, 12
+        - name: focusing stage
+          position_mm:
+            value: 0, 1, 2, 3
+            z_position_um: 0, 1, 2, 3
+    - tile_number:
+        x: 1
+        y: 0
+        z: 0
+      position_mm: # interactively populate from grid
+        x: 1
+        y: 1
+        z: 1
+      voxel_size_um:
+        x: 0.748 # grayed out -> comes from instrument
+        y: 0.748 # grayed out -> comes from instrument
+        z: 1.000 # editable -> integer values only
+      filename_prefix: tile
+      frame_count: 64 # editable -> force multiple of 2048
+      binning: 1 # editable -> force power of 2
+      channel: 488 # editable -> 
+      power_mw: 1000 # editable -> range to laser device range(s)
+      filter: BP405 # editable -> limit to filter wheel device filters
+      hex_color: "#00ff92"
+      devices:
+        - name: PCIe-6738
+          ports:
+            name: tunable lens
+            parameters:
+              amplitude_volts:
+                value: 0, 1, 2, 3
+                z_position_um: 0, 1, 2, 3
+              offset_volts:
+                value: 4, 5, 6, 7
+                z_position_um: 3, 6, 9, 12
+        - name: focusing stage
+          position_mm:
+            value: 0, 1, 2, 3
+            z_position_um: 0, 1, 2, 3
