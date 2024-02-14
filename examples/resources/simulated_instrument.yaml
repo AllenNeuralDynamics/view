@@ -132,7 +132,7 @@ instrument:
                     rest_time_ms: 50
                     sampling_frequency_hz: 10000
                 ports:
-                    - port: ao0
+                    ao0:
                       name: tunable lens
                       device_min_volts: 0.0
                       device_max_volts: 5.0
@@ -168,7 +168,7 @@ instrument:
                                 "488": 200
                                 "561": 200
                                 "639": 200
-                    - port: ao1
+                    ao1:
                       name: stage
                       device_min_volts: 0.0
                       device_max_volts: 5.0
@@ -198,7 +198,7 @@ instrument:
                                 "488": 0.0
                                 "561": 0.0
                                 "639": 0.0
-                    - port: ao2
+                    ao2:
                       name: x galvo mirror
                       device_min_volts: 0.0
                       device_max_volts: 5.0
@@ -253,7 +253,7 @@ instrument:
                     rest_time_ms: 50
                     sampling_frequency_hz: 10000
                 ports:
-                    - port: port0
+                    port0:
                       name: laser
                       waveform: square wave
                       parameters:
