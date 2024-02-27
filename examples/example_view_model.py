@@ -4,8 +4,8 @@ from qtpy.QtCore import Slot
 import threading
 from time import sleep
 from exa_spim_view.exa_spim_view import ExaSpimView
-from exa_spim_refactor.instrument import Instrument
-from exa_spim_refactor.acquisition import Acquisition
+from voxel.instrument import Instrument
+from voxel.acquisition import Acquisition
 from pathlib import Path
 import os
 

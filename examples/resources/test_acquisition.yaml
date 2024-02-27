@@ -19,23 +19,19 @@ acquisition:
   operations:
     transfers:
       vp-151mx:
-        driver: exa_spim_refactor.processes.file_transfer
+        driver: voxel.processes.file_transfer.robocopy
         module: FileTransfer
         init:
           external_drive: C:\Users\micah.woodard\Downloads\exaspim-test
-        settings:
-          protocol: robocopy
       vnp-604mx:
-        driver: exa_spim_refactor.processes.file_transfer
+        driver: voxel.processes.file_transfer.robocopy
         module: FileTransfer
         init:
           external_drive: C:\Users\micah.woodard\Downloads\exaspim-test
-        settings:
-          protocol: robocopy
 
     writers:
       vp-151mx:
-        driver: exa_spim_refactor.writers.imaris
+        driver: voxel.writers.imaris
         module: Writer
         init:
           path: C:\Users\micah.woodard\Downloads
@@ -43,7 +39,7 @@ acquisition:
           compression: lz4shuffle
           data_type: uint16
       vnp-604mx:
-        driver: exa_spim_refactor.writers.imaris
+        driver: voxel.writers.imaris
         module: Writer
         init:
           path: C:\Users\micah.woodard\Downloads
@@ -53,13 +49,13 @@ acquisition:
     #processes:
     pre_processes:
       background collection:
-        driver: exa_spim_refactor.processes.background_collection
+        driver: voxel.processes.background_collection
         module: BackgroundCollection
         settings:
           frames: 10
     intra_processes:
       max projection:
-        driver: exa_spim_refactor.processes.max_projection
+        driver: voxel.processes.max_projection
         module: MaxProjection
     post_processes:
       {}

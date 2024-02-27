@@ -3,7 +3,7 @@ instrument:
   devices:
     cameras:
       vp-151mx:
-        driver: exa_spim_refactor.devices.camera.simulated
+        driver: voxel.devices.camera.simulated
         module: Camera
         init:
           id: sim000
@@ -18,7 +18,7 @@ instrument:
             source: external
             polarity: rising
       vnp-604mx:
-        driver: exa_spim_refactor.devices.camera.simulated
+        driver: voxel.devices.camera.simulated
         module: Camera
         init:
           id: sim001
@@ -34,7 +34,7 @@ instrument:
             polarity: rising
     tiling_stages:
         ASI MS-8000 x axis:
-          driver: exa_spim_refactor.devices.stage.simulated
+          driver: voxel.devices.stage.simulated
           module: Stage
           init:
             hardware_axis: x
@@ -42,7 +42,7 @@ instrument:
           settings:
             speed_mm_s: 1.0
         ASI MS-8000 y axis:
-          driver: exa_spim_refactor.devices.stage.simulated
+          driver: voxel.devices.stage.simulated
           module: Stage
           init:
             hardware_axis: y
@@ -50,7 +50,7 @@ instrument:
           settings:
             speed_mm_s: 1.0
         ASI MS-8000 z axis:
-          driver: exa_spim_refactor.devices.stage.simulated
+          driver: voxel.devices.stage.simulated
           module: Stage
           init:
             hardware_axis: z
@@ -59,7 +59,7 @@ instrument:
             speed_mm_s: 1.0
     scanning_stages:
         ASI LS-100 x axis:
-          driver: exa_spim_refactor.devices.stage.simulated
+          driver: voxel.devices.stage.simulated
           module: Stage
           init:
             hardware_axis: x
@@ -68,7 +68,7 @@ instrument:
             speed_mm_s: 1.0
     filter_wheels:
       ASI FW-1000:
-        driver: exa_spim_refactor.devices.filterwheel.simulated
+        driver: voxel.devices.filterwheel.simulated
         module: FilterWheel
         init:
           filters:
@@ -81,21 +81,21 @@ instrument:
             Empty2: 6
     lasers:
       638:
-        driver: exa_spim_refactor.devices.lasers.simulated
+        driver: voxel.devices.lasers.simulated
         module: SimulatedLaser
         color: red
         init:
           port: COM5
     combiners:
       combiner_0:
-        driver: exa_spim_refactor.devices.lasers.simulated
+        driver: voxel.devices.lasers.simulated
         module: SimulatedCombiner
         init:
           port: COM3
         subdevices:
           lasers:
             405:
-              driver: exa_spim_refactor.devices.lasers.simulated
+              driver: voxel.devices.lasers.simulated
               module: SimulatedLaser
               color: purple
               init:
@@ -108,14 +108,14 @@ instrument:
                 constant_current: ON
                 modulation_mode: digital
             561:
-              driver: exa_spim_refactor.devices.lasers.simulated
+              driver: voxel.devices.lasers.simulated
               module: SimulatedLaser
               color: greenyellow
               init:
                 prefix: L3
     daqs:
       PCIe-6738:
-        driver: exa_spim_refactor.devices.daq.ni
+        driver: voxel.devices.daq.ni
         module: DAQ
         init:
           dev: Dev2
@@ -132,104 +132,90 @@ instrument:
                     rest_time_ms: 50
                     sampling_frequency_hz: 10000
                 ports:
-                    ao0:
-                      name: tunable lens
+                    tunable lens:
+                      port: ao0
                       device_min_volts: 0.0
                       device_max_volts: 5.0
                       waveform: sawtooth
                       parameters:
                           start_time_ms:
-                            type: static
                             channels:
                                 "488": 10.0
                                 "561": 10.0
                                 "639": 10.0
                           end_time_ms:
-                            type: static
                             channels:
                                 "488": 400.0
                                 "561": 400.0
                                 "639": 400.0
                           amplitude_volts:
-                            type: static
                             channels:
                                 "488": 1.0
                                 "561": 1.0
                                 "639": 1.0
                           offset_volts:
-                            type: static
                             channels:
                                 "488": 2.5
                                 "561": 2.5
                                 "639": 2.5
                           cutoff_frequency_hz:
-                            type: static
                             channels:
                                 "488": 200
                                 "561": 200
                                 "639": 200
-                    ao1:
-                      name: stage
+                    stage:
+                      port: ao1
                       device_min_volts: 0.0
                       device_max_volts: 5.0
                       waveform: square wave
                       parameters:
                         start_time_ms:
-                            type: static
                             channels:
                                 "488": 60.0
                                 "561": 60.0
                                 "639": 60.0
                         end_time_ms:
-                            type: static
                             channels:
                                 "488": 350.0
                                 "561": 350.0
                                 "639": 350.0
                         max_volts:
-                            type: static
                             channels:
                                 "488": 5.0
                                 "561": 5.0
                                 "639": 5.0
                         min_volts:
-                            type: static
                             channels:
                                 "488": 0.0
                                 "561": 0.0
                                 "639": 0.0
-                    ao2:
-                      name: x galvo mirror
+                    x galvo mirror:
+                      port: ao2
                       device_min_volts: 0.0
                       device_max_volts: 5.0
                       waveform: triangle wave
                       parameters:
                           start_time_ms:
-                            type: static
                             channels:
                                 "488": 10.0
                                 "561": 10.0
                                 "639": 10.0
                           end_time_ms:
-                            type: static
                             channels:
                                 "488": 400.0
                                 "561": 400.0
                                 "639": 400.0
                           amplitude_volts:
-                            type: static
                             channels:
                                 "488": 1.0
                                 "561": 1.0
                                 "639": 1.0
                           offset_volts:
-                            type: static
                             channels:
                                 "488": 2.5
                                 "561": 2.5
                                 "639": 2.5
                           cutoff_frequency_hz:
-                            type: static
                             channels:
                                 "488": 200
                                 "561": 200
@@ -239,8 +225,7 @@ instrument:
                 timing:
                     output_port: PFI0
                     frequency_hz: 2.0
-                counters:
-                    - counter: ctr0
+                counters: [ctr0]
             do_task:
                 name: do task
                 timing:
@@ -253,18 +238,16 @@ instrument:
                     rest_time_ms: 50
                     sampling_frequency_hz: 10000
                 ports:
-                    port0:
-                      name: laser
+                    laser:
+                      port: port0
                       waveform: square wave
                       parameters:
                         start_time_ms:
-                            type: static
                             channels:
                                 "488": 100.0
                                 "561": 100.0
                                 "639": 100.0
                         end_time_ms:
-                            type: static
                             channels:
                                 "488": 200.0
                                 "561": 200.0

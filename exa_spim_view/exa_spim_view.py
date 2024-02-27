@@ -50,7 +50,8 @@ class ExaSpimView:
 
         self.instrument = instrument
         self.acquisition = acquisition
-        self.config = YAML().load(config_path)
+        # TODO: potentially bulldozing comments but makes it easier 
+        self.config = YAML(typ='safe', pure=True).load(config_path)
 
         instrument_devices = ['lasers', 'combiners', 'cameras', 'tiling_stages', 'scanning_stages',
                               'filter_wheels', 'daqs']
@@ -182,6 +183,7 @@ class ExaSpimView:
             fname = QFileDialog()
             folder = fname.getExistingDirectory(directory=local_storage)
             if folder != '':    # user pressed cancel
+                #TODO: Allow users to add their own name
                 image.save(folder+rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
 
     def setup_live_position(self):
