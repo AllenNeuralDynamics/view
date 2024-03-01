@@ -50,7 +50,7 @@ class ExaSpimView:
 
         self.instrument = instrument
         self.acquisition = acquisition
-        # TODO: potentially bulldozing comments but makes it easier 
+        # TODO: potentially bulldozing comments but makes it easier
         self.config = YAML(typ='safe', pure=True).load(config_path)
 
         instrument_devices = ['lasers', 'combiners', 'cameras', 'tiling_stages', 'scanning_stages',
@@ -91,12 +91,12 @@ class ExaSpimView:
         for camera_name, widget in self.camera_widgets.items():
             # Add functionality to snapshot button
             snapshot_button = getattr(widget, 'snapshot_button', QPushButton())
-            snapshot_button.pressed.connect(lambda button=snapshot_button: disable_button(button))  # disable to avoid spaming
+            snapshot_button.pressed.connect(lambda button=snapshot_button: disable_button(button))  # disable to avoid spamming
             snapshot_button.pressed.connect(lambda camera=camera_name: self.setup_live(camera, 1))
 
             # Add functionality to live button
             live_button = getattr(widget, 'live_button', QPushButton())
-            live_button.pressed.connect(lambda button=live_button: disable_button(button))  # disable to avoid spaming
+            live_button.pressed.connect(lambda button=live_button: disable_button(button))  # disable to avoid spamming
             live_button.pressed.connect(lambda camera=camera_name: self.setup_live(camera))
             live_button.pressed.connect(lambda camera=camera_name: self.toggle_live_button(camera))
 
@@ -202,7 +202,7 @@ class ExaSpimView:
             sleep(.1)
             for name, stage in {**self.instrument.scanning_stages, **self.instrument.tiling_stages}.items():  # combine stage
                 with self.scanning_stage_lock and self.tiling_stage_lock:
-                    position = stage.position
+                    position = stage.position   # don't yield while locked
                 yield name, position
 
     def update_stage_position(self, args):
