@@ -13,6 +13,7 @@ import napari
 import datetime
 from time import sleep
 
+
 def scan_for_properties(device):
     """Scan for properties with setters and getters in class and return dictionary
     :param device: object to scan through for properties
@@ -26,11 +27,13 @@ def scan_for_properties(device):
 
     return prop_dict
 
+
 def disable_button(button, pause=1000):
     """Function to disable button clicks for a period of time to avoid crashing gui"""
 
     button.setEnabled(False)
     QtCore.QTimer.singleShot(pause, lambda: button.setDisabled(False))
+
 
 class ExaSpimView:
 
@@ -43,8 +46,8 @@ class ExaSpimView:
         self.tiling_stage_lock = None
 
         # Eventual threads
-        self.grab_frames_worker = None
-        self.grab_stage_positions_worker = None
+        self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
+        self.grab_stage_positions_worker = create_worker(lambda: None)
 
         self.livestream_wavelength = '405'  # TODO: Dummy wl value for livestream
 
@@ -70,9 +73,9 @@ class ExaSpimView:
         # Setup napari window
         self.viewer = napari.Viewer(title='exa-SPIM-view', ndisplay=2, axis_labels=('x', 'y'))
 
-        # setup additional widget functionalities
+        # setup widget additional functionalities
         self.setup_camera_widgets()
-        self.setup_daq_widgets()
+
 
         # start stage move thread
         self.setup_live_position()
@@ -106,7 +109,8 @@ class ExaSpimView:
         for camera_name, widget in self.camera_widgets.items():
             # Add functionality to snapshot button
             snapshot_button = getattr(widget, 'snapshot_button', QPushButton())
-            snapshot_button.pressed.connect(lambda button=snapshot_button: disable_button(button))  # disable to avoid spamming
+            snapshot_button.pressed.connect(
+                lambda button=snapshot_button: disable_button(button))  # disable to avoid spamming
             snapshot_button.pressed.connect(lambda camera=camera_name: self.setup_live(camera, 1))
 
             # Add functionality to live button
@@ -165,6 +169,13 @@ class ExaSpimView:
 
                 daq.start_all()
 
+    def write_waveforms(self, daq, task: dict, wl: str, task_type: str = 'ao' or 'do'):
+        """Write waveforms if livestreaming is on"""
+
+        if task_type in ['ao', 'do'] and self.grab_frames_worker.is_alive():
+            daq.generate_waveforms(task, task_type, wl)
+            getattr(daq, f'write_{task_type}_waveforms')()
+
     def dismantle_live(self, camera_name):
         """Safely shut down live"""
 
@@ -180,8 +191,8 @@ class ExaSpimView:
         i = 0
         while i < frames:  # while loop since frames can == inf
             with self.camera_lock:
-               frame = self.instrument.cameras[camera_name].grab_frame(), camera_name  # TODO: downsample
-            yield frame     # wait until unlocking camera to be able to quit napari thread
+                frame = self.instrument.cameras[camera_name].grab_frame(), camera_name  # TODO: downsample
+            yield frame  # wait until unlocking camera to be able to quit napari thread
             i += 1
 
     def update_layer(self, args):
@@ -194,39 +205,40 @@ class ExaSpimView:
             # Add image to a new layer if layer doesn't exist yet
             layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_wavelength}", )
             layer.mouse_drag_callbacks.append(self.save_image)
-             # multiscale=True)
+            # multiscale=True)
             # TODO: Add scale and what to do if yielded an invalid image
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer"""
 
-        if event.button == 2:   # Left click
+        if event.button == 2:  # Left click
             image = Image.fromarray(layer.data)
             camera = layer.name.split(' ')[1]
             local_storage = self.acquisition.writers[camera].path
             fname = QFileDialog()
             folder = fname.getExistingDirectory(directory=local_storage)
-            if folder != '':    # user pressed cancel
-                #TODO: Allow users to add their own name
-                image.save(folder+rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
+            if folder != '':  # user pressed cancel
+                # TODO: Allow users to add their own name
+                image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
 
     def setup_live_position(self):
         """Set up live position thread"""
 
         self.grab_stage_positions_worker = self.grab_stage_positions()
         self.grab_stage_positions_worker.yielded.connect(self.update_stage_position)
-        #self.grab_stage_positions_worker.finished.connect(lambda: self.dismantle_live(camera_name))
+        # self.grab_stage_positions_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_stage_positions_worker.start()
 
     @thread_worker
     def grab_stage_positions(self):
         """Grab stage position from all stage objects and yeild positions"""
 
-        while True: # best way to do this or have some sort of break?
+        while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in {**self.instrument.scanning_stages, **self.instrument.tiling_stages}.items():  # combine stage
+            for name, stage in {**self.instrument.scanning_stages,
+                                **self.instrument.tiling_stages}.items():  # combine stage
                 with self.scanning_stage_lock and self.tiling_stage_lock:
-                    position = stage.position   # don't yield while locked
+                    position = stage.position  # don't yield while locked
                 yield name, position
 
     def update_stage_position(self, args):
@@ -267,11 +279,16 @@ class ExaSpimView:
             else:
                 properties = scan_for_properties(device)
                 guis[name] = BaseDeviceWidget(type(device), properties)
-                guis[name].ValueChangedInside[str].connect(
-                    lambda value, dev=device, widget=guis[name],: self.device_property_changed(value,
-                                                                                               dev,
-                                                                                               widget,
-                                                                                               device_type))
+
+            # Hook up all widgets to device_property_changed which has an internal check.
+            guis[name].ValueChangedInside[str].connect(
+                lambda value, dev=device, gui=guis[name], dev_type=device_type:
+                self.device_property_changed(value, dev, gui, dev_type))
+            # Hook up all widgets to instrument_config_changed which has an internal check.
+            guis[name].ValueChangedInside[str].connect(
+                lambda value, dev_name=name, gui=guis[name], dev_type=device_type+'s':
+                self.instrument_config_changed(value, dev_name, gui, dev_type))
+
             guis[name].setWindowTitle(f'{device_type} {name}')
             guis[name].show()
 
@@ -291,16 +308,25 @@ class ExaSpimView:
         """Slot to signal when device widget has been changed
         :param name: name of attribute and widget"""
 
+
         with getattr(self, f'{device_type}_lock'):  # lock device
             name_lst = name.split('.')
             print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
             value = getattr(widget, name_lst[0])
-            setattr(device, name_lst[0], value)
-            #TODO: Check to see if this works for more complex stuff
-            print('Device', name, ' changed to ', getattr(device, name_lst[0]))
-            for k, v in widget.property_widgets.items():  # Update ui with new device values that might have changed
-                device_value = getattr(device, k)
-                setattr(widget, k, device_value)
+            if dictionary := getattr(device, name_lst[0], False):
+                try:    # Make sure name are referring to same thing in UI and device
+                    for k in name_lst[1:]:
+                        print(k)
+                        dictionary = dictionary[k]
+                    dictionary = value
+                    print('Device', name, ' changed to ', getattr(device, name_lst[0]))
+                    for k, v in widget.property_widgets.items():  # Update ui with new device values that might have changed
+                        if getattr(widget, k, False):
+                            device_value = getattr(device, k)
+                            setattr(widget, k, device_value)
+
+                except (KeyError, TypeError):
+                    pass
 
     @Slot(str)
     def instrument_config_changed(self, name, device_name, widget, device_type):
@@ -310,6 +336,11 @@ class ExaSpimView:
         name_lst = name.split('.')
         print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
         value = getattr(widget, name_lst[0])
-        self.instrument.config['instrument']['devices'][device_type][device_name] = value
-        print('config changed to ', self.instrument.config['instrument']['devices'][device_type][device_name])
-
+        dictionary = self.instrument.config['instrument']['devices'][device_type][device_name]
+        try:
+            for k in name_lst:
+                dictionary = dictionary[k]
+            dictionary = value
+            print('config changed to ', self.instrument.config['instrument']['devices'][device_type][device_name])
+        except KeyError:
+            pass
