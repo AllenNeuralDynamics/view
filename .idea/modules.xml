@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../device-widgets/.idea/device-widgets.iml" filepath="$PROJECT_DIR$/../device-widgets/.idea/device-widgets.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/exa-spim-view.iml" filepath="$PROJECT_DIR$/.idea/exa-spim-view.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../voxel/.idea/voxel.iml" filepath="$PROJECT_DIR$/../voxel/.idea/voxel.iml" />
     </modules>
   </component>
 </project>

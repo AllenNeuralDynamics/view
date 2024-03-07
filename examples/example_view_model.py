@@ -22,8 +22,8 @@ if __name__ == "__main__":
     # instrument
     instrument = Instrument(INSTRUMENT_YAML)
     # acquisition
-    acquisition = Acquisition(instrument, ACQUISITION_YAML)
+    #acquisition = Acquisition(instrument, ACQUISITION_YAML)
 
-    view = ExaSpimView(instrument, acquisition, GUI_YAML)
+    view = ExaSpimView(instrument, 'acquisition', GUI_YAML)
 
     sys.exit(app.exec_())

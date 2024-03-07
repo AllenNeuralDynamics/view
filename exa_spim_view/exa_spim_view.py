@@ -4,7 +4,7 @@ from pathlib import Path
 import importlib
 from device_widgets.base_device_widget import BaseDeviceWidget
 from threading import Lock
-from aind_data_schema.core import acquisition
+#from aind_data_schema.core import acquisition
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog
 import qtpy.QtCore as QtCore
 from PIL import Image
@@ -49,32 +49,33 @@ class ExaSpimView:
         self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
         self.grab_stage_positions_worker = create_worker(lambda: None)
 
-        self.livestream_wavelength = '488'  # TODO: Dummy wl value for livestream
+        self.livestream_wavelength = '405'  # TODO: Dummy wl value for livestream
 
         self.instrument = instrument
         self.acquisition = acquisition
         # TODO: potentially bulldozing comments but makes it easier
         self.config = YAML(typ='safe', pure=True).load(config_path)
 
-        instrument_devices = ['lasers', 'combiners', 'cameras', 'tiling_stages', 'scanning_stages',
+        instrument_devices = ['lasers', 'combiners', 'tiling_stages', 'scanning_stages', 'cameras',
                               'filter_wheels', 'daqs']
         # Set up instrument widgets
         for device in instrument_devices:
             self.create_device_widgets(getattr(instrument, device), device[:-1])  # remove s for device type
 
-        acquisition_devices = ['writers', 'transfers']
-        # Set up acquisition widgets
-        for device in acquisition_devices:
-            self.create_device_widgets(getattr(acquisition, device), device[:-1])  # remove s for device type
+        # acquisition_devices = ['writers', 'transfers']
+        # # Set up acquisition widgets
+        # for device in acquisition_devices:
+        #     self.create_device_widgets(getattr(acquisition, device), device[:-1])  # remove s for device type
 
         # setup metadata widget
-        self.create_metadata_widget()
+        #self.create_metadata_widget()
 
         # Setup napari window
         self.viewer = napari.Viewer(title='exa-SPIM-view', ndisplay=2, axis_labels=('x', 'y'))
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
+
 
         # start stage move thread
         self.setup_live_position()
@@ -87,6 +88,20 @@ class ExaSpimView:
         # configure device for UI purposes
         # ni.configure
         # camera.configure
+
+        #TODO: Shut everything down when closing
+
+    def setup_daq_widgets(self):
+        """Setup saveing to config if widget is from device-widget repo"""
+
+        for daq_name, widget in self.daq_widgets.items():
+            if str(widget.__module__) == 'device_widgets.ni_widget':
+                widget.ValueChangedInside[str].connect(
+                    lambda value, dev_name=daq_name, daq_widget=widget: self.instrument_config_changed(value,
+                                                                                               dev_name,
+                                                                                               daq_widget,
+                                                                                    'daqs'))
+
 
     def setup_camera_widgets(self):
         """Setup live view and snapshot button"""
@@ -136,11 +151,22 @@ class ExaSpimView:
 
         with self.daq_lock:
             for name, daq in self.instrument.daqs.items():
-                ao_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks']['ao_task']
-                do_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks']['do_task']
 
-                self.write_waveforms(daq, ao_task, self.livestream_wavelength, 'ao')
-                self.write_waveforms(daq, do_task, self.livestream_wavelength, 'do')
+                ao_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('ao_task', None)
+                do_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('do_task', None)
+                co_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('co_task', None)
+                if ao_task is not None:
+                    print('writing ao')
+                    daq.generate_waveforms(ao_task, 'ao', self.livestream_wavelength)
+                    daq.write_ao_waveforms()
+                if do_task is not None:
+                    daq.add_task(do_task, 'do')
+                    daq.generate_waveforms(do_task, 'do', self.livestream_wavelength)
+                    daq.write_do_waveforms()
+                if co_task is not None:
+                    pulse_count =  co_task['timing'].get('pulse_count', None)
+                    daq.add_task(co_task, 'co', pulse_count)
+
                 daq.start_all()
 
     def write_waveforms(self, daq, task: dict, wl: str, task_type: str = 'ao' or 'do'):
@@ -253,6 +279,7 @@ class ExaSpimView:
             else:
                 properties = scan_for_properties(device)
                 guis[name] = BaseDeviceWidget(type(device), properties)
+
             # Hook up all widgets to device_property_changed which has an internal check.
             guis[name].ValueChangedInside[str].connect(
                 lambda value, dev=device, gui=guis[name], dev_type=device_type:
@@ -281,6 +308,7 @@ class ExaSpimView:
         """Slot to signal when device widget has been changed
         :param name: name of attribute and widget"""
 
+
         with getattr(self, f'{device_type}_lock'):  # lock device
             name_lst = name.split('.')
             print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
@@ -299,6 +327,7 @@ class ExaSpimView:
 
                 except (KeyError, TypeError):
                     pass
+
     @Slot(str)
     def instrument_config_changed(self, name, device_name, widget, device_type):
         """Slot to signal when device widget has been changed
