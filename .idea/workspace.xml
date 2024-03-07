@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="8550edbe-f1c9-46d0-8301-e8dab92a7a1d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../README.md" beforeDir="false" />
+    <list default="true" id="8550edbe-f1c9-46d0-8301-e8dab92a7a1d" name="Changes" comment="'speak easy working version'">
+      <change beforePath="$PROJECT_DIR$/../device-widgets/device_widgets/camera_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/../device-widgets/device_widgets/camera_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/exa-spim-view.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/exa-spim-view.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exa_spim_view/exa_spim_view.py" beforeDir="false" afterPath="$PROJECT_DIR$/exa_spim_view/exa_spim_view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/example_view_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/example_view_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/resources/gui_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/resources/gui_config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/resources/simulated_instrument.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/resources/simulated_instrument.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../voxel/voxel/devices/camera/hamamatsu_dcam.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/devices/camera/hamamatsu_dcam.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../voxel/voxel/devices/daq/ni.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/devices/daq/ni.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../voxel/voxel/instrument.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/instrument.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -10,8 +24,15 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
   <component name="ProjectId" id="2bgXBDUQeE3jwdXaS6hQdyUnL4G" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
@@ -21,9 +42,40 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true"
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "new-scope-view",
+    "last_opened_file_path": "C:/Users/micah.woodard/Projects/device-widgets",
+    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings"
   }
 }]]></component>
+  <component name="RunManager">
+    <configuration name="example_view_model" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="device-widgets" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/examples" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/examples/example_view_model.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.example_view_model" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -34,5 +86,35 @@
       <updated>1706637557193</updated>
     </task>
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$/../device-widgets" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <ignored-roots>
+      <path value="$PROJECT_DIR$/.." />
+    </ignored-roots>
+    <MESSAGE value="'speak easy working version'" />
+    <option name="LAST_COMMIT_MESSAGE" value="'speak easy working version'" />
   </component>
 </project>
