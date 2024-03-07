@@ -11,10 +11,10 @@ device_widgets:
           color: red
     PCIe-6738:
       type: daq
-      widgets:
-        - driver: device_widgets.ni_widget
-          module: NIWidget
-          init:
+      driver: device_widgets.ni_widget
+      module: NIWidget
+      init:
+          tasks:
             tasks:
               ao_task:
                 name: ao task
@@ -149,6 +149,3 @@ device_widgets:
                           "561": 200.0
                           "639": 200.0
 
-        - driver: device_widgets.waveform_widget
-          module: WaveformWidget
-          init:
