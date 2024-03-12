@@ -1,0 +1,133 @@
+device_widgets:
+    C15440-20UP:
+      type: camera
+      driver: device_widgets.camera_widget
+      module: CameraWidget
+    PCIe-6738:
+      type: daq
+      driver: device_widgets.ni_widget
+      module: NIWidget
+      init:
+          tasks:
+            tasks:
+              ao_task:
+                name: ao task
+                timing:
+                  trigger_mode: on
+                  trigger_polarity: rising
+                  trigger_port: PFI0
+                  retriggerable: on
+                  sample_mode: finite
+                  period_time_ms: 500
+                  rest_time_ms: 50
+                  sampling_frequency_hz: 10000
+                ports:
+                  camera:
+                    port: ao0
+                    device_min_volts: 0.0
+                    device_max_volts: 5.0
+                    waveform: sawtooth
+                    parameters:
+                      start_time_ms:
+                        channels:
+                          "405": 10.0
+                      end_time_ms:
+                        channels:
+                          "405": 400.0
+                      amplitude_volts:
+                        channels:
+                          "405": 1.0
+                      offset_volts:
+                        channels:
+                          "405": 2.5
+                      cutoff_frequency_hz:
+                        channels:
+                          "405": 200
+                  x galvo mirror:
+                    port: ao3
+                    device_min_volts: 0.0
+                    device_max_volts: 5.0
+                    waveform: sawtooth
+                    parameters:
+                      start_time_ms:
+                        channels:
+                          "405": 10.0
+                      end_time_ms:
+                        channels:
+                          "405": 400.0
+                      amplitude_volts:
+                        channels:
+                          "405": 1.0
+                      offset_volts:
+                        channels:
+                          "405": 2.5
+                      cutoff_frequency_hz:
+                        channels:
+                          "405": 200
+                  y galvo mirror:
+                    port: ao21
+                    device_min_volts: 0.0
+                    device_max_volts: 5.0
+                    waveform: sawtooth
+                    parameters:
+                      start_time_ms:
+                        channels:
+                          "405": 10.0
+                      end_time_ms:
+                        channels:
+                          "405": 400.0
+                      amplitude_volts:
+                        channels:
+                          "405": 1.0
+                      offset_volts:
+                        channels:
+                          "405": 2.5
+                      cutoff_frequency_hz:
+                        channels:
+                          "405": 200
+                  voice box:
+                    port: ao2
+                    device_min_volts: 0.0
+                    device_max_volts: 5.0
+                    waveform: sawtooth
+                    parameters:
+                      start_time_ms:
+                        channels:
+                          "405": 10.0
+                      end_time_ms:
+                        channels:
+                          "405": 400.0
+                      amplitude_volts:
+                        channels:
+                          "405": 1.0
+                      offset_volts:
+                        channels:
+                          "405": 2.5
+                      cutoff_frequency_hz:
+                        channels:
+                          "405": 200
+                  laser:
+                    port: ao4
+                    device_min_volts: 0.0
+                    device_max_volts: 5.0
+                    waveform: square wave
+                    parameters:
+                      start_time_ms:
+                        channels:
+                          "405": 10.0
+                      end_time_ms:
+                        channels:
+                          "405": 400.0
+                      min_volts:
+                        channels:
+                          "405": 0.0
+                      max_volts:
+                        channels:
+                          "405": 5.0
+              co_task:
+                name: co task
+                timing:
+                  output_port: PFI0
+                  frequency_hz: 2.0
+                  trigger_mode: off
+                counters: [ ctr0 ]

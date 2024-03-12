@@ -169,7 +169,7 @@ class ExaSpimView:
                 do_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('do_task', None)
                 co_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('co_task', None)
                 if ao_task is not None:
-                    daq.add_task(do_task, 'do')
+                    daq.add_task(do_task, 'ao')
                     daq.generate_waveforms(ao_task, 'ao', self.livestream_wavelength)
                     daq.write_ao_waveforms()
                 if do_task is not None:
