@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8550edbe-f1c9-46d0-8301-e8dab92a7a1d" name="Changes" comment="'speak easy working version'">
-      <change afterPath="$PROJECT_DIR$/examples/resources/speakeasy_gui.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../device-widgets/device_widgets/camera_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/../device-widgets/device_widgets/camera_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/exa_spim_view/exa_spim_view.py" beforeDir="false" afterPath="$PROJECT_DIR$/exa_spim_view/exa_spim_view.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/resources/simulated_instrument.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/resources/simulated_instrument.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/resources/speakeasy.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/resources/speakeasy_instument.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/example_view_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/example_view_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/resources/speakeasy_instument.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/resources/speakeasy_instrument.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../voxel/voxel/devices/camera/hamamatsu_dcam.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/devices/camera/hamamatsu_dcam.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../voxel/voxel/instrument.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/instrument.py" afterDir="false" />
     </list>
@@ -42,7 +39,7 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "Merging main",
+    "git-widget-placeholder": "main",
     "last_opened_file_path": "C:/Users/micah.woodard/Projects/device-widgets",
     "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings"
   },
