@@ -71,6 +71,7 @@ instrument:
         driver: voxel.devices.filterwheel.simulated
         module: FilterWheel
         init:
+          id: 0
           filters:
             BP405: 0
             BP488: 1
@@ -225,6 +226,7 @@ instrument:
                 timing:
                     output_port: PFI0
                     frequency_hz: 2.0
+                    trigger_mode: off
                 counters: [ctr0]
             do_task:
                 name: do task

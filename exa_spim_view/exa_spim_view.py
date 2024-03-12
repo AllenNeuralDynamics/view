@@ -4,7 +4,7 @@ from pathlib import Path
 import importlib
 from device_widgets.base_device_widget import BaseDeviceWidget
 from threading import Lock
-#from aind_data_schema.core import acquisition
+# from aind_data_schema.core import acquisition
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog
 import qtpy.QtCore as QtCore
 from PIL import Image
@@ -12,6 +12,7 @@ from napari.qt.threading import thread_worker, create_worker
 import napari
 import datetime
 from time import sleep
+import logging
 
 
 def scan_for_properties(device):
@@ -37,10 +38,13 @@ def disable_button(button, pause=1000):
 
 class ExaSpimView:
 
-    def __init__(self, instrument, acquisition, config_path: Path):
+    def __init__(self, instrument, acquisition, config_path: Path, log_level='INFO'):
+
+        self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.log.setLevel(log_level)
 
         # instrument specific locks
-        #TODO: Think about filter wheel and how that's connected to stge
+        # TODO: Think about filter wheel and how that's connected to stage
         # should locks be object related too?
         self.daq_lock = None
         self.camera_lock = None
@@ -71,6 +75,7 @@ class ExaSpimView:
 
         # setup metadata widget
         self.create_metadata_widget()
+        self.create_joystick_widget()
 
         # Setup napari window
         self.viewer = napari.Viewer(title='exa-SPIM-view', ndisplay=2, axis_labels=('x', 'y'))
@@ -90,7 +95,7 @@ class ExaSpimView:
         # ni.configure
         # camera.configure
 
-        #TODO: Shut everything down when closing
+        # TODO: Shut everything down when closing
 
     def setup_daq_widgets(self):
         """Setup saveing to config if widget is from device-widget repo"""
@@ -147,6 +152,7 @@ class ExaSpimView:
     def setup_live(self, camera_name, frames=float('inf')):
         """Set up for either livestream or snapshot"""
 
+        # TODO: Add in laser and filter wheel here
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
         self.grab_frames_worker.yielded.connect(self.update_layer)
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
@@ -171,7 +177,7 @@ class ExaSpimView:
                     daq.generate_waveforms(do_task, 'do', self.livestream_wavelength)
                     daq.write_do_waveforms()
                 if co_task is not None:
-                    pulse_count =  co_task['timing'].get('pulse_count', None)
+                    pulse_count = co_task['timing'].get('pulse_count', None)
                     daq.add_task(co_task, 'co', pulse_count)
 
                 daq.start_all()
@@ -288,7 +294,7 @@ class ExaSpimView:
                 self.device_property_changed(value, dev, gui, dev_type))
             # Hook up all widgets to instrument_config_changed which has an internal check.
             guis[name].ValueChangedInside[str].connect(
-                lambda value, dev_name=name, gui=guis[name], dev_type=device_type+'s':
+                lambda value, dev_name=name, gui=guis[name], dev_type=device_type + 's':
                 self.instrument_config_changed(value, dev_name, gui, dev_type))
 
             guis[name].setWindowTitle(f'{device_type} {name}')
@@ -310,24 +316,25 @@ class ExaSpimView:
         """Slot to signal when device widget has been changed
         :param name: name of attribute and widget"""
 
-
         with getattr(self, f'{device_type}_lock'):  # lock device
             name_lst = name.split('.')
-            print('widget', name, ' changed to ', getattr(widget, name))
+            self.log.debug(f'widget {name} changed to {getattr(widget, name_lst[0])}')
             value = getattr(widget, name_lst[0])
             if dictionary := getattr(device, name_lst[0], False):
-                try:    # Make sure name are referring to same thing in UI and device
+                try:  # Make sure name are referring to same thing in UI and device
                     for k in name_lst[1:]:
                         dictionary = dictionary[k]
-                    dictionary = value
                     setattr(device, name_lst[0], value)
-                    print('Device', name, ' changed to ', getattr(device, name_lst[0]))
-                    for k, v in widget.property_widgets.items():  # Update ui with new device values that might have changed
+                    self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
+                    # Update ui with new device values that might have changed
+                    # WARNING: Infinite recursion might occur if device property not set correctly
+                    for k, v in widget.property_widgets.items():
                         if getattr(widget, k, False):
                             device_value = getattr(device, k)
                             setattr(widget, k, device_value)
 
                 except (KeyError, TypeError):
+                    self.log.warning(f"{name} can't be mapped into device properties")
                     pass
 
     @Slot(str)
@@ -336,15 +343,17 @@ class ExaSpimView:
         :param name: name of attribute and widget"""
 
         name_lst = name.split('.')
-        print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
+        self.log.debug(f'widget {name} changed to {getattr(widget, name_lst[0])}')
         value = getattr(widget, name_lst[0])
         dictionary = self.instrument.config['instrument']['devices'][device_type][device_name]
         try:
             for k in name_lst:
                 dictionary = dictionary[k]
             self.instrument.config['instrument']['devices'][device_type][device_name] = value
-            print('config changed to ', self.instrument.config['instrument']['devices'][device_type][device_name])
+            self.log.info(f"cfg changed to {self.instrument.config['instrument']['devices'][device_type][device_name]}")
+
         except KeyError:
+            self.log.warning(f"Path {name} can't be mapped into instrument config")
             pass
 
     def close(self):
@@ -357,5 +366,3 @@ class ExaSpimView:
             device.close()
         self.grab_stage_positions_worker.quit()
         self.grab_frames_worker.quit()
-
-
