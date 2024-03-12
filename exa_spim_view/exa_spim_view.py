@@ -314,23 +314,21 @@ class ExaSpimView:
         with getattr(self, f'{device_type}_lock'):  # lock device
             name_lst = name.split('.')
             print('widget', name, ' changed to ', getattr(widget, name))
-            value = getattr(widget, name)
-            # if dictionary := getattr(device, name_lst[0], False):
-            #     try:    # Make sure name are referring to same thing in UI and device
-            #
-            #         for k in name_lst[1:]:
-            #             print(k)
-            #             dictionary = dictionary[k]
-            #         dictionary = value
-            #         #setattr(device, name_lst[0], value)
-            #         print('Device', name, ' changed to ', getattr(device, name_lst[0]))
-            #         for k, v in widget.property_widgets.items():  # Update ui with new device values that might have changed
-            #             if getattr(widget, k, False):
-            #                 device_value = getattr(device, k)
-            #                 setattr(widget, k, device_value)
-            #
-            #     except (KeyError, TypeError):
-            #         pass
+            value = getattr(widget, name_lst[0])
+            if dictionary := getattr(device, name_lst[0], False):
+                try:    # Make sure name are referring to same thing in UI and device
+                    for k in name_lst[1:]:
+                        dictionary = dictionary[k]
+                    dictionary = value
+                    setattr(device, name_lst[0], value)
+                    print('Device', name, ' changed to ', getattr(device, name_lst[0]))
+                    for k, v in widget.property_widgets.items():  # Update ui with new device values that might have changed
+                        if getattr(widget, k, False):
+                            device_value = getattr(device, k)
+                            setattr(widget, k, device_value)
+
+                except (KeyError, TypeError):
+                    pass
 
     @Slot(str)
     def instrument_config_changed(self, name, device_name, widget, device_type):
@@ -338,7 +336,6 @@ class ExaSpimView:
         :param name: name of attribute and widget"""
 
         name_lst = name.split('.')
-        print(name)
         print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
         value = getattr(widget, name_lst[0])
         dictionary = self.instrument.config['instrument']['devices'][device_type][device_name]
