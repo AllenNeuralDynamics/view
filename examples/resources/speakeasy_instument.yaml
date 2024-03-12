@@ -1,5 +1,5 @@
 instrument:
-  id: new-scope-01
+  id: speakeasy
   devices:
     cameras:
       C15440-20UP:
