@@ -1,8 +1,8 @@
 device_widgets:
-#    ASI FW-1000:
-#      type: filter_wheel
-#      driver: device_widgets.filter_wheel_widget
-#      module: FilterWheelWidget
+    ASI FW-1000:
+      type: filter_wheel
+      driver: device_widgets.filter_wheel_widget
+      module: FilterWheelWidget
     C15440-20UP:
       type: camera
       driver: device_widgets.camera_widget

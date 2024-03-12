@@ -22,12 +22,12 @@ acquisition:
         driver: voxel.processes.file_transfer.robocopy
         module: FileTransfer
         init:
-          external_drive: C:\Users\micah.woodard\Downloads\exaspim-test
+          external_directory: C:\Users\micah.woodard\Downloads\exaspim-test
       vnp-604mx:
         driver: voxel.processes.file_transfer.robocopy
         module: FileTransfer
         init:
-          external_drive: C:\Users\micah.woodard\Downloads\exaspim-test
+          external_directory: C:\Users\micah.woodard\Downloads\exaspim-test
 
     writers:
       vp-151mx:
