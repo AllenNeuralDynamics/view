@@ -1,5 +1,5 @@
 instrument:
-  id: new-scope-01
+  id: speakeasy
   devices:
     cameras:
       C15440-20UP:
@@ -14,7 +14,7 @@ instrument:
             width_px: 2304
             height_px: 2304
           trigger:
-            mode: off
+            mode: on
             source: external
             polarity: rising
     tiling_stages:
@@ -192,7 +192,7 @@ instrument:
                 name: co task
                 timing:
                     output_port: PFI3
-                    frequency_hz: 15.0
+                    frequency_hz: 5.0
                     trigger_mode: off
                 counters: [ctr0]
 

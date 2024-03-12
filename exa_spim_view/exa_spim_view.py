@@ -163,7 +163,7 @@ class ExaSpimView:
                 do_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('do_task', None)
                 co_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('co_task', None)
                 if ao_task is not None:
-                    daq.add_task(do_task, 'do')
+                    daq.add_task(do_task, 'ao')
                     daq.generate_waveforms(ao_task, 'ao', self.livestream_wavelength)
                     daq.write_ao_waveforms()
                 if do_task is not None:
@@ -171,7 +171,7 @@ class ExaSpimView:
                     daq.generate_waveforms(do_task, 'do', self.livestream_wavelength)
                     daq.write_do_waveforms()
                 if co_task is not None:
-                    pulse_count =  co_task['timing'].get('pulse_count', None)
+                    pulse_count = co_task['timing'].get('pulse_count', None)
                     daq.add_task(co_task, 'co', pulse_count)
 
                 daq.start_all()
@@ -319,7 +319,6 @@ class ExaSpimView:
                 try:    # Make sure name are referring to same thing in UI and device
                     for k in name_lst[1:]:
                         dictionary = dictionary[k]
-                    dictionary = value
                     setattr(device, name_lst[0], value)
                     print('Device', name, ' changed to ', getattr(device, name_lst[0]))
                     for k, v in widget.property_widgets.items():  # Update ui with new device values that might have changed
