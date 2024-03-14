@@ -1,6 +1,23 @@
 instrument:
   id: exaspim-01
+  channels:
+    "488":
+      laser: 488nm
+      filter_wheel:
+        ASI FW-1000: BP488
+    "561":
+      laser: 561nm
+      filter_wheel:
+        ASI FW-1000: BP561
+    "639":
+      laser: 639nm
+      filter_wheel:
+        ASI FW-1000: LP638
   devices:
+    joysticks:
+      tigerbox:
+        driver: voxel.devices.joystick.simulated
+        module: Joystick
     cameras:
       vp-151mx:
         driver: voxel.devices.camera.simulated
@@ -81,7 +98,7 @@ instrument:
             Empty1: 5
             Empty2: 6
     lasers:
-      638:
+      639nm:
         driver: voxel.devices.lasers.simulated
         module: SimulatedLaser
         color: red
@@ -95,7 +112,7 @@ instrument:
           port: COM3
         subdevices:
           lasers:
-            405:
+            488nm:
               driver: voxel.devices.lasers.simulated
               module: SimulatedLaser
               color: purple
@@ -108,7 +125,7 @@ instrument:
                 cdrh: OFF
                 constant_current: ON
                 modulation_mode: digital
-            561:
+            561nm:
               driver: voxel.devices.lasers.simulated
               module: SimulatedLaser
               color: greenyellow

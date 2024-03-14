@@ -1,9 +1,14 @@
 device_widgets:
+    "639nm":
+      type: laser
+      driver: device_widgets.laser_widget
+      module: LaserWidget
+      color: red
     ASI FW-1000:
       type: filter_wheel
       driver: device_widgets.filter_wheel_widget
       module: FilterWheelWidget
-    C15440-20UP:
+    vp-151mx:
       type: camera
       driver: device_widgets.camera_widget
       module: CameraWidget

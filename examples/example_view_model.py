@@ -12,13 +12,13 @@ import os
 RESOURCES_DIR = (
         Path(os.path.dirname(os.path.realpath(__file__))) / "resources"
 )
-# ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
-# INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
-# GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
-
 ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
-INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
-GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
+INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
+GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
+
+# ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
+# INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
+# GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

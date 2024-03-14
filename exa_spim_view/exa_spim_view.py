@@ -5,7 +5,8 @@ import importlib
 from device_widgets.base_device_widget import BaseDeviceWidget
 from threading import Lock
 # from aind_data_schema.core import acquisition
-from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog
+from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
+    QVBoxLayout, QApplication
 import qtpy.QtCore as QtCore
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
@@ -13,28 +14,7 @@ import napari
 import datetime
 from time import sleep
 import logging
-
-
-def scan_for_properties(device):
-    """Scan for properties with setters and getters in class and return dictionary
-    :param device: object to scan through for properties
-    """
-
-    prop_dict = {}
-    for attr_name in dir(device):
-        attr = getattr(type(device), attr_name, None)
-        if isinstance(attr, property):  # and attr.fset is not None:
-            prop_dict[attr_name] = getattr(device, attr_name, None)
-
-    return prop_dict
-
-
-def disable_button(button, pause=1000):
-    """Function to disable button clicks for a period of time to avoid crashing gui"""
-
-    button.setEnabled(False)
-    QtCore.QTimer.singleShot(pause, lambda: button.setDisabled(False))
-
+import sys
 
 class ExaSpimView:
 
@@ -50,22 +30,38 @@ class ExaSpimView:
         self.camera_lock = None
         self.scanning_stage_lock = None
         self.tiling_stage_lock = None
+        self.laser_lock = None
+        self.filter_wheel_lock = None
+
+        # Eventual widget groups
+        self.laser_widgets = None
+        self.daq_widgets = None
+        self.camera_widgets = None
+        self.scanning_stage_widgets = None
+        self.tiling_stage_widgets = None
+        self.filter_wheel_widgets = None
 
         # Eventual threads
         self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
         self.grab_stage_positions_worker = create_worker(lambda: None)
 
-        self.livestream_wavelength = '405'  # TODO: Dummy wl value for livestream
+        # Eventual attributes
+        self.livestream_channel = None  # TODO: Dummy wl value for livestream
 
         self.instrument = instrument
         self.acquisition = acquisition
-        # TODO: potentially bulldozing comments but makes it easier
-        self.config = YAML(typ='safe', pure=True).load(config_path)
+        self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
 
-        instrument_devices = ['lasers', 'combiners', 'tiling_stages', 'scanning_stages', 'cameras',
-                              'filter_wheels', 'daqs']
+        # Convenient config maps
+        self.channels = self.instrument.config['instrument']['channels']
+
+        # Setup napari window
+        self.viewer = napari.Viewer(title='exa-SPIM-view', ndisplay=2, axis_labels=('x', 'y'))
+        app = napari._qt.qt_event_loop.get_app()
+        app.lastWindowClosed.connect(self.close)    # shut everything down when closing
+
         # Set up instrument widgets
-        for device in instrument_devices:
+        for device in self.instrument.config['instrument']['devices'].keys():
             self.create_device_widgets(getattr(instrument, device), device[:-1])  # remove s for device type
 
         acquisition_devices = ['writers', 'transfers']
@@ -73,29 +69,18 @@ class ExaSpimView:
         for device in acquisition_devices:
             self.create_device_widgets(getattr(acquisition, device), device[:-1])  # remove s for device type
 
-        # setup metadata widget
+        # setup additional widgets
         self.create_metadata_widget()
         self.create_joystick_widget()
-
-        # Setup napari window
-        self.viewer = napari.Viewer(title='exa-SPIM-view', ndisplay=2, axis_labels=('x', 'y'))
+        self.create_laser_widget()
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
-
-        # start stage move thread
+        self.setup_daq_widgets()
+        self.setup_filter_wheel_widgets()
         self.setup_live_position()
 
-        # TODO: correctly configure device for UI uses so we don't have to configure devices before starting them.
-        # Configure devices for acquisition before acquisition
-
         # TODO: setup downsampler and downsampler lock
-
-        # configure device for UI purposes
-        # ni.configure
-        # camera.configure
-
-        # TODO: Shut everything down when closing
 
     def setup_daq_widgets(self):
         """Setup saveing to config if widget is from device-widget repo"""
@@ -103,17 +88,29 @@ class ExaSpimView:
         for daq_name, widget in self.daq_widgets.items():
             if str(widget.__module__) == 'device_widgets.ni_widget':
                 widget.ValueChangedInside[str].connect(
-                    lambda value, daq=self.daqs[daq_name], name=daq_name: self.write_waveforms(daq, name))
+                    lambda value, daq=self.instrument.daqs[daq_name], name=daq_name: self.write_waveforms(daq, name))
 
     def write_waveforms(self, daq, daq_name):
         """Write waveforms if livestreaming is on"""
 
-        ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
-        do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
-        for task, task_type in zip([ao_task, do_task], ['ao', 'do']):
-            with self.daq_lock:  # lock device
-                daq.generate_waveforms(task, task_type, self.livestream_wavelength)
-                getattr(daq, f'write_{task_type}_waveforms')()
+        if self.grab_frames_worker.is_running:
+            ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
+            do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
+            for task, task_type in zip([ao_task, do_task], ['ao', 'do']):
+                with self.daq_lock:  # lock device
+                    daq.generate_waveforms(task, task_type, self.livestream_channel)
+                    getattr(daq, f'write_{task_type}_waveforms')()
+
+    def setup_filter_wheel_widgets(self):
+        """Setup changing filter wheel changes channel of self.livestream_channel """
+
+        for wheel_name, widget in self.filter_wheel_widgets.items():
+            self.channels[self.livestream_channel]['filter_wheel'][wheel_name] = widget.filter
+            widget.ValueChangedInside[str].connect(lambda val,
+                                                          ch=self.livestream_channel,
+                                                          wh=wheel_name,
+                                                          slot=widget.filter:
+                                                   pathGet(self.channels, [ch, 'filter_wheel']).__setitem__(wh, slot))
 
     def setup_camera_widgets(self):
         """Setup live view and snapshot button"""
@@ -152,7 +149,6 @@ class ExaSpimView:
     def setup_live(self, camera_name, frames=float('inf')):
         """Set up for either livestream or snapshot"""
 
-        # TODO: Add in laser and filter wheel here
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
         self.grab_frames_worker.yielded.connect(self.update_layer)
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
@@ -162,19 +158,26 @@ class ExaSpimView:
             self.instrument.cameras[camera_name].prepare()
             self.instrument.cameras[camera_name].start(frames)
 
+        with self.laser_lock:
+            self.instrument.lasers[self.livestream_channel].enable()
+
+        with self.filter_wheel_lock:
+            name, filter = zip(*self.channels[self.livestream_channel]['filter_wheel'].items())
+            self.instrument.filter_wheels[name[0]].filter = filter[0]
+            self.filter_wheel_widgets[name[0]].filter = filter[0]
+
         with self.daq_lock:
             for name, daq in self.instrument.daqs.items():
-
                 ao_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('ao_task', None)
                 do_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('do_task', None)
                 co_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('co_task', None)
                 if ao_task is not None:
-                    daq.add_task(do_task, 'ao')
-                    daq.generate_waveforms(ao_task, 'ao', self.livestream_wavelength)
+                    daq.add_task(ao_task, 'ao')
+                    daq.generate_waveforms(ao_task, 'ao', self.livestream_channel)
                     daq.write_ao_waveforms()
                 if do_task is not None:
                     daq.add_task(do_task, 'do')
-                    daq.generate_waveforms(do_task, 'do', self.livestream_wavelength)
+                    daq.generate_waveforms(do_task, 'do', self.livestream_channel)
                     daq.write_do_waveforms()
                 if co_task is not None:
                     pulse_count = co_task['timing'].get('pulse_count', None)
@@ -205,11 +208,11 @@ class ExaSpimView:
         """Update viewer with new multiscaled camera frame"""
         try:
             (image, camera_name) = args
-            layer = self.viewer.layers[f"Video {camera_name} {self.livestream_wavelength}"]
+            layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
             layer.data = image
         except KeyError:
             # Add image to a new layer if layer doesn't exist yet
-            layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_wavelength}", )
+            layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}", )
             layer.mouse_drag_callbacks.append(self.save_image)
             # multiscale=True)
             # TODO: Add scale and what to do if yielded an invalid image
@@ -274,12 +277,48 @@ class ExaSpimView:
     def create_joystick_widget(self):
         """Create widget to remap joystick"""
 
+    def create_laser_widget(self):
+        """Create widget to select which laser to liverstream with"""
+
+        widget = QWidget()
+        widget_layout = QVBoxLayout()
+
+        laser_button_group = QButtonGroup(widget)
+        for channel, specs in self.channels.items():
+            button = QRadioButton(str(channel))
+            button.toggled.connect(lambda value, radio=button: self.change_laser(value, radio))
+            laser_button_group.addButton(button)
+
+            laser = self.laser_widgets[specs['laser']]
+            widget_layout.addWidget(create_widget('H', button, laser.property_widgets['power_setpoint_mw']))
+        button.setChecked(True)  # Arbitrarily set last button checked
+        widget.setLayout(widget_layout)
+        self.viewer.window.add_dock_widget(widget, area='right', name='Channels')
+
+    def change_laser(self, checked, widget):
+
+        if checked:
+            self.livestream_channel = widget.text()
+            with self.filter_wheel_lock:
+                wheel, filter_slot = zip(*self.channels[self.livestream_channel]['filter_wheel'].items())
+                self.instrument.filter_wheels[wheel[0]].filter = filter_slot[0]
+                self.filter_wheel_widgets[wheel[0]].filter = filter_slot[0]
+            if self.grab_frames_worker.is_running:
+                laser = self.channels[self.livestream_channel]['laser']
+                with self.laser_lock:
+                    self.instrument.lasers[laser].disable()
+                for name, daq in self.instrument.daqs.items():
+                    self.write_waveforms(daq, name)
+                with self.laser_lock:
+                    self.instrument.lasers[laser].enable()
+
     def create_device_widgets(self, devices: dict, device_type: str):
         """Create widgets based on device dictionary attributes from instrument or acquisition
          :param devices: dictionary of devices
          :param device_type: type of device of all devices in dictionary"""
         guis = {}
         for name, device in devices.items():
+
             specs = self.config['device_widgets'].get(name, {})
             if specs != {} and specs.get('type', '') == device_type:
                 gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
@@ -288,14 +327,15 @@ class ExaSpimView:
                 properties = scan_for_properties(device)
                 guis[name] = BaseDeviceWidget(type(device), properties)
 
-            # Hook up all widgets to device_property_changed which has an internal check.
-            guis[name].ValueChangedInside[str].connect(
-                lambda value, dev=device, gui=guis[name], dev_type=device_type:
-                self.device_property_changed(value, dev, gui, dev_type))
-            # Hook up all widgets to instrument_config_changed which has an internal check.
-            guis[name].ValueChangedInside[str].connect(
-                lambda value, dev_name=name, gui=guis[name], dev_type=device_type + 's':
-                self.instrument_config_changed(value, dev_name, gui, dev_type))
+            # if gui is BaseDeviceWidget or inherits from it
+            if type(guis[name]) == BaseDeviceWidget or BaseDeviceWidget in type(guis[name]).__bases__:
+                # Hook up all widgets to device_property_changed and change_instrument_config which has checks.
+                guis[name].ValueChangedInside[str].connect(
+                    lambda value, dev=device, gui=guis[name], dev_type=device_type:
+                    self.device_property_changed(value, dev, gui, dev_type))
+                guis[name].ValueChangedInside[str].connect(
+                    lambda value, dev_name=name, gui=guis[name], dev_type=device_type + 's':
+                    self.change_instrument_config(value, dev_name, gui, dev_type))
 
             guis[name].setWindowTitle(f'{device_type} {name}')
             guis[name].show()
@@ -338,7 +378,7 @@ class ExaSpimView:
                     pass
 
     @Slot(str)
-    def instrument_config_changed(self, name, device_name, widget, device_type):
+    def change_instrument_config(self, name, device_name, widget, device_type):
         """Slot to signal when device widget has been changed
         :param name: name of attribute and widget"""
 
@@ -358,11 +398,69 @@ class ExaSpimView:
 
     def close(self):
         """Close instruments and end threads"""
-        print('in close')
-        instrument_devices = ['lasers', 'combiners', 'tiling_stages', 'scanning_stages', 'cameras',
-                              'filter_wheels', 'daqs']
-        # close instruments
-        for device in instrument_devices:
-            device.close()
+
         self.grab_stage_positions_worker.quit()
         self.grab_frames_worker.quit()
+        for device_type in self.instrument.config['instrument']['devices'].keys():
+            for device in getattr(self.instrument, device_type).values():
+                device.close()
+
+
+# Convenience Functions. Reused in BaseDeviceWidget. Put somewhere else?
+def create_widget(struct: str, *args, **kwargs):
+    """Creates either a horizontal or vertical layout populated with widgets
+    :param struct: specifies whether the layout will be horizontal, vertical, or combo
+    :param kwargs: all widgets contained in layout"""
+
+    layouts = {'H': QHBoxLayout(), 'V': QVBoxLayout()}
+    widget = QWidget()
+    if struct == 'V' or struct == 'H':
+        layout = layouts[struct]
+        for arg in [*kwargs.values(), *args]:
+            layout.addWidget(arg)
+
+    elif struct == 'VH' or 'HV':
+        bin0 = {}
+        bin1 = {}
+        j = 0
+        for v in [*kwargs.values(), *args]:
+            bin0[str(v)] = v
+            j += 1
+            if j == 2:
+                j = 0
+                bin1[str(v)] = create_widget(struct=struct[0], **bin0)
+                bin0 = {}
+        return create_widget(struct=struct[1], **bin1)
+
+    layout.setContentsMargins(0, 0, 0, 0)
+    widget.setLayout(layout)
+    return widget
+
+
+def scan_for_properties(device):
+    """Scan for properties with setters and getters in class and return dictionary
+    :param device: object to scan through for properties
+    """
+
+    prop_dict = {}
+    for attr_name in dir(device):
+        attr = getattr(type(device), attr_name, None)
+        if isinstance(attr, property):  # and attr.fset is not None:
+            prop_dict[attr_name] = getattr(device, attr_name, None)
+
+    return prop_dict
+
+
+def disable_button(button, pause=1000):
+    """Function to disable button clicks for a period of time to avoid crashing gui"""
+
+    button.setEnabled(False)
+    QtCore.QTimer.singleShot(pause, lambda: button.setDisabled(False))
+
+
+def pathGet(dictionary: dict, path: list):
+    """Based on list of nested dictionary keys, return inner dictionary"""
+
+    for k in path:
+        dictionary = dictionary[k]
+    return dictionary
