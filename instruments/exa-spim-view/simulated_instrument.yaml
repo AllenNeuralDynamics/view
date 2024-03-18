@@ -14,10 +14,6 @@ instrument:
       filter_wheel:
         ASI FW-1000: LP638
   devices:
-    joysticks:
-      tigerbox:
-        driver: voxel.devices.joystick.simulated
-        module: Joystick
     cameras:
       vp-151mx:
         driver: voxel.devices.camera.simulated
@@ -54,7 +50,7 @@ instrument:
           driver: voxel.devices.stage.simulated
           module: Stage
           init:
-            hardware_axis: x
+            hardware_axis: y
             instrument_axis: x
           settings:
             speed_mm_s: 1.0
@@ -62,16 +58,8 @@ instrument:
           driver: voxel.devices.stage.simulated
           module: Stage
           init:
-            hardware_axis: y
-            instrument_axis: y
-          settings:
-            speed_mm_s: 1.0
-        ASI MS-8000 z axis:
-          driver: voxel.devices.stage.simulated
-          module: Stage
-          init:
             hardware_axis: z
-            instrument_axis: z
+            instrument_axis: y
           settings:
             speed_mm_s: 1.0
     scanning_stages:
@@ -83,6 +71,10 @@ instrument:
             instrument_axis: z
           settings:
             speed_mm_s: 1.0
+    joysticks:
+      tigerbox:
+        driver: voxel.devices.stage.simulated
+        module: Joystick
     filter_wheels:
       ASI FW-1000:
         driver: voxel.devices.filterwheel.simulated

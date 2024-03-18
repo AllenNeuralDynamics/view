@@ -4,8 +4,8 @@ from qtpy.QtCore import Slot
 import threading
 from time import sleep
 from view.view import View
-from voxel.instrument import Instrument
-from voxel.acquisition import Acquisition
+from voxel.instruments.microscopes.exaspim import ExASPIM
+from voxel.acquisition.exaspim import ExASPIMAcquisition
 from pathlib import Path
 import os
 
@@ -22,9 +22,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # instrument
-    instrument = Instrument(INSTRUMENT_YAML)
+    instrument = ExASPIM(INSTRUMENT_YAML)
     # acquisition
-    acquisition = Acquisition(instrument, ACQUISITION_YAML)
+    acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
     view = View(instrument, acquisition, GUI_YAML)
 

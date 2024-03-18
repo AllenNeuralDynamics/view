@@ -46,17 +46,12 @@ acquisition:
         settings:
           compression: lz4shuffle
           data_type: uint16
-    #processes:
-    pre_processes:
-      background collection:
-        driver: voxel.processes.background_collection
-        module: BackgroundCollection
-        settings:
-          frames: 10
     intra_processes:
       max projection:
-        driver: voxel.processes.max_projection
+        driver: voxel.processes.cpu.max_projection
         module: MaxProjection
+        init:
+          path: C:\Users\micah.woodard\Downloads
     post_processes:
       {}
   tiles:
@@ -75,7 +70,7 @@ acquisition:
       filename_prefix: tile
       frame_count: 64 # editable -> force multiple of 2048
       binning: 1 # editable -> force power of 2
-      channel: 488 # editable -> 
+      channel: '488' # editable ->
       power_mw: 1000 # editable -> range to laser device range(s)
       filter: BP405 # editable -> limit to filter wheel device filters
       hex_color: "#00ff92"
@@ -109,7 +104,7 @@ acquisition:
       filename_prefix: tile
       frame_count: 64 # editable -> force multiple of 2048
       binning: 1 # editable -> force power of 2
-      channel: 488 # editable -> 
+      channel: '488' # editable ->
       power_mw: 1000 # editable -> range to laser device range(s)
       filter: BP405 # editable -> limit to filter wheel device filters
       hex_color: "#00ff92"
