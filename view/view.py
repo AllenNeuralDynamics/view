@@ -16,7 +16,7 @@ from time import sleep
 import logging
 import sys
 
-class ExaSpimView:
+class View:
 
     def __init__(self, instrument, acquisition, config_path: Path, log_level='INFO'):
 
@@ -56,7 +56,7 @@ class ExaSpimView:
         self.channels = self.instrument.config['instrument']['channels']
 
         # Setup napari window
-        self.viewer = napari.Viewer(title='exa-SPIM-view', ndisplay=2, axis_labels=('x', 'y'))
+        self.viewer = napari.Viewer(title='View', ndisplay=2, axis_labels=('x', 'y'))
         app = napari._qt.qt_event_loop.get_app()
         app.lastWindowClosed.connect(self.close)    # shut everything down when closing
 
