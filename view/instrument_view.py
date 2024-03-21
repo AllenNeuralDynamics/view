@@ -26,21 +26,21 @@ class InstrumentView:
         # instrument specific locks
         # TODO: Think about filter wheel and how that's connected to stage
         # should locks be object related too?
-        self.daq_lock = None
-        self.camera_lock = None
-        self.scanning_stage_lock = None
-        self.tiling_stage_lock = None
-        self.laser_lock = None
-        self.filter_wheel_lock = None
+        self.daq_locks = {}
+        self.camera_locks = {}
+        self.scanning_stage_locks = {}
+        self.tiling_stage_locks = {}
+        self.laser_locks = {}
+        self.filter_wheel_locks = {}
 
         # Eventual widget groups
-        self.laser_widgets = None
-        self.daq_widgets = None
-        self.camera_widgets = None
-        self.scanning_stage_widgets = None
-        self.tiling_stage_widgets = None
-        self.filter_wheel_widgets = None
-        self.joystick_widgets = None
+        self.laser_widgets = {}
+        self.daq_widgets = {}
+        self.camera_widgets = {}
+        self.scanning_stage_widgets = {}
+        self.tiling_stage_widgets = {}
+        self.filter_wheel_widgets = {}
+        self.joystick_widgets = {}
 
         # Eventual threads
         self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
@@ -62,8 +62,8 @@ class InstrumentView:
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
         # Set up instrument widgets #TODO: what to doe about ies plural devices?
-        for device in self.instrument.config['instrument']['devices'].keys():
-            self.create_device_widgets(getattr(instrument, device), device[:-1])  # remove s for device type
+        for device_type, device_specs in self.instrument.config['instrument']['devices'].items():
+            self.create_device_widgets(device_specs, device_type[:-1])  # remove s for device type
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
@@ -80,7 +80,7 @@ class InstrumentView:
         """Arrange stage position and joystick widget"""
 
         stage_layout = QGridLayout()
-        stage_layout.addWidget(create_widget('H', **self.scanning_stage_widgets,**self.tiling_stage_widgets))
+        stage_layout.addWidget(create_widget('H', **self.scanning_stage_widgets, **self.tiling_stage_widgets))
         stacked = self.stack_device_widgets('joystick')
         stage_layout.addWidget(stacked)
 
@@ -128,7 +128,6 @@ class InstrumentView:
         device_widgets = getattr(self, f'{device_type}_widgets')
         for name, widget in device_widgets.items():
             if name != text:
-
                 widget.setVisible(False)
             else:
                 widget.setVisible(True)
@@ -140,7 +139,7 @@ class InstrumentView:
             ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
             do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
             for task, task_type in zip([ao_task, do_task], ['ao', 'do']):
-                with self.daq_lock:  # lock device
+                with self.daq_locks[daq_name]:  # lock device
                     daq.generate_waveforms(task, task_type, self.livestream_channel)
                     getattr(daq, f'write_{task_type}_waveforms')()
 
@@ -204,23 +203,25 @@ class InstrumentView:
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
 
-        with self.camera_lock:
+
+        with self.camera_locks[camera_name]:
             self.instrument.cameras[camera_name].prepare()
             self.instrument.cameras[camera_name].start(frames)
 
-        with self.laser_lock:
+        laser_name = self.channels[self.livestream_channel]['laser']
+        with self.laser_locks[laser_name]:
             self.instrument.lasers[self.livestream_channel].enable()
 
-        with self.filter_wheel_lock:
-            name, filter = zip(*self.channels[self.livestream_channel]['filter_wheel'].items())
-            self.instrument.filter_wheels[name[0]].filter = filter[0]
-            self.filter_wheel_widgets[name[0]].filter = filter[0]
+        filter_name, filter_slot = list(self.channels[self.livestream_channel]['filter_wheel'].items())[0]
+        with self.filter_wheel_locks[filter_name]:
+            self.instrument.filter_wheels[filter_name].filter = filter_slot
+            self.filter_wheel_widgets[filter_name].filter = filter_slot
 
-        with self.daq_lock:
-            for name, daq in self.instrument.daqs.items():
-                ao_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('ao_task', None)
-                do_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('do_task', None)
-                co_task = self.instrument.config['instrument']['devices']['daqs'][name]['tasks'].get('co_task', None)
+        for daq_name, daq in self.instrument.daqs.items():
+            with self.daq_locks[daq_name]:
+                ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
+                do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
+                co_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('co_task', None)
                 if ao_task is not None:
                     daq.add_task(ao_task, 'ao')
                     daq.generate_waveforms(ao_task, 'ao', self.livestream_channel)
@@ -238,10 +239,10 @@ class InstrumentView:
     def dismantle_live(self, camera_name):
         """Safely shut down live"""
 
-        with self.camera_lock:
+        with self.camera_locks[camera_name]:
             self.instrument.cameras[camera_name].abort()
-        with self.daq_lock:
-            for daq in self.instrument.daqs.values():
+        for daq_name, daq in self.instrument.daqs.items():
+            with self.daq_locks[daq_name]:
                 daq.stop_all()
 
     @thread_worker
@@ -249,7 +250,7 @@ class InstrumentView:
         """Grab frames from camera"""
         i = 0
         while i < frames:  # while loop since frames can == inf
-            with self.camera_lock:
+            with self.camera_locks[camera_name]:
                 frame = self.instrument.cameras[camera_name].grab_frame(), camera_name
             yield frame  # wait until unlocking camera to be able to quit napari thread
             i += 1
@@ -294,7 +295,7 @@ class InstrumentView:
             sleep(.1)
             for name, stage in {**self.instrument.scanning_stages,
                                 **self.instrument.tiling_stages}.items():  # combine stage
-                with self.scanning_stage_lock and self.tiling_stage_lock:
+                with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
                     position = stage.position  # don't yield while locked
                 yield name, position
 
@@ -329,25 +330,29 @@ class InstrumentView:
 
         if checked:
             self.livestream_channel = widget.text()
-            with self.filter_wheel_lock:
-                wheel, filter_slot = zip(*self.channels[self.livestream_channel]['filter_wheel'].items())
-                self.instrument.filter_wheels[wheel[0]].filter = filter_slot[0]
-                self.filter_wheel_widgets[wheel[0]].filter = filter_slot[0]
+            filter_name, filter_slot = list(self.channels[self.livestream_channel]['filter_wheel'].items())[0]
+            with self.filter_wheel_locks[filter_name]:
+                self.instrument.filter_wheels[filter_name].filter = filter_slot
+                self.filter_wheel_widgets[filter_name].filter = filter_slot
             if self.grab_frames_worker.is_running:
-                laser = self.channels[self.livestream_channel]['laser']
-                with self.laser_lock:
-                    self.instrument.lasers[laser].disable()
-                for name, daq in self.instrument.daqs.items():
-                    self.write_waveforms(daq, name)
-                with self.laser_lock:
-                    self.instrument.lasers[laser].enable()
+                laser_name = self.channels[self.livestream_channel]['laser']
+                with self.laser_locks[laser_name]:
+                    self.instrument.lasers[laser_name].disable()
+                for daq_name, daq in self.instrument.daqs.items():
+                    self.write_waveforms(daq, daq_name)
+                with self.laser_locks[laser_name]:
+                    self.instrument.lasers[laser_name].enable()
 
-    def create_device_widgets(self, devices: dict, device_type: str):
+    def create_device_widgets(self, devices: dict, device_type: str, lock: Lock = None):
         """Create widgets based on device dictionary attributes from instrument or acquisition
+         :param lock: lock to be used for device
          :param devices: dictionary of devices
-         :param device_type: type of device of all devices in dictionary"""
+         :param device_type: type of device of all devices in dictionary,
+         """
+
         guis = {}
-        for name, device in devices.items():
+        for name, device_specs in devices.items():
+            device = getattr(self.instrument, device_type + 's')[name]
 
             specs = self.config['device_widgets'].get(name, {})
             if specs != {} and specs.get('type', '') == device_type:
@@ -367,11 +372,24 @@ class InstrumentView:
                     lambda value, dev_name=name, gui=guis[name], dev_type=device_type + 's':
                     self.change_instrument_config(value, dev_name, gui, dev_type))
 
+            # set up lock for device in corresponding device task dictionary
+            if not hasattr(self, f'{device_type}_locks'):
+                setattr(self, f'{device_type}_locks', {})
+            getattr(self, f'{device_type}_locks')[name] = Lock() if lock is None else lock
+
+            # add ui to widget dictionary
+            if not hasattr(self, f'{device_type}_widgets'):
+                setattr(self, f'{device_type}_widgets', {})
+            getattr(self, f'{device_type}_widgets')[name] = guis[name]
+
+
+            for subdevice_type, subdevice_dictionary in device_specs.get('subdevices', {}).items():
+                # if device has subdevice, create and pass on same Lock()
+                self.create_device_widgets(subdevice_dictionary, subdevice_type[:-1],
+                                           getattr(self, f'{device_type}_locks')[name])
+                
             guis[name].setWindowTitle(f'{device_type} {name}')
             guis[name].show()
-
-        setattr(self, f'{device_type}_widgets', guis)  # set up attribute
-        setattr(self, f'{device_type}_lock', Lock())  # set up lock specific to device
 
         return guis
 
@@ -380,7 +398,7 @@ class InstrumentView:
         """Slot to signal when device widget has been changed
         :param name: name of attribute and widget"""
 
-        with getattr(self, f'{device_type}_lock'):  # lock device
+        with getattr(self, f'{device_type}_locks')[name]:  # lock device
             name_lst = name.split('.')
             self.log.debug(f'widget {name} changed to {getattr(widget, name_lst[0])}')
             value = getattr(widget, name_lst[0])
@@ -415,6 +433,8 @@ class InstrumentView:
         value = getattr(widget, name)
         try:
             dictionary = pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])
+            if key not in dictionary.keys():
+                raise KeyError
             dictionary[key] = value
             self.log.info(f"Config {'.'.join(path)} changed to "
                           f"{pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])}")
@@ -428,9 +448,7 @@ class InstrumentView:
         for device_type in self.instrument.config['instrument']['devices'].keys():
             for name in getattr(self.instrument, device_type).keys():
                 widget = getattr(self, f'{device_type[:-1]}_widgets')[name]
-                #print(self.viewer.window._qt_window.findChildren(type(widget)))
                 if widget not in self.viewer.window._qt_window.findChildren(type(widget)):
-                    print('not here', name)
                     undocked_widget = self.viewer.window.add_dock_widget(widget, name=name)
                     undocked_widget.setFloating(True)
 
@@ -443,5 +461,3 @@ class InstrumentView:
             for device in getattr(self.instrument, device_type).values():
                 device.close()
         # TODO: Save config and upload device states to config maybe. Pop up to ask if saving?
-
-

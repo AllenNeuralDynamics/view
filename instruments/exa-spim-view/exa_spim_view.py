@@ -18,6 +18,9 @@ GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 # INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
 # GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
 
+# class ExASPIMView(InstrumentView):
+#     """"""
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
