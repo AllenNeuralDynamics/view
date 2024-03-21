@@ -13,6 +13,8 @@ import napari
 import datetime
 from time import sleep
 import logging
+from napari._qt.widgets.qt_viewer_dock_widget import QtViewerDockWidget
+
 
 class InstrumentView:
 
@@ -70,6 +72,9 @@ class InstrumentView:
         self.setup_filter_wheel_widgets()
         self.setup_stage_widgets()
         self.setup_live_position()
+
+        # add undocked widget so everything closes together
+        self.add_undocked_widgets()
 
     def setup_stage_widgets(self):
         """Arrange stage position and joystick widget"""
@@ -416,6 +421,18 @@ class InstrumentView:
 
         except KeyError:
             self.log.warning(f"Path {name} can't be mapped into instrument config")
+
+    def add_undocked_widgets(self):
+        """Add undocked widget so all windows close when closing napari viewer"""
+
+        for device_type in self.instrument.config['instrument']['devices'].keys():
+            for name in getattr(self.instrument, device_type).keys():
+                widget = getattr(self, f'{device_type[:-1]}_widgets')[name]
+                #print(self.viewer.window._qt_window.findChildren(type(widget)))
+                if widget not in self.viewer.window._qt_window.findChildren(type(widget)):
+                    print('not here', name)
+                    undocked_widget = self.viewer.window.add_dock_widget(widget, name=name)
+                    undocked_widget.setFloating(True)
 
     def close(self):
         """Close instruments and end threads"""
