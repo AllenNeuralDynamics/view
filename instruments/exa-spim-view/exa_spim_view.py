@@ -3,7 +3,7 @@ import sys
 from qtpy.QtCore import Slot
 import threading
 from time import sleep
-from view.view import View
+from view.instrument_view import InstrumentView
 from voxel.instruments.microscopes.exaspim import ExASPIM
 from voxel.acquisition.exaspim import ExASPIMAcquisition
 from pathlib import Path
@@ -26,6 +26,6 @@ if __name__ == "__main__":
     # acquisition
     acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
-    view = View(instrument, acquisition, GUI_YAML)
+    view = InstrumentView(instrument, acquisition, GUI_YAML)
 
     sys.exit(app.exec_())
