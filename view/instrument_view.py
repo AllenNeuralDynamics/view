@@ -18,7 +18,7 @@ from napari._qt.widgets.qt_viewer_dock_widget import QtViewerDockWidget
 
 class InstrumentView:
 
-    def __init__(self, instrument, acquisition, config_path: Path, log_level='INFO'):
+    def __init__(self, instrument, config_path: Path, log_level='INFO'):
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
@@ -50,7 +50,6 @@ class InstrumentView:
         self.livestream_channel = None
 
         self.instrument = instrument
-        self.acquisition = acquisition
         self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
 
         # Convenient config maps
@@ -111,11 +110,11 @@ class InstrumentView:
             widget.setVisible(False)
             overlap_layout.addWidget(widget, 2, 0)
 
-        visible_daq = QComboBox()
-        visible_daq.currentTextChanged.connect(lambda text: self.hide_devices(text, device_type))
-        visible_daq.addItems(device_widgets.keys())
-        visible_daq.setCurrentText(name)
-        overlap_layout.addWidget(visible_daq, 0, 0)
+        visible = QComboBox()
+        visible.currentTextChanged.connect(lambda text: self.hide_devices(text, device_type))
+        visible.addItems(device_widgets.keys())
+        visible.setCurrentIndex(0)
+        overlap_layout.addWidget(visible, 0, 0)
 
         overlap_widget = QWidget()
         overlap_widget.setLayout(overlap_layout)
@@ -267,18 +266,18 @@ class InstrumentView:
             layer.mouse_drag_callbacks.append(self.save_image)
             # TODO: Add scale and what to do if yielded an invalid image
 
-    def save_image(self, layer, event):
-        """Save image in viewer by right-clicking viewer"""
-
-        if event.button == 2:  # Left click
-            image = Image.fromarray(layer.data)
-            camera = layer.name.split(' ')[1]
-            local_storage = self.acquisition.writers[camera].path
-            fname = QFileDialog()
-            folder = fname.getExistingDirectory(directory=local_storage)
-            if folder != '':  # user pressed cancel
-                # TODO: Allow users to add their own name
-                image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
+    # def save_image(self, layer, event):
+    #     """Save image in viewer by right-clicking viewer"""
+    #
+    #     if event.button == 2:  # Left click
+    #         image = Image.fromarray(layer.data)
+    #         camera = layer.name.split(' ')[1]
+    #         local_storage = self.acquisition.writers[camera].path
+    #         fname = QFileDialog()
+    #         folder = fname.getExistingDirectory(directory=local_storage)
+    #         if folder != '':  # user pressed cancel
+    #             # TODO: Allow users to add their own name
+    #             image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
 
     def setup_live_position(self):
         """Set up live position thread"""
@@ -322,7 +321,7 @@ class InstrumentView:
             button.toggled.connect(lambda value, radio=button: self.change_channel(value, radio))
             laser_button_group.addButton(button)
             widget_layout.addWidget(create_widget('H', button, self.laser_widgets[specs['laser']]))
-        button.setChecked(True)  # Arbitrarily set last button checked
+            button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
 
