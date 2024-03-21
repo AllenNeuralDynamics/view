@@ -55,13 +55,13 @@ device_widgets:
       driver: device_widgets.camera_widget
       module: CameraWidget
       init:
-        advanced_user: False
+        advanced_user: True
     vnp-604mx:
       type: camera
       driver: device_widgets.camera_widget
       module: CameraWidget
       init:
-        advanced_user: False
+        advanced_user: True
     PCIe-6738:
       type: daq
       driver: device_widgets.ni_widget

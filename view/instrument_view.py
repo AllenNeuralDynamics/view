@@ -366,8 +366,8 @@ class InstrumentView:
             if type(guis[name]) == BaseDeviceWidget or BaseDeviceWidget in type(guis[name]).__bases__:
                 # Hook up all widgets to device_property_changed and change_instrument_config which has checks.
                 guis[name].ValueChangedInside[str].connect(
-                    lambda value, dev=device, gui=guis[name], dev_type=device_type:
-                    self.device_property_changed(value, dev, gui, dev_type))
+                    lambda value, dev_name=name, gui=guis[name], dev_type=device_type:
+                    self.device_property_changed(value, dev_name, gui, dev_type))
                 guis[name].ValueChangedInside[str].connect(
                     lambda value, dev_name=name, gui=guis[name], dev_type=device_type + 's':
                     self.change_instrument_config(value, dev_name, gui, dev_type))
@@ -387,20 +387,21 @@ class InstrumentView:
                 # if device has subdevice, create and pass on same Lock()
                 self.create_device_widgets(subdevice_dictionary, subdevice_type[:-1],
                                            getattr(self, f'{device_type}_locks')[name])
-                
+
             guis[name].setWindowTitle(f'{device_type} {name}')
             guis[name].show()
 
         return guis
 
     @Slot(str)
-    def device_property_changed(self, name, device, widget, device_type):
+    def device_property_changed(self, attr_name, device_name, widget, device_type):
         """Slot to signal when device widget has been changed
         :param name: name of attribute and widget"""
 
-        with getattr(self, f'{device_type}_locks')[name]:  # lock device
-            name_lst = name.split('.')
-            self.log.debug(f'widget {name} changed to {getattr(widget, name_lst[0])}')
+        device = getattr(self.instrument, device_type+'s')[device_name]
+        with getattr(self, f'{device_type}_locks')[device_name]:  # lock device
+            name_lst = attr_name.split('.')
+            self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')
             value = getattr(widget, name_lst[0])
             if dictionary := getattr(device, name_lst[0], False):
                 try:  # Make sure name is referring to same thing in UI and device
@@ -416,21 +417,21 @@ class InstrumentView:
                             setattr(widget, k, device_value)
 
                 except (KeyError, TypeError):
-                    self.log.warning(f"{name} can't be mapped into device properties")
+                    self.log.warning(f"{attr_name} can't be mapped into device properties")
                     pass
 
     @Slot(str)
-    def change_instrument_config(self, name, device_name, widget, device_type):
+    def change_instrument_config(self, attr_name, device_name, widget, device_type):
         """Slot to signal when device widget has been changed
         :param device_type: type of device
         :param widget: widget changed
         :param device_name: key of device in instrument config
         :param name: name of attribute and widget"""
 
-        path = name.split('.')
-        self.log.debug(f'widget {name} changed to {getattr(widget, path[0])}')
+        path = attr_name.split('.')
+        self.log.debug(f'widget {attr_name} changed to {getattr(widget, path[0])}')
         key = path[-1]
-        value = getattr(widget, name)
+        value = getattr(widget, attr_name)
         try:
             dictionary = pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])
             if key not in dictionary.keys():
@@ -440,7 +441,7 @@ class InstrumentView:
                           f"{pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])}")
 
         except KeyError:
-            self.log.warning(f"Path {name} can't be mapped into instrument config")
+            self.log.warning(f"Path {attr_name} can't be mapped into instrument config")
 
     def add_undocked_widgets(self):
         """Add undocked widget so all windows close when closing napari viewer"""
