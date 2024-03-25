@@ -21,6 +21,6 @@ if __name__ == "__main__":
     # instrument
     instrument = Instrument(INSTRUMENT_YAML)
 
-    view = InstrumentView(instrument, GUI_YAML)
+    view = InstrumentView(instrument, GUI_YAML, log_level='DEBUG')
 
     sys.exit(app.exec_())

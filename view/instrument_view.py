@@ -137,10 +137,14 @@ class InstrumentView:
         if self.grab_frames_worker.is_running:
             ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
             do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
-            for task, task_type in zip([ao_task, do_task], ['ao', 'do']):
-                with self.daq_locks[daq_name]:  # lock device
-                    daq.generate_waveforms(task, task_type, self.livestream_channel)
-                    getattr(daq, f'write_{task_type}_waveforms')()
+            with self.daq_locks[daq_name]:  # lock device
+                if ao_task is not None:
+                    daq.generate_waveforms(ao_task, 'ao', self.livestream_channel)
+                    daq.write_ao_waveforms(rereserve_buffer=False)
+                if do_task is not None:
+                    daq.generate_waveforms(do_task, 'do', self.livestream_channel)
+                    daq.write_do_waveforms(rereserve_buffer=False)
+
 
     def setup_filter_wheel_widgets(self):
         """Setup changing filter wheel changes channel of self.livestream_channel """
@@ -209,7 +213,7 @@ class InstrumentView:
 
         laser_name = self.channels[self.livestream_channel]['laser']
         with self.laser_locks[laser_name]:
-            self.instrument.lasers[self.livestream_channel].enable()
+            self.instrument.lasers[laser_name].enable()
 
         filter_name, filter_slot = list(self.channels[self.livestream_channel]['filter_wheel'].items())[0]
         with self.filter_wheel_locks[filter_name]:
@@ -233,7 +237,7 @@ class InstrumentView:
                     pulse_count = co_task['timing'].get('pulse_count', None)
                     daq.add_task(co_task, 'co', pulse_count)
 
-                daq.start_all()
+                daq.start()
 
     def dismantle_live(self, camera_name):
         """Safely shut down live"""
@@ -242,7 +246,10 @@ class InstrumentView:
             self.instrument.cameras[camera_name].abort()
         for daq_name, daq in self.instrument.daqs.items():
             with self.daq_locks[daq_name]:
-                daq.stop_all()
+                daq.stop()
+        laser_name = self.channels[self.livestream_channel]['laser']
+        with self.laser_locks[laser_name]:
+            self.instrument.lasers[laser_name].disable()
 
     @thread_worker
     def grab_frames(self, camera_name, frames=float("inf")):
@@ -266,18 +273,18 @@ class InstrumentView:
             layer.mouse_drag_callbacks.append(self.save_image)
             # TODO: Add scale and what to do if yielded an invalid image
 
-    # def save_image(self, layer, event):
-    #     """Save image in viewer by right-clicking viewer"""
-    #
-    #     if event.button == 2:  # Left click
-    #         image = Image.fromarray(layer.data)
-    #         camera = layer.name.split(' ')[1]
-    #         local_storage = self.acquisition.writers[camera].path
-    #         fname = QFileDialog()
-    #         folder = fname.getExistingDirectory(directory=local_storage)
-    #         if folder != '':  # user pressed cancel
-    #             # TODO: Allow users to add their own name
-    #             image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
+    def save_image(self, layer, event):
+        """Save image in viewer by right-clicking viewer"""
+
+        if event.button == 2:  # Left click
+            image = Image.fromarray(layer.data)
+            camera = layer.name.split(' ')[1]
+            #local_storage = self.acquisition.writers[camera].path
+            fname = QFileDialog()
+            folder = fname.getExistingDirectory()
+            if folder != '':  # user pressed cancel
+                # TODO: Allow users to add their own name
+                image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
 
     def setup_live_position(self):
         """Set up live position thread"""
@@ -292,8 +299,8 @@ class InstrumentView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in {**self.instrument.scanning_stages,
-                                **self.instrument.tiling_stages}.items():  # combine stage
+            for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
+                                **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
                 with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
                     position = stage.position  # don't yield while locked
                 yield name, position
@@ -438,19 +445,20 @@ class InstrumentView:
             dictionary[key] = value
             self.log.info(f"Config {'.'.join(path)} changed to "
                           f"{pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])}")
-
         except KeyError:
             self.log.warning(f"Path {attr_name} can't be mapped into instrument config")
 
     def add_undocked_widgets(self):
         """Add undocked widget so all windows close when closing napari viewer"""
 
-        for device_type in self.instrument.config['instrument']['devices'].keys():
-            for name in getattr(self.instrument, device_type).keys():
-                widget = getattr(self, f'{device_type[:-1]}_widgets')[name]
-                if widget not in self.viewer.window._qt_window.findChildren(type(widget)):
-                    undocked_widget = self.viewer.window.add_dock_widget(widget, name=name)
-                    undocked_widget.setFloating(True)
+        widgets = []
+        for key, dictionary in self.__dict__.items():
+            if '_widgets' in key:
+                widgets.extend(dictionary.values())
+        for widget in widgets:
+            if widget not in self.viewer.window._qt_window.findChildren(type(widget)):
+                undocked_widget = self.viewer.window.add_dock_widget(widget, name=widget.windowTitle())
+                undocked_widget.setFloating(True)
 
     def close(self):
         """Close instruments and end threads"""
@@ -458,6 +466,12 @@ class InstrumentView:
         self.grab_stage_positions_worker.quit()
         self.grab_frames_worker.quit()
         for device_type in self.instrument.config['instrument']['devices'].keys():
-            for device in getattr(self.instrument, device_type).values():
-                device.close()
+            for device_name, device in getattr(self.instrument, device_type).items():
+                with getattr(self, f'{device_type[:-1]}_locks')[device_name]:
+                    try:
+                        device.close()
+                    except AttributeError:
+                        self.log.debug(f'{device_name} does not have close function')
+
+        #TODO: This won't close subdevices so work on that
         # TODO: Save config and upload device states to config maybe. Pop up to ask if saving?

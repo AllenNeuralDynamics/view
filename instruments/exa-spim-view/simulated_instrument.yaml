@@ -4,7 +4,7 @@ instrument:
     "488":
       laser: 488nm
       filter_wheel:
-        ASI FW-1000: BP488
+        ASI FW-1000: BP405
     "561":
       laser: 561nm
       filter_wheel:
