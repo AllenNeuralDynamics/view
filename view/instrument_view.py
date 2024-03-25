@@ -135,14 +135,12 @@ class InstrumentView:
         """Write waveforms if livestreaming is on"""
 
         if self.grab_frames_worker.is_running:
-            ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
-            do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
             with self.daq_locks[daq_name]:  # lock device
-                if ao_task is not None:
-                    daq.generate_waveforms(ao_task, 'ao', self.livestream_channel)
+                if daq.ao_task is not None:
+                    daq.generate_waveforms('ao', self.livestream_channel)
                     daq.write_ao_waveforms(rereserve_buffer=False)
-                if do_task is not None:
-                    daq.generate_waveforms(do_task, 'do', self.livestream_channel)
+                if daq.do_task is not None:
+                    daq.generate_waveforms('do', self.livestream_channel)
                     daq.write_do_waveforms(rereserve_buffer=False)
 
 
@@ -222,20 +220,17 @@ class InstrumentView:
 
         for daq_name, daq in self.instrument.daqs.items():
             with self.daq_locks[daq_name]:
-                ao_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('ao_task', None)
-                do_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('do_task', None)
-                co_task = self.instrument.config['instrument']['devices']['daqs'][daq_name]['tasks'].get('co_task', None)
-                if ao_task is not None:
-                    daq.add_task(ao_task, 'ao')
-                    daq.generate_waveforms(ao_task, 'ao', self.livestream_channel)
+                if daq.tasks.get('ao_task', None) is not None:
+                    daq.add_task('ao')
+                    daq.generate_waveforms('ao', self.livestream_channel)
                     daq.write_ao_waveforms()
-                if do_task is not None:
-                    daq.add_task(do_task, 'do')
-                    daq.generate_waveforms(do_task, 'do', self.livestream_channel)
+                if daq.tasks.get('do_task', None) is not None:
+                    daq.add_task('do')
+                    daq.generate_waveforms('do', self.livestream_channel)
                     daq.write_do_waveforms()
-                if co_task is not None:
-                    pulse_count = co_task['timing'].get('pulse_count', None)
-                    daq.add_task(co_task, 'co', pulse_count)
+                if daq.tasks.get('co_task', None) is not None:
+                    pulse_count = daq.tasks['co_task']['timing'].get('pulse_count', None)
+                    daq.add_task('co', pulse_count)
 
                 daq.start()
 
@@ -370,13 +365,11 @@ class InstrumentView:
 
             # if gui is BaseDeviceWidget or inherits from it
             if type(guis[name]) == BaseDeviceWidget or BaseDeviceWidget in type(guis[name]).__bases__:
-                # Hook up all widgets to device_property_changed and change_instrument_config which has checks.
+                # Hook up all widgets to device_property_changed
+
                 guis[name].ValueChangedInside[str].connect(
                     lambda value, dev_name=name, gui=guis[name], dev_type=device_type:
                     self.device_property_changed(value, dev_name, gui, dev_type))
-                guis[name].ValueChangedInside[str].connect(
-                    lambda value, dev_name=name, gui=guis[name], dev_type=device_type + 's':
-                    self.change_instrument_config(value, dev_name, gui, dev_type))
 
             # set up lock for device in corresponding device task dictionary
             if not hasattr(self, f'{device_type}_locks'):
@@ -409,44 +402,22 @@ class InstrumentView:
             name_lst = attr_name.split('.')
             self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')
             value = getattr(widget, name_lst[0])
-            if dictionary := getattr(device, name_lst[0], False):
-                try:  # Make sure name is referring to same thing in UI and device
-                    for k in name_lst[1:]:
-                        dictionary = dictionary[k]
-                    setattr(device, name_lst[0], value)
-                    self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
-                    # Update ui with new device values that might have changed
-                    # WARNING: Infinite recursion might occur if device property not set correctly
-                    for k, v in widget.property_widgets.items():
-                        if getattr(widget, k, False):
-                            device_value = getattr(device, k)
-                            setattr(widget, k, device_value)
+            try:  # Make sure name is referring to same thing in UI and device
+                dictionary = getattr(device, name_lst[0])
+                for k in name_lst[1:]:
+                    dictionary = dictionary[k]
+                setattr(device, name_lst[0], value)
+                self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
+                # Update ui with new device values that might have changed
+                # WARNING: Infinite recursion might occur if device property not set correctly
+                for k, v in widget.property_widgets.items():
+                    if getattr(widget, k, False):
+                        device_value = getattr(device, k)
+                        setattr(widget, k, device_value)
 
-                except (KeyError, TypeError):
-                    self.log.warning(f"{attr_name} can't be mapped into device properties")
-                    pass
-
-    @Slot(str)
-    def change_instrument_config(self, attr_name, device_name, widget, device_type):
-        """Slot to signal when device widget has been changed
-        :param device_type: type of device
-        :param widget: widget changed
-        :param device_name: key of device in instrument config
-        :param name: name of attribute and widget"""
-
-        path = attr_name.split('.')
-        self.log.debug(f'widget {attr_name} changed to {getattr(widget, path[0])}')
-        key = path[-1]
-        value = getattr(widget, attr_name)
-        try:
-            dictionary = pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])
-            if key not in dictionary.keys():
-                raise KeyError
-            dictionary[key] = value
-            self.log.info(f"Config {'.'.join(path)} changed to "
-                          f"{pathGet(self.instrument.config['instrument']['devices'][device_type][device_name], path[:-1])}")
-        except KeyError:
-            self.log.warning(f"Path {attr_name} can't be mapped into instrument config")
+            except (KeyError, TypeError):
+                self.log.warning(f"{attr_name} can't be mapped into device properties")
+                pass
 
     def add_undocked_widgets(self):
         """Add undocked widget so all windows close when closing napari viewer"""
@@ -474,4 +445,4 @@ class InstrumentView:
                         self.log.debug(f'{device_name} does not have close function')
 
         #TODO: This won't close subdevices so work on that
-        # TODO: Save config and upload device states to config maybe. Pop up to ask if saving?
+        # TODO: Save config and upload device states to config maybe? Pop up to ask if saving?
