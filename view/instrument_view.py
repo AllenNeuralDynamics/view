@@ -8,12 +8,11 @@ from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
     QGridLayout, QComboBox
 from PIL import Image
-from napari.qt.threading import thread_worker, create_worker
+from napari.qt.threading import thread_worker, create_worker, GeneratorWorker
 import napari
 import datetime
 from time import sleep
 import logging
-from napari._qt.widgets.qt_viewer_dock_widget import QtViewerDockWidget
 
 
 class InstrumentView:
@@ -23,9 +22,6 @@ class InstrumentView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
-        # instrument specific locks
-        # TODO: Think about filter wheel and how that's connected to stage
-        # should locks be object related too?
         self.daq_locks = {}
         self.camera_locks = {}
         self.scanning_stage_locks = {}
@@ -44,7 +40,7 @@ class InstrumentView:
 
         # Eventual threads
         self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
-        self.grab_stage_positions_worker = create_worker(lambda: None)
+        self.grab_stage_positions_worker = None
 
         # Eventual attributes
         self.livestream_channel = None
@@ -88,12 +84,11 @@ class InstrumentView:
         self.viewer.window.add_dock_widget(stage_widget, area='left', name='Stages')
 
     def setup_daq_widgets(self):
-        """Setup saveing to config if widget is from device-widget repo"""
+        """Setup saving to config if widget is from device-widget repo"""
 
-        overlap_layout = QGridLayout()
-        overlap_layout.addWidget(QWidget(), 1, 0)  # spacer widget
         for daq_name, daq_widget in self.daq_widgets.items():
-            if str(daq_widget.__module__) == 'device_widgets.ni_widget':
+            # if daq_widget is BaseDeviceWidget or inherits from it
+            if type(daq_widget) == BaseDeviceWidget or BaseDeviceWidget in type(daq_widget).__bases__:
                 daq_widget.ValueChangedInside[str].connect(
                     lambda value, daq=self.instrument.daqs[daq_name], name=daq_name: self.write_waveforms(daq, name))
 
@@ -101,7 +96,8 @@ class InstrumentView:
         self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs')
 
     def stack_device_widgets(self, device_type):
-        """Stack like device widgets in layout and hide/unhide with combo box"""
+        """Stack like device widgets in layout and hide/unhide with combo box
+        :param device_type: type of device being stacked"""
 
         device_widgets = getattr(self, f'{device_type}_widgets')
         overlap_layout = QGridLayout()
@@ -122,7 +118,9 @@ class InstrumentView:
         return overlap_widget
 
     def hide_devices(self, text, device_type):
-        """Hide device widget if not selected in combo box"""
+        """Hide device widget if not selected in combo box
+        :param text: selected text of combo box
+        :param device_type: type of device related to combo box"""
 
         device_widgets = getattr(self, f'{device_type}_widgets')
         for name, widget in device_widgets.items():
@@ -132,9 +130,11 @@ class InstrumentView:
                 widget.setVisible(True)
 
     def write_waveforms(self, daq, daq_name):
-        """Write waveforms if livestreaming is on"""
+        """Write waveforms if livestreaming is on
+        :param daq: daq object
+        :param daq_name: name of daq"""
 
-        if self.grab_frames_worker.is_running:
+        if self.grab_frames_worker.is_running:  # if currently livestreaming
             with self.daq_locks[daq_name]:  # lock device
                 if daq.ao_task is not None:
                     daq.generate_waveforms('ao', self.livestream_channel)
@@ -143,25 +143,24 @@ class InstrumentView:
                     daq.generate_waveforms('do', self.livestream_channel)
                     daq.write_do_waveforms(rereserve_buffer=False)
 
-
     def setup_filter_wheel_widgets(self):
         """Setup changing filter wheel changes channel of self.livestream_channel """
 
-        for wheel_name, widget in self.filter_wheel_widgets.items():
-            self.channels[self.livestream_channel]['filter_wheel'][wheel_name] = widget.filter
-            widget.ValueChangedInside[str].connect(lambda val,
-                                                          ch=self.livestream_channel,
-                                                          wh=wheel_name,
-                                                          slot=widget.filter:
-                                                   pathGet(self.channels, [ch, 'filter_wheel']).__setitem__(wh, slot))
+        for wheel_name, wheel_widget in self.filter_wheel_widgets.items():
+            self.channels[self.livestream_channel]['filter_wheel'][wheel_name] = wheel_widget.filter
+            if type(wheel_widget) == BaseDeviceWidget or BaseDeviceWidget in type(wheel_widget).__bases__:
+                wheel_widget.ValueChangedInside[str].connect(lambda val,
+                                                                    ch=self.livestream_channel,
+                                                                    wh=wheel_name,
+                                                                    slot=wheel_widget.filter:
+                                                             pathGet(self.channels, [ch, 'filter_wheel']).__setitem__(
+                                                                 wh, slot))
         stacked = self.stack_device_widgets('filter_wheel')
         self.viewer.window.add_dock_widget(stacked, area='bottom', name='Filter Wheels')
 
     def setup_camera_widgets(self):
         """Setup live view and snapshot button"""
 
-        overlap_layout = QGridLayout()
-        overlap_layout.addWidget(QWidget(), 1, 0)  # spacer widget
         for camera_name, camera_widget in self.camera_widgets.items():
             # Add functionality to snapshot button
             snapshot_button = getattr(camera_widget, 'snapshot_button', QPushButton())
@@ -179,7 +178,9 @@ class InstrumentView:
         self.viewer.window.add_dock_widget(stacked, area='right', name='Cameras')
 
     def toggle_live_button(self, camera_name):
-        """Toggle text and functionality of live button when pressed"""
+        """Toggle text and functionality of live button when pressed
+        :param camera_name: name of camera to set up"""
+
         live_button = getattr(self.camera_widgets[camera_name], 'live_button', QPushButton())
         live_button.disconnect()
         if live_button.text() == 'Live':
@@ -197,13 +198,14 @@ class InstrumentView:
         live_button.pressed.connect(lambda camera=camera_name: self.toggle_live_button(camera_name))
 
     def setup_live(self, camera_name, frames=float('inf')):
-        """Set up for either livestream or snapshot"""
+        """Set up for either livestream or snapshot
+        :param camera_name: name of camera to set up
+        :param frames: how many frames to take"""
 
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
         self.grab_frames_worker.yielded.connect(self.update_layer)
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
-
 
         with self.camera_locks[camera_name]:
             self.instrument.cameras[camera_name].prepare()
@@ -235,7 +237,8 @@ class InstrumentView:
                 daq.start()
 
     def dismantle_live(self, camera_name):
-        """Safely shut down live"""
+        """Safely shut down live
+        :param camera_name: name of camera to shut down live"""
 
         with self.camera_locks[camera_name]:
             self.instrument.cameras[camera_name].abort()
@@ -248,7 +251,10 @@ class InstrumentView:
 
     @thread_worker
     def grab_frames(self, camera_name, frames=float("inf")):
-        """Grab frames from camera"""
+        """Grab frames from camera
+        :param frames: how many frames to take
+        :param camera_name: name of camera"""
+
         i = 0
         while i < frames:  # while loop since frames can == inf
             with self.camera_locks[camera_name]:
@@ -257,7 +263,8 @@ class InstrumentView:
             i += 1
 
     def update_layer(self, args):
-        """Update viewer with new multiscaled camera frame"""
+        """Update viewer with new multiscaled camera frame
+        :param args: tuple containing image and camera name"""
         try:
             (image, camera_name) = args
             layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
@@ -269,14 +276,14 @@ class InstrumentView:
             # TODO: Add scale and what to do if yielded an invalid image
 
     def save_image(self, layer, event):
-        """Save image in viewer by right-clicking viewer"""
+        """Save image in viewer by right-clicking viewer
+        :param layer: layer that was pressed
+        :param event: event type"""
 
         if event.button == 2:  # Left click
             image = Image.fromarray(layer.data)
-            camera = layer.name.split(' ')[1]
-            #local_storage = self.acquisition.writers[camera].path
             fname = QFileDialog()
-            folder = fname.getExistingDirectory()
+            folder = fname.getExistingDirectory(directory=self.instrument.config_path)
             if folder != '':  # user pressed cancel
                 # TODO: Allow users to add their own name
                 image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
@@ -294,28 +301,29 @@ class InstrumentView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
-                                **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
+            for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
+                                **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
                 with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
                     position = stage.position  # don't yield while locked
                 yield name, position
 
     def update_stage_position(self, args):
-        """Update stage position in stage widget"""
+        """Update stage position in stage widget
+        :param args: tuple containing the name of stage and position of stage"""
 
         (name, position) = args
-        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}
+        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}  # group stage widgets dicts to find name
         if type(position) == dict:
             for k, v in position.items():
                 try:
                     getattr(stages[name], f"position.{k}_widget").setText(str(v))
-                except RuntimeError:
+                except RuntimeError:  # Pass error when window has been closed
                     pass
         else:
             stages[name].position_widget.setText(str(position))
 
     def setup_channel_widget(self):
-        """Create widget to select which laser to liverstream with"""
+        """Create widget to select which laser to livestream with"""
 
         widget = QWidget()
         widget_layout = QHBoxLayout()
@@ -323,17 +331,20 @@ class InstrumentView:
         laser_button_group = QButtonGroup(widget)
         for channel, specs in self.channels.items():
             button = QRadioButton(str(channel))
-            button.toggled.connect(lambda value, radio=button: self.change_channel(value, radio))
+            button.toggled.connect(lambda value, ch=channel: self.change_channel(value, ch))
             laser_button_group.addButton(button)
             widget_layout.addWidget(create_widget('H', button, self.laser_widgets[specs['laser']]))
             button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
 
-    def change_channel(self, checked, widget):
+    def change_channel(self, checked, channel):
+        """Update livestream_channel to newly selected channel
+        :param channel: name of channel
+        :param checked: if button is checked (True) or unchecked(False)"""
 
         if checked:
-            self.livestream_channel = widget.text()
+            self.livestream_channel = channel
             filter_name, filter_slot = list(self.channels[self.livestream_channel]['filter_wheel'].items())[0]
             with self.filter_wheel_locks[filter_name]:
                 self.instrument.filter_wheels[filter_name].filter = filter_slot
@@ -368,8 +379,7 @@ class InstrumentView:
 
             # if gui is BaseDeviceWidget or inherits from it
             if type(guis[name]) == BaseDeviceWidget or BaseDeviceWidget in type(guis[name]).__bases__:
-                # Hook up all widgets to device_property_changed
-
+                # Hook up widgets to device_property_changed
                 guis[name].ValueChangedInside[str].connect(
                     lambda value, dev_name=name, gui=guis[name], dev_type=device_type:
                     self.device_property_changed(value, dev_name, gui, dev_type))
@@ -384,7 +394,6 @@ class InstrumentView:
                 setattr(self, f'{device_type}_widgets', {})
             getattr(self, f'{device_type}_widgets')[name] = guis[name]
 
-
             for subdevice_type, subdevice_dictionary in device_specs.get('subdevices', {}).items():
                 # if device has subdevice, create and pass on same Lock()
                 self.create_device_widgets(subdevice_dictionary, subdevice_type[:-1],
@@ -396,11 +405,14 @@ class InstrumentView:
         return guis
 
     @Slot(str)
-    def device_property_changed(self, attr_name, device_name, widget, device_type):
+    def device_property_changed(self, attr_name: str, device_name: str, widget, device_type: str):
         """Slot to signal when device widget has been changed
-        :param name: name of attribute and widget"""
+        :param device_type: type of device
+        :param widget: widget object relating to device
+        :param device_name: name of device in config
+        :param attr_name: name of attribute"""
 
-        device = getattr(self.instrument, device_type+'s')[device_name]
+        device = getattr(self.instrument, device_type + 's')[device_name]
         with getattr(self, f'{device_type}_locks')[device_name]:  # lock device
             name_lst = attr_name.split('.')
             self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')
@@ -446,6 +458,3 @@ class InstrumentView:
                         device.close()
                     except AttributeError:
                         self.log.debug(f'{device_name} does not have close function')
-
-        #TODO: This won't close subdevices so work on that
-        # TODO: Save config and upload device states to config maybe? Pop up to ask if saving?

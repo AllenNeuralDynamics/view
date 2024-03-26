@@ -25,6 +25,7 @@ class ExASPIMView(InstrumentView):
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
         super().__init__(instrument, config_path, log_level)
         app.aboutToQuit.connect(self.update_config_on_quit)
+        app.focusChanged.connect(self.toggle_grab_stage_positions)
 
     def update_config_on_quit(self):
         """Add functionality to close function to save device properties to instrument config"""
@@ -50,11 +51,23 @@ class ExASPIMView(InstrumentView):
         """Pop up message asking if configuration would like to be saved"""
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
-        msgBox.setText(f"Do you want to update the instrument configuration file at {self.instrument_config_path} "
+        msgBox.setText(f"Do you want to update the instrument configuration file at {self.instrument.config_path} "
                        f"to current instrument state?")
         msgBox.setWindowTitle("Updating Configuration")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         return msgBox.exec()
+
+    def toggle_grab_stage_positions(self):
+        """When focus on view has changed, remsume or pause grabbing stage positions"""
+        try:
+            if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
+                self.grab_stage_positions_worker.resume()
+            elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
+                self.grab_stage_positions_worker.pause()
+        except RuntimeError:    # Pass error when window has been closed
+            pass
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
