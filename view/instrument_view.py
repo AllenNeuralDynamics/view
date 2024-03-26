@@ -307,7 +307,10 @@ class InstrumentView:
         stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}
         if type(position) == dict:
             for k, v in position.items():
-                getattr(stages[name], f"position.{k}_widget").setText(str(v))
+                try:
+                    getattr(stages[name], f"position.{k}_widget").setText(str(v))
+                except RuntimeError:
+                    pass
         else:
             stages[name].position_widget.setText(str(position))
 

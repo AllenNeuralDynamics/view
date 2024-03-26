@@ -1,265 +1,273 @@
 instrument:
-  id: exaspim-01
   channels:
-    "488":
-      laser: 488nm
+    '488':
       filter_wheel:
         ASI FW-1000: BP405
-    "561":
-      laser: 561nm
+      laser: 488nm
+    '561':
       filter_wheel:
         ASI FW-1000: BP561
-    "639":
-      laser: 639nm
+      laser: 561nm
+    '639':
       filter_wheel:
         ASI FW-1000: LP638
+      laser: 639nm
   devices:
     cameras:
-      vp-151mx:
-        driver: voxel.devices.camera.simulated
-        module: Camera
-        init:
-          id: sim000
-        settings:
-          exposure_time_ms: 20.0
-          pixel_type: mono16
-          roi:
-            width_px: 1152
-            height_px: 1152
-          trigger:
-            mode: off
-            source: external
-            polarity: rising
       vnp-604mx:
         driver: voxel.devices.camera.simulated
-        module: Camera
         init:
           id: sim001
+        module: Camera
         settings:
           exposure_time_ms: 20.0
           pixel_type: mono16
           roi:
-            width_px: 1152
+            height_offest_px: 4744
             height_px: 1152
+            width_offset_px: 6528
+            width_px: 1152
           trigger:
-            mode: off
-            source: external
+            mode: 'off'
             polarity: rising
-    tiling_stages:
-        ASI MS-8000 x axis:
-          driver: voxel.devices.stage.simulated
-          module: Stage
-          init:
-            hardware_axis: y
-            instrument_axis: x
-          settings:
-            speed_mm_s: 1.0
-        ASI MS-8000 y axis:
-          driver: voxel.devices.stage.simulated
-          module: Stage
-          init:
-            hardware_axis: z
-            instrument_axis: y
-          settings:
-            speed_mm_s: 1.0
-    scanning_stages:
-        ASI LS-100 x axis:
-          driver: voxel.devices.stage.simulated
-          module: Stage
-          init:
-            hardware_axis: x
-            instrument_axis: z
-          settings:
-            speed_mm_s: 1.0
-    joysticks:
-      tigerbox:
-        driver: voxel.devices.stage.simulated
-        module: Joystick
+            source: external
+      vp-151mx:
+        driver: voxel.devices.camera.simulated
+        init:
+          id: sim000
+        module: Camera
+        settings:
+          exposure_time_ms: 20.0
+          pixel_type: mono16
+          roi:
+            height_offest_px: 4744
+            height_px: 1152
+            width_offset_px: 6528
+            width_px: 1152
+          trigger:
+            mode: 'off'
+            polarity: rising
+            source: external
+    combiners:
+      combiner_0:
+        driver: voxel.devices.lasers.simulated
+        init:
+          port: COM3
+        module: SimulatedCombiner
+        subdevices:
+          lasers:
+            488nm:
+              color: purple
+              driver: voxel.devices.lasers.simulated
+              init:
+                coefficients:
+                  0: -57.515
+                  1: 3.218
+                port: COM5
+                prefix: L6
+              module: SimulatedLaser
+              settings:
+                cdrh: 'OFF'
+                constant_current: 'ON'
+                modulation_mode: digital
+            561nm:
+              color: greenyellow
+              driver: voxel.devices.lasers.simulated
+              init:
+                port: COM5
+                prefix: L3
+              module: SimulatedLaser
+    daqs:
+      PCIe-6738:
+        driver: voxel.devices.daq.ni
+        init:
+          dev: Dev2
+        module: DAQ
+        settings:
+          tasks:
+            ao_task:
+              name: ao task
+              ports:
+                stage:
+                  device_max_volts: 5.0
+                  device_min_volts: 0.0
+                  parameters:
+                    end_time_ms:
+                      channels:
+                        '488': 350.0
+                        '561': 350.0
+                        '639': 350.0
+                    max_volts:
+                      channels:
+                        '488': 5.0
+                        '561': 5.0
+                        '639': 5.0
+                    min_volts:
+                      channels:
+                        '488': 0.0
+                        '561': 0.0
+                        '639': 0.0
+                    start_time_ms:
+                      channels:
+                        '488': 60.0
+                        '561': 60.0
+                        '639': 60.0
+                  port: ao1
+                  waveform: square wave
+                tunable lens:
+                  device_max_volts: 5.0
+                  device_min_volts: 0.0
+                  parameters:
+                    amplitude_volts:
+                      channels:
+                        '488': 2.242
+                        '561': 1.0
+                        '639': 1.0
+                    cutoff_frequency_hz:
+                      channels:
+                        '488': 200
+                        '561': 200
+                        '639': 200
+                    end_time_ms:
+                      channels:
+                        '488': 400.0
+                        '561': 400.0
+                        '639': 400.0
+                    offset_volts:
+                      channels:
+                        '488': 2.5
+                        '561': 2.5
+                        '639': 2.5
+                    start_time_ms:
+                      channels:
+                        '488': 10.0
+                        '561': 10.0
+                        '639': 10.0
+                  port: ao0
+                  waveform: sawtooth
+                x galvo mirror:
+                  device_max_volts: 5.0
+                  device_min_volts: 0.0
+                  parameters:
+                    amplitude_volts:
+                      channels:
+                        '488': 1.0
+                        '561': 1.0
+                        '639': 1.0
+                    cutoff_frequency_hz:
+                      channels:
+                        '488': 200
+                        '561': 200
+                        '639': 200
+                    end_time_ms:
+                      channels:
+                        '488': 400.0
+                        '561': 400.0
+                        '639': 400.0
+                    offset_volts:
+                      channels:
+                        '488': 2.5
+                        '561': 2.5
+                        '639': 2.5
+                    start_time_ms:
+                      channels:
+                        '488': 10.0
+                        '561': 10.0
+                        '639': 10.0
+                  port: ao2
+                  waveform: triangle wave
+              timing:
+                period_time_ms: 500
+                rest_time_ms: 50
+                retriggerable: 'on'
+                sample_mode: finite
+                sampling_frequency_hz: 10000
+                trigger_mode: 'on'
+                trigger_polarity: rising
+                trigger_port: PFI0
+            co_task:
+              counters:
+              - ctr0
+              name: co task
+              timing:
+                frequency_hz: 2.0
+                output_port: PFI0
+                trigger_mode: 'off'
+            do_task:
+              name: do task
+              ports:
+                laser:
+                  parameters:
+                    end_time_ms:
+                      channels:
+                        '488': 200.0
+                        '561': 200.0
+                        '639': 200.0
+                    start_time_ms:
+                      channels:
+                        '488': 100.0
+                        '561': 100.0
+                        '639': 100.0
+                  port: port0
+                  waveform: square wave
+              timing:
+                period_time_ms: 500
+                rest_time_ms: 50
+                retriggerable: 'on'
+                sample_mode: finite
+                sampling_frequency_hz: 10000
+                trigger_mode: 'on'
+                trigger_polarity: rising
+                trigger_port: PFI0
     filter_wheels:
       ASI FW-1000:
         driver: voxel.devices.filterwheel.simulated
-        module: FilterWheel
         init:
-          id: 0
           filters:
             BP405: 0
             BP488: 1
             BP561: 2
-            LP638: 3
-            MB405/488/561/638: 4
             Empty1: 5
             Empty2: 6
+            LP638: 3
+            MB405/488/561/638: 4
+          id: 0
+        module: FilterWheel
+    joysticks:
+      tigerbox:
+        driver: voxel.devices.stage.simulated
+        module: Joystick
     lasers:
       639nm:
-        driver: voxel.devices.lasers.simulated
-        module: SimulatedLaser
         color: red
+        driver: voxel.devices.lasers.simulated
         init:
           port: COM5
-    combiners:
-      combiner_0:
-        driver: voxel.devices.lasers.simulated
-        module: SimulatedCombiner
+        module: SimulatedLaser
+    scanning_stages:
+      ASI LS-100 x axis:
+        driver: voxel.devices.stage.simulated
         init:
-          port: COM3
-        subdevices:
-          lasers:
-            488nm:
-              driver: voxel.devices.lasers.simulated
-              module: SimulatedLaser
-              color: purple
-              init:
-                prefix: L6
-                coefficients:
-                  1: 3.218
-                  0: -57.515
-              settings:
-                cdrh: OFF
-                constant_current: ON
-                modulation_mode: digital
-            561nm:
-              driver: voxel.devices.lasers.simulated
-              module: SimulatedLaser
-              color: greenyellow
-              init:
-                prefix: L3
-    daqs:
-      PCIe-6738:
-        driver: voxel.devices.daq.ni
-        module: DAQ
+          hardware_axis: x
+          instrument_axis: z
+        module: Stage
+        settings:
+          speed_mm_s: 1.0
+    tiling_stages:
+      ASI MS-8000 x axis:
+        driver: voxel.devices.stage.simulated
         init:
-          dev: Dev2
-        tasks:
-            ao_task:
-                name: ao task
-                timing:
-                    trigger_mode: on
-                    trigger_polarity: rising
-                    trigger_port: PFI0
-                    retriggerable: on
-                    sample_mode: finite
-                    period_time_ms: 500
-                    rest_time_ms: 50
-                    sampling_frequency_hz: 10000
-                ports:
-                    tunable lens:
-                      port: ao0
-                      device_min_volts: 0.0
-                      device_max_volts: 5.0
-                      waveform: sawtooth
-                      parameters:
-                          start_time_ms:
-                            channels:
-                                "488": 10.0
-                                "561": 10.0
-                                "639": 10.0
-                          end_time_ms:
-                            channels:
-                                "488": 400.0
-                                "561": 400.0
-                                "639": 400.0
-                          amplitude_volts:
-                            channels:
-                                "488": 1.0
-                                "561": 1.0
-                                "639": 1.0
-                          offset_volts:
-                            channels:
-                                "488": 2.5
-                                "561": 2.5
-                                "639": 2.5
-                          cutoff_frequency_hz:
-                            channels:
-                                "488": 200
-                                "561": 200
-                                "639": 200
-                    stage:
-                      port: ao1
-                      device_min_volts: 0.0
-                      device_max_volts: 5.0
-                      waveform: square wave
-                      parameters:
-                        start_time_ms:
-                            channels:
-                                "488": 60.0
-                                "561": 60.0
-                                "639": 60.0
-                        end_time_ms:
-                            channels:
-                                "488": 350.0
-                                "561": 350.0
-                                "639": 350.0
-                        max_volts:
-                            channels:
-                                "488": 5.0
-                                "561": 5.0
-                                "639": 5.0
-                        min_volts:
-                            channels:
-                                "488": 0.0
-                                "561": 0.0
-                                "639": 0.0
-                    x galvo mirror:
-                      port: ao2
-                      device_min_volts: 0.0
-                      device_max_volts: 5.0
-                      waveform: triangle wave
-                      parameters:
-                          start_time_ms:
-                            channels:
-                                "488": 10.0
-                                "561": 10.0
-                                "639": 10.0
-                          end_time_ms:
-                            channels:
-                                "488": 400.0
-                                "561": 400.0
-                                "639": 400.0
-                          amplitude_volts:
-                            channels:
-                                "488": 1.0
-                                "561": 1.0
-                                "639": 1.0
-                          offset_volts:
-                            channels:
-                                "488": 2.5
-                                "561": 2.5
-                                "639": 2.5
-                          cutoff_frequency_hz:
-                            channels:
-                                "488": 200
-                                "561": 200
-                                "639": 200
-            co_task:
-                name: co task
-                timing:
-                    output_port: PFI0
-                    frequency_hz: 2.0
-                    trigger_mode: off
-                counters: [ctr0]
-            do_task:
-                name: do task
-                timing:
-                    trigger_mode: on
-                    trigger_polarity: rising
-                    trigger_port: PFI0
-                    retriggerable: on
-                    sample_mode: finite
-                    period_time_ms: 500
-                    rest_time_ms: 50
-                    sampling_frequency_hz: 10000
-                ports:
-                    laser:
-                      port: port0
-                      waveform: square wave
-                      parameters:
-                        start_time_ms:
-                            channels:
-                                "488": 100.0
-                                "561": 100.0
-                                "639": 100.0
-                        end_time_ms:
-                            channels:
-                                "488": 200.0
-                                "561": 200.0
-                                "639": 200.0
+          hardware_axis: y
+          instrument_axis: x
+        module: Stage
+        settings:
+          speed_mm_s: 1.0
+      ASI MS-8000 y axis:
+        driver: voxel.devices.stage.simulated
+        init:
+          hardware_axis: z
+          instrument_axis: y
+        module: Stage
+        settings:
+          speed_mm_s: 1.0
+  id: exaspim-01

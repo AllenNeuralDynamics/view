@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication, QMessageBox
 import sys
 from qtpy.QtCore import Slot
 import threading
@@ -8,6 +8,7 @@ from voxel.instruments.microscopes.exaspim import ExASPIM
 from voxel.acquisition.exaspim import ExASPIMAcquisition
 from pathlib import Path
 import os
+import yaml
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
 ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
@@ -18,8 +19,42 @@ GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 # INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
 # GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
 
-# class ExASPIMView(InstrumentView):
-#     """"""
+class ExASPIMView(InstrumentView):
+    """View for ExASPIM Instrument"""
+
+    def __init__(self, instrument, config_path: Path, log_level='INFO'):
+        super().__init__(instrument, config_path, log_level)
+        app.aboutToQuit.connect(self.update_config_on_quit)
+
+    def update_config_on_quit(self):
+        """Add functionality to close function to save device properties to instrument config"""
+
+        return_value = self.update_config_query()
+        if return_value == QMessageBox.Ok:
+            for device_types, device_dictionaries in self.instrument.config['instrument']['devices'].items():
+                self.update_config(device_types, device_dictionaries)
+            with open(self.instrument.config_path, 'w') as outfile:
+                yaml.dump(self.instrument.config, outfile)
+
+    def update_config(self, device_type, device_dictionaries):
+        """Update setting in instrument config if already there"""
+
+        for device_name, device_specs in device_dictionaries.items():
+            for key in device_specs.get('settings', {}).keys():
+                device_object = getattr(self.instrument, device_type)[device_name]
+                device_specs.get('settings')[key] = getattr(device_object, key)
+                for subdevice_type, subdevice_dictionary in device_specs.get('subdevices', {}).items():
+                    self.update_config(subdevice_type, subdevice_dictionary)
+
+    def update_config_query(self):
+        """Pop up message asking if configuration would like to be saved"""
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setText(f"Do you want to update the instrument configuration file at {self.instrument_config_path} "
+                       f"to current instrument state?")
+        msgBox.setWindowTitle("Updating Configuration")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        return msgBox.exec()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -27,8 +62,8 @@ if __name__ == "__main__":
     # instrument
     instrument = ExASPIM(INSTRUMENT_YAML)
     # acquisition
-    acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
+    #acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
-    view = InstrumentView(instrument, acquisition, GUI_YAML)
+    view = ExASPIMView(instrument, GUI_YAML)
 
     sys.exit(app.exec_())

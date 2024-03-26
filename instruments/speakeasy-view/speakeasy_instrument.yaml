@@ -143,6 +143,7 @@ instrument:
         module: DAQ
         init:
           dev: Dev1
+        settings:
           tasks:
               ao_task:
                   name: ao task
