@@ -8,12 +8,11 @@ from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
     QGridLayout, QComboBox
 from PIL import Image
-from napari.qt.threading import thread_worker, create_worker, GeneratorWorker
+from napari.qt.threading import thread_worker, create_worker
 import napari
 import datetime
 from time import sleep
 import logging
-
 
 class InstrumentView:
 
@@ -39,7 +38,7 @@ class InstrumentView:
         self.joystick_widgets = {}
 
         # Eventual threads
-        self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
+        self.grab_frames_worker = create_worker(lambda: None) # dummy thread
         self.grab_stage_positions_worker = None
 
         # Eventual attributes
@@ -143,6 +142,7 @@ class InstrumentView:
                     daq.generate_waveforms('do', self.livestream_channel)
                     daq.write_do_waveforms(rereserve_buffer=False)
 
+
     def setup_filter_wheel_widgets(self):
         """Setup changing filter wheel changes channel of self.livestream_channel """
 
@@ -150,11 +150,10 @@ class InstrumentView:
             self.channels[self.livestream_channel]['filter_wheel'][wheel_name] = wheel_widget.filter
             if type(wheel_widget) == BaseDeviceWidget or BaseDeviceWidget in type(wheel_widget).__bases__:
                 wheel_widget.ValueChangedInside[str].connect(lambda val,
-                                                                    ch=self.livestream_channel,
-                                                                    wh=wheel_name,
-                                                                    slot=wheel_widget.filter:
-                                                             pathGet(self.channels, [ch, 'filter_wheel']).__setitem__(
-                                                                 wh, slot))
+                                                              ch=self.livestream_channel,
+                                                              wh=wheel_name,
+                                                              slot=wheel_widget.filter:
+                                                       pathGet(self.channels, [ch, 'filter_wheel']).__setitem__(wh, slot))
         stacked = self.stack_device_widgets('filter_wheel')
         self.viewer.window.add_dock_widget(stacked, area='bottom', name='Filter Wheels')
 
@@ -207,6 +206,7 @@ class InstrumentView:
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
 
+
         with self.camera_locks[camera_name]:
             self.instrument.cameras[camera_name].prepare()
             self.instrument.cameras[camera_name].start(frames)
@@ -258,22 +258,24 @@ class InstrumentView:
         i = 0
         while i < frames:  # while loop since frames can == inf
             with self.camera_locks[camera_name]:
-                frame = self.instrument.cameras[camera_name].grab_frame(), camera_name
-            yield frame  # wait until unlocking camera to be able to quit napari thread
+                frame_info = self.instrument.cameras[camera_name].grab_frame(), camera_name
+            yield frame_info  # wait until unlocking camera to be able to quit napari thread
             i += 1
 
     def update_layer(self, args):
-        """Update viewer with new multiscaled camera frame
+        """Update viewer with new camera frame
         :param args: tuple containing image and camera name"""
-        try:
-            (image, camera_name) = args
-            layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
-            layer.data = image
-        except KeyError:
-            # Add image to a new layer if layer doesn't exist yet
-            layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}", )
-            layer.mouse_drag_callbacks.append(self.save_image)
-            # TODO: Add scale and what to do if yielded an invalid image
+
+        (image, camera_name) = args
+        if image is not None:
+            try:
+                layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
+                layer.data = image
+            except KeyError:
+                # Add image to a new layer if layer doesn't exist yet
+                layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}")
+                layer.mouse_drag_callbacks.append(self.save_image)
+                # TODO: Add scale
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer
@@ -283,10 +285,10 @@ class InstrumentView:
         if event.button == 2:  # Left click
             image = Image.fromarray(layer.data)
             fname = QFileDialog()
-            folder = fname.getExistingDirectory(directory=self.instrument.config_path)
-            if folder != '':  # user pressed cancel
-                # TODO: Allow users to add their own name
-                image.save(folder + rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")
+            folder = fname.getSaveFileName(directory=str(Path(__file__).parent.resolve()/
+                                  Path(rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")))
+            if folder[0] != '':  # user pressed cancel
+                image.save(folder[0])
 
     def setup_live_position(self):
         """Set up live position thread"""
@@ -301,8 +303,8 @@ class InstrumentView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
-                                **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
+            for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
+                                **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
                 with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
                     position = stage.position  # don't yield while locked
                 yield name, position
@@ -312,12 +314,12 @@ class InstrumentView:
         :param args: tuple containing the name of stage and position of stage"""
 
         (name, position) = args
-        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}  # group stage widgets dicts to find name
+        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}   # group stage widgets dicts to find name
         if type(position) == dict:
             for k, v in position.items():
                 try:
                     getattr(stages[name], f"position.{k}_widget").setText(str(v))
-                except RuntimeError:  # Pass error when window has been closed
+                except RuntimeError:    # Pass error when window has been closed
                     pass
         else:
             stages[name].position_widget.setText(str(position))
@@ -394,6 +396,7 @@ class InstrumentView:
                 setattr(self, f'{device_type}_widgets', {})
             getattr(self, f'{device_type}_widgets')[name] = guis[name]
 
+
             for subdevice_type, subdevice_dictionary in device_specs.get('subdevices', {}).items():
                 # if device has subdevice, create and pass on same Lock()
                 self.create_device_widgets(subdevice_dictionary, subdevice_type[:-1],
@@ -412,7 +415,7 @@ class InstrumentView:
         :param device_name: name of device in config
         :param attr_name: name of attribute"""
 
-        device = getattr(self.instrument, device_type + 's')[device_name]
+        device = getattr(self.instrument, device_type+'s')[device_name]
         with getattr(self, f'{device_type}_locks')[device_name]:  # lock device
             name_lst = attr_name.split('.')
             self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')

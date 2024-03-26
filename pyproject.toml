@@ -13,5 +13,6 @@ dependencies = [
     'pyqtgraph >= 0.12.4',
     'numpy >= 1.23.5',
     'PyQt6 >= 6.6.1',
-    'napari >= 0.4.19'
+    'napari >= 0.4.19',
+    'pyclesperanto >= 0.8.2'
 ]
