@@ -1,10 +1,10 @@
 instrument:
   id: speakeasy
   channels:
-    "405":
-      laser: 405nm
-      filter_wheel:
-        ASI FW-1000: BP488
+#    "405":
+#      laser: 405nm
+#      filter_wheel:
+#        ASI FW-1000: BP488
     "488":
       laser: 488nm
       filter_wheel:
@@ -13,10 +13,10 @@ instrument:
       laser: 561nm
       filter_wheel:
         ASI FW-1000: BP561
-    "638":
-      laser: 638nm
-      filter_wheel:
-        ASI FW-1000: LP638
+#    "638":
+#      laser: 638nm
+#      filter_wheel:
+#        ASI FW-1000: LP638
   devices:
     stages:
       ASI MS-8000:
@@ -76,19 +76,19 @@ instrument:
           port: COM5
         subdevices:
           lasers:
-            405nm:
-              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
-              module: LaserLBXOxxius
-              color: purple
-              init:
-                prefix: L6
-                coefficients:
-                  1: 3.218
-                  0: -57.515
-              settings:
-                cdrh: OFF
-                constant_current: ON
-                modulation_mode: digital
+#            405nm:
+#              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
+#              module: LaserLBXOxxius
+#              color: purple
+#              init:
+#                prefix: L6
+#                coefficients:
+#                  1: 3.218
+#                  0: -57.515
+#              settings:
+#                cdrh: OFF
+#                constant_current: ON
+#                modulation_mode: digital
             488nm:
               driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
               module: LaserLBXOxxius
@@ -102,19 +102,19 @@ instrument:
                 cdrh: OFF
                 constant_current: ON
                 modulation_mode: digital
-            638nm:
-              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
-              module: LaserLBXOxxius
-              color: red
-              init:
-                prefix: L1
-                coefficients:
-                  1: 2.237
-                  0: -29.349
-              settings:
-                cdrh: OFF
-                constant_current: ON
-                modulation_mode: digital
+#            638nm:
+#              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
+#              module: LaserLBXOxxius
+#              color: red
+#              init:
+#                prefix: L1
+#                coefficients:
+#                  1: 2.237
+#                  0: -29.349
+#              settings:
+#                cdrh: OFF
+#                constant_current: ON
+#                modulation_mode: digital
             561nm:
               driver: voxel.devices.lasers.oxxius.laser_lcx_oxxius
               module: LaserLCXOxxius
@@ -164,34 +164,24 @@ instrument:
                         parameters:
                             start_time_ms:
                               channels:
-                                  "405": 10.0
                                   "488": 10.0
                                   "561": 10.0
-                                  "638": 10.0
                             end_time_ms:
                               channels:
-                                  "405": 400.0
                                   "488": 400.0
                                   "561": 400.0
-                                  "638": 400.0
                             amplitude_volts:
                               channels:
-                                  "405": 1.0
                                   "488": 1.0
                                   "561": 1.0
-                                  "638": 1.0
                             offset_volts:
                               channels:
-                                "405": 2.5
                                 "488": 2.5
                                 "561": 2.5
-                                "638": 2.5
                             cutoff_frequency_hz:
                               channels:
-                                "405": 200
                                 "488": 200
                                 "561": 200
-                                "638": 200
                       x galvo mirror:
                         port: ao3
                         device_min_volts: 0.0
@@ -200,34 +190,24 @@ instrument:
                         parameters:
                           start_time_ms:
                             channels:
-                              "405": 10.0
                               "488": 10.0
                               "561": 10.0
-                              "638": 10.0
                           end_time_ms:
                             channels:
-                              "405": 400.0
                               "488": 400.0
                               "561": 400.0
-                              "638": 400.0
                           amplitude_volts:
                             channels:
-                              "405": 0.0
                               "488": 0.0
                               "561": 0.0
-                              "638": 0.0
                           offset_volts:
                             channels:
-                              "405": 2.5
                               "488": 2.5
                               "561": 2.5
-                              "638": 2.5
                           cutoff_frequency_hz:
                             channels:
-                              "405": 200
                               "488": 200
                               "561": 200
-                              "638": 200
                       y galvo mirror:
                         port: ao21
                         device_min_volts: 0.0
@@ -236,34 +216,24 @@ instrument:
                         parameters:
                           start_time_ms:
                             channels:
-                              "405": 10.0
                               "488": 10.0
                               "561": 10.0
-                              "638": 10.0
                           end_time_ms:
                             channels:
-                              "405": 400.0
                               "488": 400.0
                               "561": 400.0
-                              "638": 400.0
                           amplitude_volts:
                             channels:
-                              "405": 0.0
                               "488": 0.0
                               "561": 0.0
-                              "638": 0.0
                           offset_volts:
                             channels:
-                              "405": 2.5
                               "488": 2.5
                               "561": 2.5
-                              "638": 2.5
                           cutoff_frequency_hz:
                             channels:
-                              "405": 200
                               "488": 200
                               "561": 200
-                              "638": 200
                       voice box:
                         port: ao2
                         device_min_volts: 0.0
@@ -272,35 +242,25 @@ instrument:
                         parameters:
                           start_time_ms:
                             channels:
-                              "405": 10.0
                               "488": 10.0
                               "561": 10.0
-                              "638": 10.0
                           end_time_ms:
                             channels:
-                              "405": 400.0
                               "488": 400.0
                               "561": 400.0
-                              "638": 400.0
                           amplitude_volts:
                             channels:
-                              "405": 0.0
-                              "488": 0.0
-                              "561": 0.0
-                              "638": 0.0
+                              "488": 1.0
+                              "561": 1.0
                           offset_volts:
                             channels:
-                              "405": 2.5
-                              "488": 2.5
-                              "561": 2.5
-                              "638": 2.5
+                              "488": 0.0
+                              "561": 0.0
                           cutoff_frequency_hz:
                             channels:
-                              "405": 200
                               "488": 200
                               "561": 200
-                              "638": 200
-                      laser:
+                      488_laser:
                         port: ao4
                         device_min_volts: 0.0
                         device_max_volts: 5.0
@@ -308,28 +268,42 @@ instrument:
                         parameters:
                           start_time_ms:
                             channels:
-                              "405": 10.0
                               "488": 10.0
                               "561": 10.0
-                              "638": 10.0
                           end_time_ms:
                             channels:
-                              "405": 400.0
                               "488": 400.0
                               "561": 400.0
-                              "638": 400.0
                           max_volts:
                             channels:
-                              "405": 5.0
                               "488": 5.0
                               "561": 5.0
-                              "638": 5.0
                           min_volts:
                             channels:
-                              "405": 0.0
                               "488": 0.0
                               "561": 0.0
-                              "638": 0.0
+#                      561_laser:
+#                        port: ao1
+#                        device_min_volts: 0.0
+#                        device_max_volts: 5.0
+#                        waveform: square wave
+#                        parameters:
+#                          start_time_ms:
+#                            channels:
+#                              "488": 10.0
+#                              "561": 10.0
+#                          end_time_ms:
+#                            channels:
+#                              "488": 400.0
+#                              "561": 400.0
+#                          max_volts:
+#                            channels:
+#                              "488": 5.0
+#                              "561": 5.0
+#                          min_volts:
+#                            channels:
+#                              "488": 0.0
+#                              "561": 0.0
               co_task:
                   name: co task
                   timing:

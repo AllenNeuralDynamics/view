@@ -5,13 +5,13 @@ device_widgets:
     module: FilterWheelWidget
     init:
       advanced_user: False
-  "405nm":
-    type: laser
-    driver: device_widgets.laser_widget
-    module: LaserWidget
-    init:
-      color: purple
-      advanced_user: False
+#  "405nm":
+#    type: laser
+#    driver: device_widgets.laser_widget
+#    module: LaserWidget
+#    init:
+#      color: purple
+#      advanced_user: True
   "488nm":
     type: laser
     driver: device_widgets.laser_widget
@@ -26,13 +26,13 @@ device_widgets:
     init:
       color: green
       advanced_user: False
-  "638nm":
-    type: laser
-    driver: device_widgets.laser_widget
-    module: LaserWidget
-    init:
-      color: red
-      advanced_user: False
+#  "638nm":
+#    type: laser
+#    driver: device_widgets.laser_widget
+#    module: LaserWidget
+#    init:
+#      color: red
+#      advanced_user: True
   ASI MS-8000 x axis:
     type: tiling_stage
     driver: device_widgets.stage_widget
@@ -46,7 +46,7 @@ device_widgets:
     init:
       advanced_user: False
   ASI MS-8000 z axis:
-    type: scanning_stage
+    type: tiling_stage
     driver: device_widgets.stage_widget
     module: StageWidget
     init:
