@@ -275,7 +275,7 @@ class InstrumentView:
                 # Add image to a new layer if layer doesn't exist yet
                 layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}")
                 layer.mouse_drag_callbacks.append(self.save_image)
-                # TODO: Add scale
+                # TODO: Add scale?
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer

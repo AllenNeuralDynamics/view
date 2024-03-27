@@ -42,7 +42,7 @@ class ExASPIMView(InstrumentView):
             # TODO: Do we want to import from exaspim what to use?
             multiscale = [frame]
             input_frame = cle.push(frame)
-            for binning in range(2,6): # TODO: variable or get from somewhere
+            for binning in range(2,6): # TODO: variable or get from somewhere?
                 downsampled_frame = cle.scale(input_frame,
                                               factor_x=1 / binning,
                                               factor_y=1 / binning,
