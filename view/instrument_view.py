@@ -13,8 +13,10 @@ import napari
 import datetime
 from time import sleep
 import logging
+import inflection
 
 class InstrumentView:
+    """"Class to act as a general instrument view model to voxel instrument"""
 
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
 
@@ -55,9 +57,9 @@ class InstrumentView:
         app = napari._qt.qt_event_loop.get_app()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
-        # Set up instrument widgets #TODO: what to doe about ies plural devices?
-        for device_type, device_specs in self.instrument.config['instrument']['devices'].items():
-            self.create_device_widgets(device_specs, device_type[:-1])  # remove s for device type
+        # Set up instrument widgets
+        for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
+            self.create_device_widgets(device_name, device_specs)
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
@@ -360,63 +362,60 @@ class InstrumentView:
                 with self.laser_locks[laser_name]:
                     self.instrument.lasers[laser_name].enable()
 
-    def create_device_widgets(self, devices: dict, device_type: str, lock: Lock = None):
+    def create_device_widgets(self,  device_name: str, device_specs: dict, lock: Lock = None):
         """Create widgets based on device dictionary attributes from instrument or acquisition
          :param lock: lock to be used for device
-         :param devices: dictionary of devices
-         :param device_type: type of device of all devices in dictionary,
+         :param device_name: name of device
+         :param device_specs: dictionary dictating how device should be set up
          """
+        lock = Lock() if lock is None else lock
 
-        guis = {}
-        for name, device_specs in devices.items():
-            device = getattr(self.instrument, device_type + 's')[name]
+        device_type = device_specs['type']
+        device = getattr(self.instrument, inflection.pluralize(device_type))[device_name]
 
-            specs = self.config['device_widgets'].get(name, {})
-            if specs != {} and specs.get('type', '') == device_type:
-                gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
-                guis[name] = gui_class(device, **specs.get('init', {}))  # device gets passed into widget
-            else:
-                properties = scan_for_properties(device)
-                guis[name] = BaseDeviceWidget(type(device), properties)
+        specs = self.config['device_widgets'].get(device_name, {})
+        if specs != {} and specs.get('type', '') == device_type:
+            gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
+            gui = gui_class(device, **specs.get('init', {}))  # device gets passed into widget
+        else:
+            properties = scan_for_properties(device)
+            gui = BaseDeviceWidget(type(device), properties)
 
-            # if gui is BaseDeviceWidget or inherits from it
-            if type(guis[name]) == BaseDeviceWidget or BaseDeviceWidget in type(guis[name]).__bases__:
-                # Hook up widgets to device_property_changed
-                guis[name].ValueChangedInside[str].connect(
-                    lambda value, dev_name=name, gui=guis[name], dev_type=device_type:
-                    self.device_property_changed(value, dev_name, gui, dev_type))
+        # if gui is BaseDeviceWidget or inherits from it
+        if type(gui) == BaseDeviceWidget or BaseDeviceWidget in type(gui).__bases__:
+            # Hook up widgets to device_property_changed
+            gui.ValueChangedInside[str].connect(
+                lambda value, dev=device, widget=gui, dev_lock=lock:
+                self.device_property_changed(value, dev, widget, dev_lock))
 
-            # set up lock for device in corresponding device task dictionary
-            if not hasattr(self, f'{device_type}_locks'):
-                setattr(self, f'{device_type}_locks', {})
-            getattr(self, f'{device_type}_locks')[name] = Lock() if lock is None else lock
+        # set up lock for device in corresponding device task dictionary
+        if not hasattr(self, f'{device_type}_locks'):
+            setattr(self, f'{device_type}_locks', {})
+        getattr(self, f'{device_type}_locks')[device_name] = lock
 
-            # add ui to widget dictionary
-            if not hasattr(self, f'{device_type}_widgets'):
-                setattr(self, f'{device_type}_widgets', {})
-            getattr(self, f'{device_type}_widgets')[name] = guis[name]
+        # add ui to widget dictionary
+        if not hasattr(self, f'{device_type}_widgets'):
+            setattr(self, f'{device_type}_widgets', {})
+        getattr(self, f'{device_type}_widgets')[device_name] = gui
 
 
-            for subdevice_type, subdevice_dictionary in device_specs.get('subdevices', {}).items():
-                # if device has subdevice, create and pass on same Lock()
-                self.create_device_widgets(subdevice_dictionary, subdevice_type[:-1],
-                                           getattr(self, f'{device_type}_locks')[name])
+        for subdevice_name, subdevice_specs in device_specs.get('subdevices', {}).items():
+            # if device has subdevice, create and pass on same Lock()
+            self.create_device_widgets(subdevice_name, subdevice_specs,
+                                       getattr(self, f'{device_type}_locks')[device_name])
 
-            guis[name].setWindowTitle(f'{device_type} {name}')
-            guis[name].show()
-
-        return guis
+        gui.setWindowTitle(f'{device_type} {device_name}')
+        gui.show()
 
     @Slot(str)
-    def device_property_changed(self, attr_name: str, device_name: str, widget, device_type: str):
+    def device_property_changed(self, attr_name: str, device, widget, device_lock: Lock):
         """Slot to signal when device widget has been changed
-        :param device_type: type of device
+        :param device_lock: lock corresponding to device
         :param widget: widget object relating to device
-        :param device_name: name of device in config
+        :param device: device object
         :param attr_name: name of attribute"""
 
-        device = getattr(self.instrument, device_type+'s')[device_name]
-        with getattr(self, f'{device_type}_locks')[device_name]:  # lock device
+        with device_lock:  # lock device
             name_lst = attr_name.split('.')
             self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')
             value = getattr(widget, name_lst[0])
@@ -454,10 +453,11 @@ class InstrumentView:
 
         self.grab_stage_positions_worker.quit()
         self.grab_frames_worker.quit()
-        for device_type in self.instrument.config['instrument']['devices'].keys():
-            for device_name, device in getattr(self.instrument, device_type).items():
-                with getattr(self, f'{device_type[:-1]}_locks')[device_name]:
-                    try:
-                        device.close()
-                    except AttributeError:
-                        self.log.debug(f'{device_name} does not have close function')
+        for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
+            device_type = device_specs['type']
+            device = getattr(self.instrument, inflection.pluralize(device_type))[device_name]
+            with getattr(self, f'{device_type}_locks')[device_name]:
+                try:
+                    device.close()
+                except AttributeError:
+                    self.log.debug(f'{device_name} does not have close function')

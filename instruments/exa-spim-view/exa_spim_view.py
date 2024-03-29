@@ -1,6 +1,7 @@
 from qtpy.QtWidgets import QApplication, QMessageBox, QPushButton, QFileDialog
 import sys
 from view.instrument_view import InstrumentView
+from view.acquisition_view import AcquisitionView
 from voxel.instruments.microscopes.exaspim import ExASPIM
 from voxel.acquisition.exaspim import ExASPIMAcquisition
 from pathlib import Path
@@ -8,6 +9,7 @@ import os
 import yaml
 from napari.qt.threading import thread_worker
 import pyclesperanto as cle
+import inflection
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
 ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
@@ -18,7 +20,7 @@ GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 # INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
 # GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
 
-class ExASPIMView(InstrumentView):
+class ExASPIMInstrumentView(InstrumentView):
     """View for ExASPIM Instrument"""
 
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
@@ -57,20 +59,22 @@ class ExASPIMView(InstrumentView):
 
         return_value = self.update_config_query()
         if return_value == QMessageBox.Ok:
-            for device_types, device_dictionaries in self.instrument.config['instrument']['devices'].items():
-                self.update_config(device_types, device_dictionaries)
+            for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
+                self.update_config(device_name, device_specs)
             with open(self.config_save_to, 'w') as outfile:
                 yaml.dump(self.instrument.config, outfile)
 
-    def update_config(self, device_type, device_dictionaries):
-        """Update setting in instrument config if already there"""
+    def update_config(self, device_name, device_specs):
+        """Update setting in instrument config if already there
+        :param device_name: name of device
+        :param device_specs: dictionary dictating how device should be set up"""
 
-        for device_name, device_specs in device_dictionaries.items():
-            for key in device_specs.get('settings', {}).keys():
-                device_object = getattr(self.instrument, device_type)[device_name]
-                device_specs.get('settings')[key] = getattr(device_object, key)
-                for subdevice_type, subdevice_dictionary in device_specs.get('subdevices', {}).items():
-                    self.update_config(subdevice_type, subdevice_dictionary)
+        device_type = inflection.pluralize(device_specs['type'])
+        for key in device_specs.get('settings', {}).keys():
+            device_object = getattr(self.instrument, device_type)[device_name]
+            device_specs.get('settings')[key] = getattr(device_object, key)
+            for subdevice_name, subdevice_specs in device_specs.get('subdevices', {}).items():
+                self.update_config(subdevice_name, subdevice_specs)
 
     def update_config_query(self):
         """Pop up message asking if configuration would like to be saved"""
@@ -100,6 +104,7 @@ class ExASPIMView(InstrumentView):
 
     def toggle_grab_stage_positions(self):
         """When focus on view has changed, resume or pause grabbing stage positions"""
+        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
         try:
             if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
                 self.grab_stage_positions_worker.resume()
@@ -114,8 +119,8 @@ if __name__ == "__main__":
     # instrument
     instrument = ExASPIM(INSTRUMENT_YAML)
     # acquisition
-    #acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
+    acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
-    view = ExASPIMView(instrument, GUI_YAML)
-
+    #instrument_view = ExASPIMInstrumentView(instrument, GUI_YAML)
+    acquisition_view = AcquisitionView(acquisition, GUI_YAML)
     sys.exit(app.exec_())

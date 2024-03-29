@@ -7,119 +7,131 @@ acquisition:
     x_anatomical_direction: Anterior_to_posterior
     y_anatomical_direction: Inferior_to_superior
     z_anatomical_direction: Left_to_right
-#  storage:
-#    - camera_name: vp-151mx
-#      filename_prefix: tile
-#      local_drive: C:\Users\svc_aind_imaging\Desktop
-#      external_drive: C:\Users\svc_aind_imaging\Desktop\test
-#    - camera_name: vnp-604mx
-#      filename_prefix: tile
-#      local_drive: C:\Users\svc_aind_imaging\Desktop
-#      external_drive: C:\Users\svc_aind_imaging\Desktop\test
   operations:
-    transfers:
-      vp-151mx:
-        driver: voxel.processes.file_transfer.robocopy
-        module: FileTransfer
-        init:
-          external_directory: C:\Users\micah.woodard\Downloads\exaspim-test
-      vnp-604mx:
-        driver: voxel.processes.file_transfer.robocopy
-        module: FileTransfer
-        init:
-          external_directory: C:\Users\micah.woodard\Downloads\exaspim-test
-
-    writers:
-      vp-151mx:
-        driver: voxel.writers.imaris
+    vp-151mx:
+      bdv:
+        type: writer
+        driver: voxel.writers.bdv
         module: Writer
         init:
-          path: C:\Users\micah.woodard\Downloads
+          path: ./local_test
         settings:
-          compression: lz4shuffle
+          compression: none
           data_type: uint16
-      vnp-604mx:
-        driver: voxel.writers.imaris
-        module: Writer
+      rsync:
+        type: transfer
+        driver: voxel.transfers.rsync
+        module: FileTransfer
         init:
-          path: C:\Users\micah.woodard\Downloads
-        settings:
-          compression: lz4shuffle
-          data_type: uint16
-    intra_processes:
-      max projection:
+          external_directory: ./external_test
+          local_directory: ./local_test
+      max_projection:
+        type: process
         driver: voxel.processes.cpu.max_projection
         module: MaxProjection
         init:
-          path: C:\Users\micah.woodard\Downloads
-    post_processes:
-      {}
+          path: ./local_test
+        settings:
+          data_type: uint16
+          projection_count_px: 32
+      mean_projection:
+        type: process
+        driver: voxel.processes.cpu.mean_projection
+        module: MeanProjection
+        init:
+          path: ./local_test
+        settings:
+          data_type: uint16
+          projection_count_px: 32
+      background_collection:
+        type: routine
+        driver: voxel.routines.background_collection
+        module: BackgroundCollection
+        init:
+          path: ./local_test
+        settings:
+          data_type: uint16
+          frame_count_px: 10
+    vnp-604mx:
+        bvd:
+          type: writer
+          driver: voxel.writers.bdv
+          module: Writer
+          init:
+            path: ./local_test
+          settings:
+            compression: none
+            data_type: uint16
+        rsync:
+          type: transfer
+          driver: voxel.transfers.rsync
+          module: FileTransfer
+          init:
+            external_directory: ./external_test
+            local_directory: ./local_test
+        max_projection:
+          type: process
+          driver: voxel.processes.cpu.max_projection
+          module: MaxProjection
+          init:
+            path: ./local_test
+          settings:
+            data_type: uint16
+            projection_count_px: 32
+        mean_projection:
+          type: process
+          driver: voxel.processes.cpu.mean_projection
+          module: MeanProjection
+          init:
+            path: ./local_test
+          settings:
+            data_type: uint16
+            projection_count_px: 32
+        background_collection:
+          type: routine
+          driver: voxel.routines.background_collection
+          module: BackgroundCollection
+          init:
+            path: ./local_test
+          settings:
+            data_type: uint16
+            frame_count_px: 10
   tiles:
     - tile_number:
         x: 0
         y: 0
         z: 0
-      position_mm: # interactively populate from grid
+        w: 0
+      position_mm:
         x: 0
         y: 0
         z: 0
+        w: 1
       voxel_size_um:
-        x: 0.748 # grayed out -> comes from instrument
-        y: 0.748 # grayed out -> comes from instrument
-        z: 1.000 # editable -> integer values only
-      filename_prefix: tile
-      frame_count: 64 # editable -> force multiple of 2048
-      binning: 1 # editable -> force power of 2
-      channel: '488' # editable ->
-      power_mw: 1000 # editable -> range to laser device range(s)
-      filter: BP405 # editable -> limit to filter wheel device filters
-      hex_color: "#00ff92"
-      devices:
-        - name: PCIe-6738
-          ports:
-            name: tunable lens
-            parameters:
-              amplitude_volts:
-                value: 0, 1, 2, 3
-                z_position_um: 0, 1, 2, 3
-              offset_volts:
-                value: 4, 5, 6, 7
-                z_position_um: 3, 6, 9, 12
-        - name: focusing stage
-          position_mm:
-            value: 0, 1, 2, 3
-            z_position_um: 0, 1, 2, 3
+        x: 0.748
+        y: 0.748
+        z: 1.000
+      prefix: tile
+      frame_count_px: 128
+      binning: 1
+      channel: "488"
+      power_mw: 1000
     - tile_number:
         x: 1
         y: 0
         z: 0
-      position_mm: # interactively populate from grid
+        w: 0
+      position_mm:
         x: 1
         y: 1
         z: 1
+        w: 1
       voxel_size_um:
-        x: 0.748 # grayed out -> comes from instrument
-        y: 0.748 # grayed out -> comes from instrument
-        z: 1.000 # editable -> integer values only
-      filename_prefix: tile
-      frame_count: 64 # editable -> force multiple of 2048
-      binning: 1 # editable -> force power of 2
-      channel: '488' # editable ->
-      power_mw: 1000 # editable -> range to laser device range(s)
-      filter: BP405 # editable -> limit to filter wheel device filters
-      hex_color: "#00ff92"
-      devices:
-        - name: PCIe-6738
-          ports:
-            name: tunable lens
-            parameters:
-              amplitude_volts:
-                value: 0, 1, 2, 3
-                z_position_um: 0, 1, 2, 3
-              offset_volts:
-                value: 4, 5, 6, 7
-                z_position_um: 3, 6, 9, 12
-        - name: focusing stage
-          position_mm:
-            value: 0, 1, 2, 3
-            z_position_um: 0, 1, 2, 3
+        x: 0.748
+        y: 0.748
+        z: 1.000
+      prefix: tile
+      frame_count_px: 256
+      binning: 1
+      channel: "488"
+      power_mw: 1000
