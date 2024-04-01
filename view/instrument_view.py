@@ -2,7 +2,7 @@ from ruamel.yaml import YAML
 from qtpy.QtCore import Slot
 from pathlib import Path
 import importlib
-from device_widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
+from instrument_widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
     scan_for_properties, disable_button
 from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \

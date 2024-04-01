@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 from ruamel.yaml import YAML
 import importlib
-from device_widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
+from instrument_widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
     scan_for_properties, disable_button
 from qtpy.QtCore import Slot
 import inflection

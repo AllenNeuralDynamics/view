@@ -105,6 +105,7 @@ class ExASPIMInstrumentView(InstrumentView):
     def toggle_grab_stage_positions(self):
         """When focus on view has changed, resume or pause grabbing stage positions"""
         # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
+        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
         try:
             if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
                 self.grab_stage_positions_worker.resume()
@@ -121,6 +122,6 @@ if __name__ == "__main__":
     # acquisition
     acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
-    #instrument_view = ExASPIMInstrumentView(instrument, GUI_YAML)
-    acquisition_view = AcquisitionView(acquisition, GUI_YAML)
+    instrument_view = ExASPIMInstrumentView(instrument, GUI_YAML)
+    #acquisition_view = AcquisitionView(acquisition, GUI_YAML)
     sys.exit(app.exec_())
