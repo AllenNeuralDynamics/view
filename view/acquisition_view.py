@@ -2,10 +2,13 @@ from pathlib import Path
 import logging
 from ruamel.yaml import YAML
 import importlib
-from instrument_widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
-    scan_for_properties, disable_button
+from instrument_widgets.base_device_widget import BaseDeviceWidget, scan_for_properties
+from instrument_widgets.acquisition_widgets.grid_widget import GridWidget
 from qtpy.QtCore import Slot
 import inflection
+from threading import Lock, Thread
+from time import sleep
+from napari.qt.threading import thread_worker, create_worker
 
 
 class AcquisitionView:
@@ -16,9 +19,20 @@ class AcquisitionView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
+        # Locks
+        self.stage_lock = Lock()
+
+        # Eventual widgets
+        self.grid_widget = None
+        self.metadata_widget = None
+
+        # Eventual threads
+        self.grab_fov_positions_worker = None
+
         self.acquisition = acquisition
+        self.instrument = self.acquisition.instrument
         self.config = YAML(typ='safe', pure=True).load(
-            config_path)  # TODO: maybe bulldozing comments but easier, also do we need a config for this
+            config_path)  # TODO: maybe bulldozing comments but easier
 
         for device_name, operation_dictionary in self.acquisition.config['acquisition']['operations'].items():
             for operation_name, operation_specs in operation_dictionary.items():
@@ -26,6 +40,35 @@ class AcquisitionView:
 
         # setup additional widgets
         self.create_metadata_widget()
+        self.create_grid_plan_widget()
+
+        # setup stage thread
+        self.setup_live_position()
+
+    def create_grid_plan_widget(self):
+        """Create widget to visualize acquisition grid"""
+
+        specs = self.config['operation_widgets'].get('grid_widget', {})
+        kwds = specs.get('init', {})
+        coordinate_plane = kwds.get('coordinate_plane', ['x', 'y'])
+        stages = {stage.instrument_axis: stage for stage in self.instrument.tiling_stages.values()}
+        with self.stage_lock:
+            kwds['limits'] = {axis: stages[axis].limits for axis in coordinate_plane}
+        self.grid_widget = GridWidget(**kwds)  # TODO: Try and tie it to camera?
+        self.grid_widget.fovMoved.connect(self.move_stage)
+        self.grid_widget.show()
+
+    def move_stage(self, fov_position):
+        """Slot for moving stage when fov_position is changed internally by grid_widget"""
+
+        #self.grab_fov_positions_worker.yielded.disconnect()
+        stages = {stage.instrument_axis: stage for stage in self.instrument.tiling_stages.values()}
+        # Move stages
+        for axis, position in zip(self.grid_widget.coordinate_plane, fov_position):
+            with self.stage_lock:
+                stages[axis].move_absolute(position, wait='False')
+
+
 
     def create_metadata_widget(self):
         """Create custom widget for metadata in config"""
@@ -41,6 +84,13 @@ class AcquisitionView:
             widget.setToolTip('')  # reset tooltips
         self.metadata_widget.setWindowTitle(f'Metadata')
         self.metadata_widget.show()
+
+    def setup_live_position(self):
+        """Set up live position thread"""
+
+        self.grab_fov_positions_worker = self.grab_fov_positions()
+        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.grid_widget, 'fov_position', pos))
+        self.grab_fov_positions_worker.start()
 
     def create_operation_widgets(self, device_name: str, operation_name: str, operation_specs: dict):
         """Create widgets based on operation dictionary attributes from instrument or acquisition
@@ -107,3 +157,18 @@ class AcquisitionView:
         except (KeyError, TypeError) as e:
             self.log.warning(f"{attr_name} can't be mapped into operation properties due to {e}")
             pass
+
+    @thread_worker
+    def grab_fov_positions(self):
+        """Grab stage position from all stage objects and yeild positions"""
+
+        while True:  # best way to do this or have some sort of break?
+            sleep(.1)
+            fov_pos = [None]*2
+            for name, stage in self.instrument.tiling_stages.items():  # combine stage
+                with self.stage_lock:
+                    if stage.instrument_axis in self.grid_widget.coordinate_plane:
+                        fov_index = self.grid_widget.coordinate_plane.index(stage.instrument_axis)
+                        fov_pos[fov_index] = stage.position[stage.instrument_axis]  # don't yield while locked
+
+            yield fov_pos

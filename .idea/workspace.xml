@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8550edbe-f1c9-46d0-8301-e8dab92a7a1d" name="Changes" comment="'speak easy working version'">
-      <change beforePath="$PROJECT_DIR$/../device-widgets/device_widgets/camera_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/../device-widgets/device_widgets/camera_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/example_view_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/example_view_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/resources/speakeasy_instument.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/resources/speakeasy_instrument.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../voxel/voxel/devices/camera/hamamatsu_dcam.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/devices/camera/hamamatsu_dcam.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../voxel/voxel/instrument.py" beforeDir="false" afterPath="$PROJECT_DIR$/../voxel/voxel/instrument.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/instruments/exa-spim-view/exa_spim_view.py" beforeDir="false" afterPath="$PROJECT_DIR$/instruments/exa-spim-view/exa_spim_view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,7 +36,7 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "C:/Users/micah.woodard/Projects/device-widgets",
+    "last_opened_file_path": "C:/Users/micah.woodard/Projects/view",
     "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings"
   },
   "keyToStringList": {
@@ -58,7 +54,6 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="new_scope" />
       <option name="WORKING_DIRECTORY" value="D:/3. Resources for developers/Python/Python SDK for LCX/Python SDK for LCX" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />

@@ -23,6 +23,7 @@ class InstrumentView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
+        # Eventual locks
         self.daq_locks = {}
         self.camera_locks = {}
         self.scanning_stage_locks = {}
@@ -305,8 +306,7 @@ class InstrumentView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
-                                **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
+            for name, stage in self.instrument.tiling_stages.items():  # combine stage
                 with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
                     position = stage.position  # don't yield while locked
                 yield name, position

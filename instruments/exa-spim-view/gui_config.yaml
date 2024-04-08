@@ -87,4 +87,9 @@ device_widgets:
                     "561": 2.5
                     "639": 2.5
 operation_widgets:
-  {}
+  grid_widget:
+    init:
+      fov_dimensions: [1152, 1152]
+      coordinate_plane: ['x', 'y']
+      unit: 'um'
+
