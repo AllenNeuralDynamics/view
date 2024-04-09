@@ -17,20 +17,16 @@ acquisition:
 #      local_drive: C:\Users\svc_aind_imaging\Desktop
 #      external_drive: C:\Users\svc_aind_imaging\Desktop\test
   operations:
-    transfers:
-      vp-151mx:
-        driver: voxel.processes.file_transfer.robocopy
+    C15440-20UP:
+      robocopy:
+        type: transfers
+        driver: voxel.transfers.robocopy
         module: FileTransfer
         init:
           external_directory: C:\Users\micah.woodard\Downloads\exaspim-test
-      vnp-604mx:
-        driver: voxel.processes.file_transfer.robocopy
-        module: FileTransfer
-        init:
-          external_directory: C:\Users\micah.woodard\Downloads\exaspim-test
-
-    writers:
-      vp-151mx:
+          local_directory: C:\Users\micah.woodard\Downloads
+      imaris:
+        type: writer
         driver: voxel.writers.imaris
         module: Writer
         init:
@@ -38,22 +34,16 @@ acquisition:
         settings:
           compression: lz4shuffle
           data_type: uint16
-      vnp-604mx:
-        driver: voxel.writers.imaris
-        module: Writer
-        init:
-          path: C:\Users\micah.woodard\Downloads
-        settings:
-          compression: lz4shuffle
-          data_type: uint16
-    intra_processes:
-      max projection:
+      max_projection:
+        type: process
         driver: voxel.processes.cpu.max_projection
         module: MaxProjection
         init:
-          path: C:\Users\micah.woodard\Downloads
-    post_processes:
-      {}
+          path: ./local_test
+        settings:
+          data_type: uint16
+          projection_count_px: 32
+
   tiles:
     - tile_number:
         x: 0

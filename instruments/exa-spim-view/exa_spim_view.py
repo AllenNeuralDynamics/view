@@ -26,7 +26,6 @@ class ExASPIMInstrumentView(InstrumentView):
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
         super().__init__(instrument, config_path, log_level)
         app.aboutToQuit.connect(self.update_config_on_quit)
-        app.focusChanged.connect(self.toggle_grab_stage_positions)
 
         self.config_save_to = self.instrument.config_path
 
@@ -101,18 +100,6 @@ class ExASPIMInstrumentView(InstrumentView):
                            f"to current instrument state?")
             self.config_save_to = folder[0]
 
-
-    def toggle_grab_stage_positions(self):
-        """When focus on view has changed, resume or pause grabbing stage positions"""
-        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
-        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
-        try:
-            if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
-                self.grab_stage_positions_worker.resume()
-            elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
-                self.grab_stage_positions_worker.pause()
-        except RuntimeError:    # Pass error when window has been closed
-            pass
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

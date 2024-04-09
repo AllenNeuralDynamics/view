@@ -53,9 +53,10 @@ class AcquisitionView:
         coordinate_plane = kwds.get('coordinate_plane', ['x', 'y'])
         stages = {stage.instrument_axis: stage for stage in self.instrument.tiling_stages.values()}
         with self.stage_lock:
-            kwds['limits'] = {axis: stages[axis].limits for axis in coordinate_plane}
+            kwds['limits'] = {axis: stages[axis].limits_mm for axis in coordinate_plane}
         self.grid_widget = GridWidget(**kwds)  # TODO: Try and tie it to camera?
         self.grid_widget.fovMoved.connect(self.move_stage)
+        self.grid_widget.fovStop.connect(self.stop_stage)
         self.grid_widget.show()
 
     def move_stage(self, fov_position):
@@ -66,9 +67,20 @@ class AcquisitionView:
         # Move stages
         for axis, position in zip(self.grid_widget.coordinate_plane, fov_position):
             with self.stage_lock:
-                stages[axis].move_absolute(position, wait='False')
+                stages[axis].move_absolute_mm(position, wait=False)
 
+    def stop_stage(self):
+        """Slot for stop stage"""
 
+        # TODO: Should we do this? I'm worried that halting is pretty time sensitive but pausing
+        #  grab_fov_positions_worker shouldn't take too long
+        self.grab_fov_positions_worker.pause()
+        while not self.grab_fov_positions_worker.is_paused:
+            sleep(.0001)
+
+        for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
+                            **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
+            stage.halt()
 
     def create_metadata_widget(self):
         """Create custom widget for metadata in config"""
@@ -169,6 +181,21 @@ class AcquisitionView:
                 with self.stage_lock:
                     if stage.instrument_axis in self.grid_widget.coordinate_plane:
                         fov_index = self.grid_widget.coordinate_plane.index(stage.instrument_axis)
-                        fov_pos[fov_index] = stage.position[stage.instrument_axis]  # don't yield while locked
+                        position = stage.position_mm
+                        # FIXME: Sometimes tigerbox yields empty stage position so just give last position
+                        fov_pos[fov_index] = position.get(stage.instrument_axis,
+                                                          self.grid_widget.fov_position[fov_index])
 
-            yield fov_pos
+            yield fov_pos # don't yield while locked
+
+    def toggle_grab_fov_positions(self):
+        """When focus on view has changed, resume or pause grabbing stage positions"""
+        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
+        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
+        try:
+            if self.grid_widget.isActiveWindow() and self.self.grab_fov_positions_worker.is_paused:
+                self.self.grab_fov_positions_worker.resume()
+            elif not self.grid_widget.isActiveWindow() and self.grab_fov_positions_worker.is_running:
+                self.grab_fov_positions_worker.pause()
+        except RuntimeError:    # Pass error when window has been closed
+            pass

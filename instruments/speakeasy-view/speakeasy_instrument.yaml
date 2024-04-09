@@ -18,64 +18,66 @@ instrument:
 #      filter_wheel:
 #        ASI FW-1000: LP638
   devices:
-    stages:
-      ASI MS-8000:
-        driver: tigerasi.tiger_controller
-        module: TigerController
-        init:
-          com_port: COM4
-        subdevices:
-          tiling_stages:
-            ASI MS-8000 x axis:
-              driver: voxel.devices.stage.asi
-              module: Stage
-              init:
-                port: COM4
-                hardware_axis: x
-                instrument_axis: x
-              settings:
-                speed_mm_s: 1.0
-            ASI MS-8000 y axis:
-              port: COM4
-              driver: voxel.devices.stage.asi
-              module: Stage
-              init:
-                port: COM4
-                hardware_axis: y
-                instrument_axis: y
-              settings:
-                speed_mm_s: 1.0
-            ASI MS-8000 z axis:
-              driver: voxel.devices.stage.asi
-              module: Stage
-              init:
-                port: COM4
-                hardware_axis: z
-                instrument_axis: z
-              settings:
-                speed_mm_s: 1.0
-          filter_wheels:
-            ASI FW-1000:
-              driver: voxel.devices.filterwheel.asi
-              module: FilterWheel
-              init:
-                id: 0
-                filters:
-                  BP405: 0
-                  BP488: 1
-                  BP561: 2
-                  LP638: 3
-                  MB405/488/561/638: 4
-                  Empty1: 5
-                  Empty2: 6
-    combiners:
-      combiner_0:
-        driver: oxxius_laser
-        module: L6CCCombiner
-        init:
-          port: COM5
-        subdevices:
-          lasers:
+    ASI MS-8000:
+      type: stage
+      driver: tigerasi.tiger_controller
+      module: TigerController
+      init:
+        com_port: COM4
+      subdevices:
+        ASI MS-8000 x axis:
+          type: tiling_stage
+          driver: voxel.devices.stage.asi
+          module: Stage
+          init:
+            port: COM4
+            hardware_axis: x
+            instrument_axis: x
+          settings:
+            speed_mm_s: 1.0
+        ASI MS-8000 y axis:
+          type: tiling_stage
+          port: COM4
+          driver: voxel.devices.stage.asi
+          module: Stage
+          init:
+            port: COM4
+            hardware_axis: y
+            instrument_axis: y
+          settings:
+            speed_mm_s: 1.0
+        ASI MS-8000 z axis:
+          type: tiling_stage
+          driver: voxel.devices.stage.asi
+          module: Stage
+          init:
+            port: COM4
+            hardware_axis: z
+            instrument_axis: z
+          settings:
+            speed_mm_s: 1.0
+        ASI FW-1000:
+          type: filter_wheel
+          driver: voxel.devices.filterwheel.asi
+          module: FilterWheel
+          init:
+            id: 0
+            filters:
+              BP405: 0
+              BP488: 1
+              BP561: 2
+              LP638: 3
+              MB405/488/561/638: 4
+              Empty1: 5
+              Empty2: 6
+
+    combiner_0:
+      type: combiner
+      driver: oxxius_laser
+      module: L6CCCombiner
+      init:
+        port: COM5
+      subdevices:
 #            405nm:
 #              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
 #              module: LaserLBXOxxius
@@ -89,19 +91,20 @@ instrument:
 #                cdrh: OFF
 #                constant_current: ON
 #                modulation_mode: digital
-            488nm:
-              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
-              module: LaserLBXOxxius
-              color: blue
-              init:
-                prefix: L5
-                coefficients:
-                  1: 2.3125
-                  0: -35.09
-              settings:
-                cdrh: OFF
-                constant_current: ON
-                modulation_mode: digital
+          488nm:
+            type: laser
+            driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
+            module: LaserLBXOxxius
+            color: blue
+            init:
+              prefix: L5
+              coefficients:
+                1: 2.3125
+                0: -35.09
+            settings:
+              cdrh: OFF
+              constant_current: ON
+              modulation_mode: digital
 #            638nm:
 #              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
 #              module: LaserLBXOxxius
@@ -115,92 +118,67 @@ instrument:
 #                cdrh: OFF
 #                constant_current: ON
 #                modulation_mode: digital
-            561nm:
-              driver: voxel.devices.lasers.oxxius.laser_lcx_oxxius
-              module: LaserLCXOxxius
-              color: greenyellow
-              init:
-                prefix: L3
-    cameras:
-      C15440-20UP:
-        driver: voxel.devices.camera.hamamatsu_dcam
-        module: Camera
-        init:
-          id: "500748"
-        settings:
-          exposure_time_ms: 20.0
-          pixel_type: mono16
-          roi:
-            width_px: 2304
-            height_px: 2304
-          trigger:
-            mode: on
-            source: external
-            polarity: rising
-    daqs:
-      PCIe-6738:
-        driver: voxel.devices.daq.ni
-        module: DAQ
-        init:
-          dev: Dev1
-        settings:
-          tasks:
-              ao_task:
-                  name: ao task
-                  timing:
-                      trigger_mode: on
-                      trigger_polarity: rising
-                      trigger_port: PFI2
-                      retriggerable: on
-                      sample_mode: finite
-                      period_time_ms: 500
-                      rest_time_ms: 50
-                      sampling_frequency_hz: 10000
-                  ports:
-                      camera:
-                        port: ao0
-                        device_min_volts: 0.0
-                        device_max_volts: 5.0
-                        waveform: sawtooth
-                        parameters:
-                            start_time_ms:
-                              channels:
-                                  "488": 10.0
-                                  "561": 10.0
-                            end_time_ms:
-                              channels:
-                                  "488": 400.0
-                                  "561": 400.0
-                            amplitude_volts:
-                              channels:
-                                  "488": 1.0
-                                  "561": 1.0
-                            offset_volts:
-                              channels:
-                                "488": 2.5
-                                "561": 2.5
-                            cutoff_frequency_hz:
-                              channels:
-                                "488": 200
-                                "561": 200
-                      x galvo mirror:
-                        port: ao3
-                        device_min_volts: 0.0
-                        device_max_volts: 5.0
-                        waveform: sawtooth
-                        parameters:
+          561nm:
+            type: laser
+            driver: voxel.devices.lasers.oxxius.laser_lcx_oxxius
+            module: LaserLCXOxxius
+            color: greenyellow
+            init:
+              prefix: L3
+    C15440-20UP:
+      type: camera
+      driver: voxel.devices.camera.hamamatsu_dcam
+      module: Camera
+      init:
+        id: "500748"
+      settings:
+        exposure_time_ms: 20.0
+        pixel_type: mono16
+        roi:
+          width_px: 2304
+          height_px: 2304
+        trigger:
+          mode: on
+          source: external
+          polarity: rising
+    PCIe-6738:
+      type: daq
+      driver: voxel.devices.daq.ni
+      module: DAQ
+      init:
+        dev: Dev1
+      settings:
+        tasks:
+            ao_task:
+                name: ao task
+                timing:
+                    trigger_mode: on
+                    trigger_polarity: rising
+                    trigger_port: PFI2
+                    retriggerable: on
+                    sample_mode: finite
+                    period_time_ms: 500
+                    rest_time_ms: 50
+                    sampling_frequency_hz: 10000
+                ports:
+                    camera:
+                      port: ao0
+                      device_min_volts: 0.0
+                      device_max_volts: 5.0
+                      waveform: sawtooth
+                      parameters:
                           start_time_ms:
                             channels:
-                              "488": 10.0
-                              "561": 10.0
+                                "488": 10.0
+                                "561": 10.0
                           end_time_ms:
                             channels:
-                              "488": 400.0
-                              "561": 400.0
+                                "488": 400.0
+                                "561": 400.0
                           amplitude_volts:
                             channels:
-                              "488": 0.0
-                              "561": 0.0
+                                "488": 1.0
+                                "561": 1.0
                           offset_volts:
                             channels:
                               "488": 2.5
@@ -209,80 +187,106 @@ instrument:
                             channels:
                               "488": 200
                               "561": 200
-                      y galvo mirror:
-                        port: ao21
-                        device_min_volts: 0.0
-                        device_max_volts: 5.0
-                        waveform: sawtooth
-                        parameters:
-                          start_time_ms:
-                            channels:
-                              "488": 10.0
-                              "561": 10.0
-                          end_time_ms:
-                            channels:
-                              "488": 400.0
-                              "561": 400.0
-                          amplitude_volts:
-                            channels:
-                              "488": 0.0
-                              "561": 0.0
-                          offset_volts:
-                            channels:
-                              "488": 2.5
-                              "561": 2.5
-                          cutoff_frequency_hz:
-                            channels:
-                              "488": 200
-                              "561": 200
-                      voice box:
-                        port: ao2
-                        device_min_volts: 0.0
-                        device_max_volts: 5.0
-                        waveform: sawtooth
-                        parameters:
-                          start_time_ms:
-                            channels:
-                              "488": 10.0
-                              "561": 10.0
-                          end_time_ms:
-                            channels:
-                              "488": 400.0
-                              "561": 400.0
-                          amplitude_volts:
-                            channels:
-                              "488": 1.0
-                              "561": 1.0
-                          offset_volts:
-                            channels:
-                              "488": 0.0
-                              "561": 0.0
-                          cutoff_frequency_hz:
-                            channels:
-                              "488": 200
-                              "561": 200
-                      488_laser:
-                        port: ao4
-                        device_min_volts: 0.0
-                        device_max_volts: 5.0
-                        waveform: square wave
-                        parameters:
-                          start_time_ms:
-                            channels:
-                              "488": 10.0
-                              "561": 10.0
-                          end_time_ms:
-                            channels:
-                              "488": 400.0
-                              "561": 400.0
-                          max_volts:
-                            channels:
-                              "488": 5.0
-                              "561": 5.0
-                          min_volts:
-                            channels:
-                              "488": 0.0
-                              "561": 0.0
+                    x galvo mirror:
+                      port: ao3
+                      device_min_volts: 0.0
+                      device_max_volts: 5.0
+                      waveform: sawtooth
+                      parameters:
+                        start_time_ms:
+                          channels:
+                            "488": 10.0
+                            "561": 10.0
+                        end_time_ms:
+                          channels:
+                            "488": 400.0
+                            "561": 400.0
+                        amplitude_volts:
+                          channels:
+                            "488": 0.0
+                            "561": 0.0
+                        offset_volts:
+                          channels:
+                            "488": 2.5
+                            "561": 2.5
+                        cutoff_frequency_hz:
+                          channels:
+                            "488": 200
+                            "561": 200
+                    y galvo mirror:
+                      port: ao21
+                      device_min_volts: 0.0
+                      device_max_volts: 5.0
+                      waveform: sawtooth
+                      parameters:
+                        start_time_ms:
+                          channels:
+                            "488": 10.0
+                            "561": 10.0
+                        end_time_ms:
+                          channels:
+                            "488": 400.0
+                            "561": 400.0
+                        amplitude_volts:
+                          channels:
+                            "488": 0.0
+                            "561": 0.0
+                        offset_volts:
+                          channels:
+                            "488": 2.5
+                            "561": 2.5
+                        cutoff_frequency_hz:
+                          channels:
+                            "488": 200
+                            "561": 200
+                    voice box:
+                      port: ao2
+                      device_min_volts: 0.0
+                      device_max_volts: 5.0
+                      waveform: sawtooth
+                      parameters:
+                        start_time_ms:
+                          channels:
+                            "488": 10.0
+                            "561": 10.0
+                        end_time_ms:
+                          channels:
+                            "488": 400.0
+                            "561": 400.0
+                        amplitude_volts:
+                          channels:
+                            "488": 1.0
+                            "561": 1.0
+                        offset_volts:
+                          channels:
+                            "488": 0.0
+                            "561": 0.0
+                        cutoff_frequency_hz:
+                          channels:
+                            "488": 200
+                            "561": 200
+                    488_laser:
+                      port: ao4
+                      device_min_volts: 0.0
+                      device_max_volts: 5.0
+                      waveform: square wave
+                      parameters:
+                        start_time_ms:
+                          channels:
+                            "488": 10.0
+                            "561": 10.0
+                        end_time_ms:
+                          channels:
+                            "488": 400.0
+                            "561": 400.0
+                        max_volts:
+                          channels:
+                            "488": 5.0
+                            "561": 5.0
+                        min_volts:
+                          channels:
+                            "488": 0.0
+                            "561": 0.0
 #                      561_laser:
 #                        port: ao1
 #                        device_min_volts: 0.0
@@ -305,12 +309,12 @@ instrument:
 #                            channels:
 #                              "488": 0.0
 #                              "561": 0.0
-              co_task:
-                  name: co task
-                  timing:
-                      output_port: PFI3
-                      frequency_hz: 5.0
-                      trigger_mode: off
-                  counters: [ctr0]
+            co_task:
+                name: co task
+                timing:
+                    output_port: PFI3
+                    frequency_hz: 5.0
+                    trigger_mode: off
+                counters: [ctr0]
 
 

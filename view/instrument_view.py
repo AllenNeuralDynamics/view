@@ -57,6 +57,7 @@ class InstrumentView:
         self.viewer = napari.Viewer(title='View', ndisplay=2, axis_labels=('x', 'y'))
         app = napari._qt.qt_event_loop.get_app()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
+        app.focusChanged.connect(self.toggle_grab_stage_positions)
 
         # Set up instrument widgets
         for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
@@ -306,9 +307,10 @@ class InstrumentView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in self.instrument.tiling_stages.items():  # combine stage
+            for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
+                                **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
                 with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
-                    position = stage.position  # don't yield while locked
+                    position = stage.position_mm  # don't yield while locked
                 yield name, position
 
     def update_stage_position(self, args):
@@ -447,6 +449,18 @@ class InstrumentView:
             if widget not in self.viewer.window._qt_window.findChildren(type(widget)):
                 undocked_widget = self.viewer.window.add_dock_widget(widget, name=widget.windowTitle())
                 undocked_widget.setFloating(True)
+
+    def toggle_grab_stage_positions(self):
+        """When focus on view has changed, resume or pause grabbing stage positions"""
+        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
+        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
+        try:
+            if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
+                self.grab_stage_positions_worker.resume()
+            elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
+                self.grab_stage_positions_worker.pause()
+        except RuntimeError:    # Pass error when window has been closed
+            pass
 
     def close(self):
         """Close instruments and end threads"""
