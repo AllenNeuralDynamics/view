@@ -6,7 +6,7 @@ from instrument_widgets.base_device_widget import BaseDeviceWidget, create_widge
     scan_for_properties, disable_button
 from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
-    QGridLayout, QComboBox
+    QGridLayout, QComboBox, QApplication
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 import napari
@@ -55,9 +55,6 @@ class InstrumentView:
 
         # Setup napari window
         self.viewer = napari.Viewer(title='View', ndisplay=2, axis_labels=('x', 'y'))
-        app = napari._qt.qt_event_loop.get_app()
-        app.lastWindowClosed.connect(self.close)  # shut everything down when closing
-        app.focusChanged.connect(self.toggle_grab_stage_positions)
 
         # Set up instrument widgets
         for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
@@ -73,6 +70,11 @@ class InstrumentView:
 
         # add undocked widget so everything closes together
         self.add_undocked_widgets()
+
+        # Set app events
+        app = QApplication.instance()
+        app.lastWindowClosed.connect(self.close)  # shut everything down when closing
+        app.focusChanged.connect(self.toggle_grab_stage_positions)
 
     def setup_stage_widgets(self):
         """Arrange stage position and joystick widget"""
@@ -322,7 +324,7 @@ class InstrumentView:
         if type(position) == dict:
             for k, v in position.items():
                 try:
-                    getattr(stages[name], f"position.{k}_widget").setText(str(v))
+                    getattr(stages[name], f"position_mm.{k}_widget").setText(str(v))
                 except RuntimeError:    # Pass error when window has been closed
                     pass
         else:
@@ -407,7 +409,6 @@ class InstrumentView:
                                        getattr(self, f'{device_type}_locks')[device_name])
 
         gui.setWindowTitle(f'{device_type} {device_name}')
-        gui.show()
 
     @Slot(str)
     def device_property_changed(self, attr_name: str, device, widget, device_lock: Lock):

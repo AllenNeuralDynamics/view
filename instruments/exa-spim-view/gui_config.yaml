@@ -89,7 +89,7 @@ device_widgets:
 operation_widgets:
   grid_widget:
     init:
-      fov_dimensions: [1152, 1152]
+      fov_dimensions: [0.686592, 0.686592]
       coordinate_plane: ['x', 'y']
-      unit: 'um'
+      unit: 'mm'
 

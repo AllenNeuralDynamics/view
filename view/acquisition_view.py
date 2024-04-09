@@ -2,25 +2,30 @@ from pathlib import Path
 import logging
 from ruamel.yaml import YAML
 import importlib
-from instrument_widgets.base_device_widget import BaseDeviceWidget, scan_for_properties
+from instrument_widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from instrument_widgets.acquisition_widgets.grid_widget import GridWidget
 from qtpy.QtCore import Slot
 import inflection
-from threading import Lock, Thread
 from time import sleep
-from napari.qt.threading import thread_worker, create_worker
+from napari.qt.threading import thread_worker
+from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication
 
 
-class AcquisitionView:
+class AcquisitionView():
     """"Class to act as a general acquisition view model to voxel instrument"""
 
-    def __init__(self, acquisition, config_path: Path, log_level='INFO'):
-
+    def __init__(self, acquisition, instrument_view, config_path: Path, log_level='INFO'):
+        """
+        :param acquisition: voxel acquisition object
+        :param config_path: path to config specifying UI setup
+        :param instrument_view: view object relating to instrument. Needed to lock stage
+        :param log_level:
+        """
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
         # Locks
-        self.stage_lock = Lock()
+        self.tiling_stage_locks = instrument_view.tiling_stage_locks
 
         # Eventual widgets
         self.grid_widget = None
@@ -43,7 +48,70 @@ class AcquisitionView:
         self.create_grid_plan_widget()
 
         # setup stage thread
-        self.setup_live_position()
+        self.setup_fov_position()
+
+        # Set up main window
+        self.main_window = QWidget()
+        self.main_layout = QGridLayout()
+
+        self.main_layout.addWidget(self.grid_widget.grid_plan, 0, 0)
+        self.main_layout.addWidget(self.grid_widget.grid_view, 0, 1, 2, 2)
+        self.main_layout.addWidget(QWidget(), 1, 0)  # place holder for z widget
+        self.main_layout.addWidget(QWidget(), 2, 0, 1, 3)  # place holder for bottom graph
+
+        writers = self.stack_device_widgets('writer')
+        transfers = self.stack_device_widgets('transfer')
+        processes = self.stack_device_widgets('process')
+        routines = self.stack_device_widgets('routine')
+        input_widget = QScrollArea()
+        input_widget.setWidget(create_widget('V', self.metadata_widget, routines,writers, transfers, processes))
+        input_widget.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        input_widget.setMaximumWidth(360)
+        self.main_layout.addWidget(input_widget, 0, 3, 2, 1)
+
+
+        self.main_window.setLayout(self.main_layout)
+        self.main_window.setWindowTitle('Acquisition View')
+        self.main_window.show()
+
+        # Set app events
+        app = QApplication.instance()
+        app.focusChanged.connect(self.toggle_grab_fov_positions)
+
+    def stack_device_widgets(self, device_type):
+        """Stack like device widgets in layout and hide/unhide with combo box
+        :param device_type: type of device being stacked"""
+
+        device_widgets = {f'{inflection.pluralize(device_type)} {device_name}': create_widget('V', **widgets)
+                          for device_name, widgets in getattr(self, f'{device_type}_widgets').items()}
+
+        overlap_layout = QGridLayout()
+        overlap_layout.addWidget(QWidget(), 1, 0)  # spacer widget
+        for name, widget in device_widgets.items():
+            widget.setVisible(False)
+            overlap_layout.addWidget(widget, 2, 0)
+
+        visible = QComboBox()
+        visible.currentTextChanged.connect(lambda text: self.hide_devices(text, device_widgets))
+        visible.addItems(device_widgets.keys())
+        visible.setCurrentIndex(0)
+        overlap_layout.addWidget(visible, 0, 0)
+
+        overlap_widget = QWidget()
+        overlap_widget.setLayout(overlap_layout)
+
+        return overlap_widget
+
+    def hide_devices(self, text, device_widgets):
+        """Hide device widget if not selected in combo box
+        :param text: selected text of combo box
+        :param device_widgets: dictionary of widget groups"""
+
+        for name, widget in device_widgets.items():
+            if name != text:
+                widget.setVisible(False)
+            else:
+                widget.setVisible(True)
 
     def create_grid_plan_widget(self):
         """Create widget to visualize acquisition grid"""
@@ -51,23 +119,28 @@ class AcquisitionView:
         specs = self.config['operation_widgets'].get('grid_widget', {})
         kwds = specs.get('init', {})
         coordinate_plane = kwds.get('coordinate_plane', ['x', 'y'])
-        stages = {stage.instrument_axis: stage for stage in self.instrument.tiling_stages.values()}
-        with self.stage_lock:
-            kwds['limits'] = {axis: stages[axis].limits_mm for axis in coordinate_plane}
+
+        # Populate limits
+        kwds['limits'] = {}
+        for name, stage in self.instrument.tiling_stages.items():
+            if stage.instrument_axis in coordinate_plane:
+                with self.tiling_stage_locks[name]:
+                    kwds['limits'].update({f'{stage.instrument_axis}_limits': stage.limits_mm})
+        if list(kwds['limits'].keys()) != [f'{axis}_limits' for axis in coordinate_plane]:
+            raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
+
         self.grid_widget = GridWidget(**kwds)  # TODO: Try and tie it to camera?
         self.grid_widget.fovMoved.connect(self.move_stage)
         self.grid_widget.fovStop.connect(self.stop_stage)
-        self.grid_widget.show()
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
 
-        #self.grab_fov_positions_worker.yielded.disconnect()
-        stages = {stage.instrument_axis: stage for stage in self.instrument.tiling_stages.values()}
+        stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
         for axis, position in zip(self.grid_widget.coordinate_plane, fov_position):
-            with self.stage_lock:
-                stages[axis].move_absolute_mm(position, wait=False)
+            with self.tiling_stage_locks[stage_names[axis]]:
+                self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
 
     def stop_stage(self):
         """Slot for stop stage"""
@@ -77,14 +150,15 @@ class AcquisitionView:
         self.grab_fov_positions_worker.pause()
         while not self.grab_fov_positions_worker.is_paused:
             sleep(.0001)
-
         for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
                             **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
             stage.halt()
+        self.grab_fov_positions_worker.resume()
 
     def create_metadata_widget(self):
         """Create custom widget for metadata in config"""
 
+        # TODO: metadata label
         acquisition_properties = dict(self.acquisition.config['acquisition']['metadata'])
         self.metadata_widget = BaseDeviceWidget(acquisition_properties, acquisition_properties)
         self.metadata_widget.ValueChangedInside[str].connect(lambda name:
@@ -97,7 +171,7 @@ class AcquisitionView:
         self.metadata_widget.setWindowTitle(f'Metadata')
         self.metadata_widget.show()
 
-    def setup_live_position(self):
+    def setup_fov_position(self):
         """Set up live position thread"""
 
         self.grab_fov_positions_worker = self.grab_fov_positions()
@@ -172,13 +246,13 @@ class AcquisitionView:
 
     @thread_worker
     def grab_fov_positions(self):
-        """Grab stage position from all stage objects and yeild positions"""
+        """Grab stage position from all stage objects and yield positions"""
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            fov_pos = [None]*2
-            for name, stage in self.instrument.tiling_stages.items():  # combine stage
-                with self.stage_lock:
+            fov_pos = [None] * 2
+            for name, stage in self.instrument.tiling_stages.items():
+                with self.tiling_stage_locks[name]:
                     if stage.instrument_axis in self.grid_widget.coordinate_plane:
                         fov_index = self.grid_widget.coordinate_plane.index(stage.instrument_axis)
                         position = stage.position_mm
@@ -186,16 +260,16 @@ class AcquisitionView:
                         fov_pos[fov_index] = position.get(stage.instrument_axis,
                                                           self.grid_widget.fov_position[fov_index])
 
-            yield fov_pos # don't yield while locked
+            yield fov_pos  # don't yield while locked
 
     def toggle_grab_fov_positions(self):
         """When focus on view has changed, resume or pause grabbing stage positions"""
         # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
         # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
         try:
-            if self.grid_widget.isActiveWindow() and self.self.grab_fov_positions_worker.is_paused:
-                self.self.grab_fov_positions_worker.resume()
-            elif not self.grid_widget.isActiveWindow() and self.grab_fov_positions_worker.is_running:
+            if self.main_window.isActiveWindow() and self.grab_fov_positions_worker.is_paused:
+                self.grab_fov_positions_worker.resume()
+            elif not self.main_window.isActiveWindow() and self.grab_fov_positions_worker.is_running:
                 self.grab_fov_positions_worker.pause()
-        except RuntimeError:    # Pass error when window has been closed
+        except RuntimeError:  # Pass error when window has been closed
             pass

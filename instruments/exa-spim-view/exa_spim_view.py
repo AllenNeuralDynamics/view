@@ -109,6 +109,6 @@ if __name__ == "__main__":
     # acquisition
     acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
-    #instrument_view = ExASPIMInstrumentView(instrument, GUI_YAML)
-    acquisition_view = AcquisitionView(acquisition, GUI_YAML)
+    instrument_view = ExASPIMInstrumentView(instrument, GUI_YAML)
+    acquisition_view = AcquisitionView(acquisition, instrument_view, GUI_YAML)
     sys.exit(app.exec_())
