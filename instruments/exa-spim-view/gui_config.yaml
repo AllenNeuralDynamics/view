@@ -90,6 +90,6 @@ operation_widgets:
   grid_widget:
     init:
       fov_dimensions: [0.686592, 0.686592]
-      coordinate_plane: ['x', 'y']
+      coordinate_plane: ['x', 'y', 'z']
       unit: 'mm'
 

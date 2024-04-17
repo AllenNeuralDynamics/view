@@ -8,10 +8,10 @@ from qtpy.QtCore import Slot
 import inflection
 from time import sleep
 from napari.qt.threading import thread_worker
-from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication
+from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, QLabel
+from qtpy.QtCore import Qt
 
-
-class AcquisitionView():
+class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
 
     def __init__(self, acquisition, instrument_view, config_path: Path, log_level='INFO'):
@@ -26,6 +26,7 @@ class AcquisitionView():
 
         # Locks
         self.tiling_stage_locks = instrument_view.tiling_stage_locks
+        self.scanning_stage_locks = instrument_view.scanning_stage_locks
 
         # Eventual widgets
         self.grid_widget = None
@@ -54,21 +55,35 @@ class AcquisitionView():
         self.main_window = QWidget()
         self.main_layout = QGridLayout()
 
+        # create scroll wheel for metadata widget
+        scroll = QScrollArea()
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(self.metadata_widget)
+        #scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+        # create dock widget for grid widgets
+        for coord, widget in zip([[1, 0],[0,3]],
+                             [self.grid_widget.z_grid_plan, scroll]):
+            dock = QDockWidget(widget.windowTitle(), self.main_window)
+            dock.setWidget(widget)
+            dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+            self.main_layout.addWidget(dock, coord[0], coord[1])
+
         self.main_layout.addWidget(self.grid_widget.grid_plan, 0, 0)
         self.main_layout.addWidget(self.grid_widget.grid_view, 0, 1, 2, 2)
-        self.main_layout.addWidget(QWidget(), 1, 0)  # place holder for z widget
-        self.main_layout.addWidget(QWidget(), 2, 0, 1, 3)  # place holder for bottom graph
+        self.main_layout.addWidget(QWidget(), 2, 0, 1, 3)  # placeholder for bottom graph
 
-        writers = self.stack_device_widgets('writer')
-        transfers = self.stack_device_widgets('transfer')
-        processes = self.stack_device_widgets('process')
-        routines = self.stack_device_widgets('routine')
-        input_widget = QScrollArea()
-        input_widget.setWidget(create_widget('V', self.metadata_widget, routines,writers, transfers, processes))
-        input_widget.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        input_widget.setMaximumWidth(360)
-        self.main_layout.addWidget(input_widget, 0, 3, 2, 1)
-
+        # create dock widget for operations
+        for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
+            stack = self.stack_device_widgets(operation)
+            stack.setFixedWidth(self.metadata_widget.size().width() - 20)
+            scroll = QScrollArea()
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            scroll.setWidget(stack)
+            scroll.setFixedWidth(self.metadata_widget.size().width())
+            dock = QDockWidget(stack.windowTitle())
+            dock.setWidget(scroll)
+            self.main_layout.addWidget(dock, i+1, 3)
 
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
@@ -98,6 +113,7 @@ class AcquisitionView():
         overlap_layout.addWidget(visible, 0, 0)
 
         overlap_widget = QWidget()
+        overlap_widget.setWindowTitle(device_type)
         overlap_widget.setLayout(overlap_layout)
 
         return overlap_widget
@@ -118,17 +134,22 @@ class AcquisitionView():
 
         specs = self.config['operation_widgets'].get('grid_widget', {})
         kwds = specs.get('init', {})
-        coordinate_plane = kwds.get('coordinate_plane', ['x', 'y'])
+        coordinate_plane = kwds.get('coordinate_plane', ['x', 'y', 'z'])
 
         # Populate limits
-        kwds['limits'] = {}
+        limits = {}
+        # add tiling stages
         for name, stage in self.instrument.tiling_stages.items():
             if stage.instrument_axis in coordinate_plane:
                 with self.tiling_stage_locks[name]:
-                    kwds['limits'].update({f'{stage.instrument_axis}_limits': stage.limits_mm})
-        if list(kwds['limits'].keys()) != [f'{axis}_limits' for axis in coordinate_plane]:
+                    limits.update({f'{stage.instrument_axis}': stage.limits_mm})
+        # last axis should be scanning axis
+        (scan_name, scan_stage), = self.instrument.scanning_stages.items()
+        with self.scanning_stage_locks[scan_name]:
+            limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
+        if list(limits.keys()) != [f'{axis}' for axis in coordinate_plane]:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
-
+        kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
         self.grid_widget = GridWidget(**kwds)  # TODO: Try and tie it to camera?
         self.grid_widget.fovMoved.connect(self.move_stage)
         self.grid_widget.fovStop.connect(self.stop_stage)
@@ -193,7 +214,7 @@ class AcquisitionView():
             gui = gui_class(operation, **specs.get('init', {}))  # device gets passed into widget
         else:
             properties = scan_for_properties(operation)
-            gui = BaseDeviceWidget(type(operation), properties)
+            gui = BaseDeviceWidget(type(operation), properties) # create label
 
         # if gui is BaseDeviceWidget or inherits from it
         if type(gui) == BaseDeviceWidget or BaseDeviceWidget in type(gui).__bases__:
@@ -201,21 +222,23 @@ class AcquisitionView():
             gui.ValueChangedInside[str].connect(
                 lambda value, op=operation, widget=gui:
                 self.operation_property_changed(value, op, widget))
+        # Add label to gui
+        labeled = create_widget('V', QLabel(operation_name), gui)
 
         # add ui to widget dictionary
         if not hasattr(self, f'{operation_type}_widgets'):
             setattr(self, f'{operation_type}_widgets', {device_name: {}})
         elif not getattr(self, f'{operation_type}_widgets').get(device_name, False):
             getattr(self, f'{operation_type}_widgets')[device_name] = {}
-        getattr(self, f'{operation_type}_widgets')[device_name][operation_name] = gui
+        getattr(self, f'{operation_type}_widgets')[device_name][operation_name] = labeled
 
         # TODO: Do we need this?
         for subdevice_name, suboperation_dictionary in operation_specs.get('subdevices', {}).items():
             for suboperation_name, suboperation_specs in suboperation_dictionary.items():
                 self.create_operation_widgets(subdevice_name, suboperation_name, suboperation_specs)
 
-        gui.setWindowTitle(f'{device_name} {operation_type} {operation_name}')
-        gui.show()
+        labeled.setWindowTitle(f'{device_name} {operation_type} {operation_name}')
+        labeled.show()
 
     @Slot(str)
     def operation_property_changed(self, attr_name: str, operation, widget):
@@ -259,7 +282,11 @@ class AcquisitionView():
                         # FIXME: Sometimes tigerbox yields empty stage position so just give last position
                         fov_pos[fov_index] = position.get(stage.instrument_axis,
                                                           self.grid_widget.fov_position[fov_index])
-
+                (scan_name, scan_stage), = self.instrument.scanning_stages.items()
+                with self.scanning_stage_locks[scan_name]:
+                    position = scan_stage.position_mm
+                    fov_pos.append(position.get(stage.instrument_axis,
+                                                          self.grid_widget.fov_position[-1]))
             yield fov_pos  # don't yield while locked
 
     def toggle_grab_fov_positions(self):

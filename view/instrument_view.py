@@ -70,7 +70,6 @@ class InstrumentView:
 
         # add undocked widget so everything closes together
         self.add_undocked_widgets()
-
         # Set app events
         app = QApplication.instance()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing

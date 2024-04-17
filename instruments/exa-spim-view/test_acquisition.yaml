@@ -18,6 +18,15 @@ acquisition:
         settings:
           compression: none
           data_type: uint16
+      imaris:
+        type: writer
+        driver: voxel.writers.imaris
+        module: Writer
+        init:
+          path: ./local_test_1
+        settings:
+          compression: none
+          data_type: uint16
       rsync:
         type: transfer
         driver: voxel.transfers.rsync
