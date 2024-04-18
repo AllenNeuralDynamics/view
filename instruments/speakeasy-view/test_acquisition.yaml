@@ -19,7 +19,7 @@ acquisition:
   operations:
     C15440-20UP:
       robocopy:
-        type: transfers
+        type: transfer
         driver: voxel.transfers.robocopy
         module: FileTransfer
         init:

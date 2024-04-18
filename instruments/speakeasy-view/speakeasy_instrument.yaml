@@ -26,13 +26,13 @@ instrument:
         com_port: COM4
       subdevices:
         ASI MS-8000 x axis:
-          type: tiling_stage
+          type: scanning_stage
           driver: voxel.devices.stage.asi
           module: Stage
           init:
             port: COM4
             hardware_axis: x
-            instrument_axis: y
+            instrument_axis: z
           settings:
             speed_mm_s: 1.0
         ASI MS-8000 y axis:
@@ -43,7 +43,7 @@ instrument:
           init:
             port: COM4
             hardware_axis: y
-            instrument_axis: z
+            instrument_axis: x
           settings:
             speed_mm_s: 1.0
         ASI MS-8000 z axis:
@@ -53,7 +53,7 @@ instrument:
           init:
             port: COM4
             hardware_axis: z
-            instrument_axis: x
+            instrument_axis: y
           settings:
             speed_mm_s: 1.0
         ASI FW-1000:

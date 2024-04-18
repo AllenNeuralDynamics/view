@@ -75,15 +75,16 @@ class AcquisitionView:
 
         # create dock widget for operations
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
-            stack = self.stack_device_widgets(operation)
-            stack.setFixedWidth(self.metadata_widget.size().width() - 20)
-            scroll = QScrollArea()
-            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            scroll.setWidget(stack)
-            scroll.setFixedWidth(self.metadata_widget.size().width())
-            dock = QDockWidget(stack.windowTitle())
-            dock.setWidget(scroll)
-            self.main_layout.addWidget(dock, i+1, 3)
+            if hasattr(self, f'{operation}_widgets'):
+                stack = self.stack_device_widgets(operation)
+                stack.setFixedWidth(self.metadata_widget.size().width() - 20)
+                scroll = QScrollArea()
+                scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+                scroll.setWidget(stack)
+                scroll.setFixedWidth(self.metadata_widget.size().width())
+                dock = QDockWidget(stack.windowTitle())
+                dock.setWidget(scroll)
+                self.main_layout.addWidget(dock, i+1, 3)
 
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
@@ -147,7 +148,7 @@ class AcquisitionView:
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
         with self.scanning_stage_locks[scan_name]:
             limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
-        if list(limits.keys()) != [f'{axis}' for axis in coordinate_plane]:
+        if len([i for i in limits.keys() if i in coordinate_plane]) != 3:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
         kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
         self.grid_widget = GridWidget(**kwds)  # TODO: Try and tie it to camera?
@@ -285,7 +286,7 @@ class AcquisitionView:
                 (scan_name, scan_stage), = self.instrument.scanning_stages.items()
                 with self.scanning_stage_locks[scan_name]:
                     position = scan_stage.position_mm
-                    fov_pos.append(position.get(stage.instrument_axis,
+                    fov_pos.append(position.get(scan_stage.instrument_axis,
                                                           self.grid_widget.fov_position[-1]))
             yield fov_pos  # don't yield while locked
 
