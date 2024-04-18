@@ -5,7 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8550edbe-f1c9-46d0-8301-e8dab92a7a1d" name="Changes" comment="'speak easy working version'">
-      <change beforePath="$PROJECT_DIR$/instruments/exa-spim-view/exa_spim_view.py" beforeDir="false" afterPath="$PROJECT_DIR$/instruments/exa-spim-view/exa_spim_view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../instrument-widgets/.idea/instrument-widgets.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../instrument-widgets/.idea/instrument-widgets.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../instrument-widgets/instrument_widgets/acquisition_widgets/grid_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/../instrument-widgets/instrument_widgets/acquisition_widgets/grid_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/view.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/view.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/view/acquisition_view.py" beforeDir="false" afterPath="$PROJECT_DIR$/view/acquisition_view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../instrument-widgets" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="HighlightingSettingsPerFile">
@@ -36,7 +42,7 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "C:/Users/micah.woodard/Projects/view",
+    "last_opened_file_path": "C:/Users/micah.woodard/Projects/acquire-test",
     "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings"
   },
   "keyToStringList": {
@@ -45,7 +51,7 @@
     ]
   }
 }]]></component>
-  <component name="RunManager" selected="Python.example_view_model">
+  <component name="RunManager" selected="Python.speakeasy_view">
     <configuration name="classeLaserUSB" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="exa-spim-view" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -88,19 +94,19 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="scratch" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="exa-spim-view" />
+    <configuration name="speakeasy_view" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="view" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$APPLICATION_CONFIG_DIR$/scratches" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/instruments/speakeasy-view" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$APPLICATION_CONFIG_DIR$/scratches/scratch.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/instruments/speakeasy-view/speakeasy_view.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -152,19 +158,19 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.speakeasy_view" />
       <item itemvalue="Python.classeLaserUSB" />
       <item itemvalue="Python.example_view_model" />
-      <item itemvalue="Python.scratch" />
       <item itemvalue="Python.test_camera_hamamatsu_dcam" />
       <item itemvalue="Python.test_oxxius_laser" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.speakeasy_view" />
         <item itemvalue="Python.example_view_model" />
         <item itemvalue="Python.classeLaserUSB" />
         <item itemvalue="Python.test_oxxius_laser" />
         <item itemvalue="Python.test_camera_hamamatsu_dcam" />
-        <item itemvalue="Python.scratch" />
       </list>
     </recent_temporary>
   </component>

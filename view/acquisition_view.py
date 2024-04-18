@@ -160,9 +160,13 @@ class AcquisitionView:
 
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
-        for axis, position in zip(self.grid_widget.coordinate_plane, fov_position):
+        for axis, position in zip(self.grid_widget.coordinate_plane[:2], fov_position[:2]):
             with self.tiling_stage_locks[stage_names[axis]]:
                 self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
+        (scan_name, scan_stage), = self.instrument.scanning_stages.items()
+        with self.scanning_stage_locks[scan_name]:
+            scan_stage.move_absolute_mm(fov_position[2], wait=False)
+
 
     def stop_stage(self):
         """Slot for stop stage"""
