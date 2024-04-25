@@ -3,9 +3,7 @@ import logging
 from ruamel.yaml import YAML
 import importlib
 from instrument_widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
-from instrument_widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
-from instrument_widgets.acquisition_widgets.volume_model import VolumeModel
-from instrument_widgets.acquisition_widgets.tile_plan_widget import TilePlanWidget
+from instrument_widgets.acquisition_widgets.volume_widget import VolumeWidget
 from qtpy.QtCore import Slot
 import inflection
 from time import sleep
@@ -13,7 +11,7 @@ from napari.qt.threading import thread_worker
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
     QLabel, QVBoxLayout, QCheckBox, QHBoxLayout, QButtonGroup, QRadioButton
 from qtpy.QtCore import Qt
-
+import numpy as np
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -32,11 +30,6 @@ class AcquisitionView:
         self.tiling_stage_locks = instrument_view.tiling_stage_locks
         self.scanning_stage_locks = instrument_view.scanning_stage_locks
 
-        # Eventual widgets
-        self.tile_plan_widget = None
-        self.volume_model_widget = None
-        self.metadata_widget = None
-
         # Eventual threads
         self.grab_fov_positions_worker = None
 
@@ -51,9 +44,7 @@ class AcquisitionView:
 
         # setup additional widgets
         self.metadata_widget = self.create_metadata_widget()
-        self.volume_model_widget = self.create_volume_model_widget()
-        self.scan_plan_widget = self.create_scan_plan_widget()
-        self.tile_plan_widget = self.create_tile_plan_widget()
+        self.volume_widget = self.create_volume_widget()
 
         # setup stage thread
         self.setup_fov_position()
@@ -68,6 +59,8 @@ class AcquisitionView:
         scroll.setWidget(self.metadata_widget)
         scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
 
+        self.main_layout.addWidget(self.volume_widget, 0, 0, 2, 3)
+
         # create dock widget for grid widgets
         for coord, widget in zip([[0, 3]],
                                  [scroll]):
@@ -75,10 +68,6 @@ class AcquisitionView:
             dock.setWidget(widget)
             dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
             self.main_layout.addWidget(dock, coord[0], coord[1])
-
-        self.main_layout.addWidget(self.tile_plan_widget, 0, 0)
-        self.main_layout.addWidget(self.volume_model_widget, 0, 1, 2, 2)
-        self.main_layout.addWidget(QWidget(), 2, 0, 1, 3)  # placeholder for bottom graph
 
         # create dock widget for operations
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
@@ -151,61 +140,10 @@ class AcquisitionView:
         metadata_widget.show()
         return metadata_widget
 
-    def create_volume_model_widget(self):
+    def create_volume_widget(self):
         """Create widget to visualize acquisition grid"""
 
-        specs = self.config['operation_widgets'].get('volume_model', {})
-        kwds = specs.get('init', {})
-        kwds['coordinate_plane'] = kwds.get('coordinate_plane', ['x', 'y', 'z'])
-        self.volume_model = VolumeModel(**kwds)
-        self.volume_model.fovMoved.connect(self.move_stage)
-        self.volume_model.setMinimumHeight(333)
-        self.volume_model.setMinimumWidth(333)
-        self.volume_model.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        # Add extra checkboxes/inputs/buttons to customize model
-        volume_model_widget = QWidget()
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.volume_model)
-
-        checkboxes = QHBoxLayout()
-        path = QCheckBox('Show Path')
-        path.setChecked(True)
-        path.toggled.connect(self.volume_model.toggle_path_visibility)
-        checkboxes.addWidget(path)
-
-        checkboxes.addWidget(QLabel('Plane View: '))
-        view_plane = QButtonGroup(volume_model_widget)
-        for view in ['(x, z)', '(z, y)', '(x, y)']:
-            button = QRadioButton(view)
-            button.clicked.connect(lambda clicked, b=button: setattr(self.volume_model, 'grid_plane',
-                                                                     tuple(x for x in b.text() if x.isalpha())))
-            view_plane.addButton(button)
-            button.setChecked(True)
-            checkboxes.addWidget(button)
-        layout.addLayout(checkboxes)
-        volume_model_widget.setLayout(layout)
-        return volume_model_widget
-
-    def create_scan_plan_widget(self):
-        """Create scanplanwidget"""
-
-        specs = self.config['operation_widgets'].get('scan_plan_widget', {})
-        kwds = specs.get('init', {})
-
-        (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-        with self.scanning_stage_locks[scan_name]:
-            kwds['z_limits'] = scan_stage.limits_mm
-
-        scan_plan_widget = ScanPlanWidget(**kwds)
-        #scan_plan_widget.valueChanged
-        return scan_plan_widget
-
-    def create_tile_plan_widget(self):
-        """Create widget to visualize acquisition grid"""
-
-        specs = self.config['operation_widgets'].get('tile_plan_widget', {})
+        specs = self.config['operation_widgets'].get('volume_widget', {})
         kwds = specs.get('init', {})
         coordinate_plane = kwds.get('coordinate_plane', ['x', 'y', 'z'])
 
@@ -224,51 +162,18 @@ class AcquisitionView:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
         kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
 
-        tile_plan_widget = TilePlanWidget(**kwds)
-        tile_plan_widget.fovStop.connect(self.stop_stage)
+        volume_widget = VolumeWidget(**kwds)
+        volume_widget.fovMoved.connect(self.move_stage)
+        volume_widget.fovStop.connect(self.stop_stage)
 
-        # update z widgets when adding rows or columns to grid
-        tile_plan_widget.valueChanged.connect(self.scan_plan_widget.z_plan_construction)
-        tile_plan_widget.valueChanged.connect(lambda: setattr(self.volume_model, 'grid_coords',
-                                                    [(x, y, z) for (x, y), z in zip(tile_plan_widget.tile_positions,
-                                                                                self.volume_model.tile_z_dimensions)]))
-        return tile_plan_widget
-
-    # def grid_coord_construction(self, value=None):
-    #     """Create current list of x,y,z of planned grid"""
-    #
-    #     if len(self.z_plan_widgets[0]) != 0:
-    #         if self.apply_all.isChecked():
-    #             z = self.z_plan_widgets[0][0].value()
-    #             # TODO: update other tiles
-    #             # set tile_z_dimension first so grid can render properly
-    #             self.grid_view.tile_z_dimensions = [z[-1] - z[0]] * len(self.grid_plan.tile_positions)
-    #             self.grid_view.tile_visibility = [True] * len(self.grid_plan.tile_positions)
-    #             self.grid_view.grid_coords = [(x, y, z[0]) for x, y in self.grid_plan.tile_positions]
-    #         else:
-    #             tile_z_dimensions = []
-    #             tile_xyz = []
-    #             tile_visibility = []
-    #             tile_xy = self.grid_plan.tile_positions
-    #             for i, tile in enumerate(self.grid_plan.value().iter_grid_positions()):  # need to match row, col
-    #                 x, y = tile_xy[i]
-    #                 z = self.z_plan_widgets[tile.row][tile.col].value()
-    #                 tile_xyz.append((x, y, z[0]))
-    #                 tile_z_dimensions.append(z[-1] - z[0])
-    #                 if not self.z_plan_widgets[tile.row][tile.col].hidden:
-    #                     tile_visibility.append(True)
-    #                 else:
-    #                     tile_visibility.append(False)
-    #             self.grid_view.tile_z_dimensions = tile_z_dimensions
-    #             self.grid_view.grid_coords = tile_xyz
-    #             self.grid_view.tile_visibility = tile_visibility
+        return volume_widget
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
 
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
-        for axis, position in zip(self.volume_model.coordinate_plane[:2], fov_position[:2]):
+        for axis, position in zip(self.volume_widget.coordinate_plane[:2], fov_position[:2]):
             with self.tiling_stage_locks[stage_names[axis]]:
                 self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
@@ -292,7 +197,7 @@ class AcquisitionView:
         """Set up live position thread"""
 
         self.grab_fov_positions_worker = self.grab_fov_positions()
-        self.grab_fov_positions_worker.yielded.connect(self.yield_fov_positions)
+        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_widget, 'fov_position', pos))
         self.grab_fov_positions_worker.start()
 
     @thread_worker
@@ -301,20 +206,21 @@ class AcquisitionView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            fov_pos = [None] * 2
+            print('yielding pos')
+            fov_pos = [None] * 3
             for name, stage in self.instrument.tiling_stages.items():
                 with self.tiling_stage_locks[name]:
-                    if stage.instrument_axis in self.tile_plan_widget.coordinate_plane:
-                        fov_index = self.tile_plan_widget.coordinate_plane.index(stage.instrument_axis)
+                    if stage.instrument_axis in self.volume_widget.coordinate_plane:
+                        fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
                         position = stage.position_mm
                         # FIXME: Sometimes tigerbox yields empty stage position so just give last position
                         fov_pos[fov_index] = position.get(stage.instrument_axis,
-                                                          self.tile_plan_widget.fov_position[fov_index])
+                                                          self.volume_widget.fov_position[fov_index])
                 (scan_name, scan_stage), = self.instrument.scanning_stages.items()
                 with self.scanning_stage_locks[scan_name]:
                     position = scan_stage.position_mm
-                    fov_pos.append(position.get(scan_stage.instrument_axis,
-                                                self.tile_plan_widget.fov_position[-1]))
+                    fov_pos[2] = position.get(scan_stage.instrument_axis, self.volume_widget.fov_position[2])
+
             yield fov_pos  # don't yield while locked
 
     def toggle_grab_fov_positions(self):
@@ -328,14 +234,6 @@ class AcquisitionView:
                 self.grab_fov_positions_worker.pause()
         except RuntimeError:  # Pass error when window has been closed
             pass
-
-    def yield_fov_positions(self, pos: list):
-        """Correctly yield fov position to tiling widget, scan widget, and volume model """
-
-        self.tile_plan_widget.fov_position = pos
-        if not self.tile_plan_widget.anchor_widgets[2].isChecked():  # if not anchored in scan dir, update start pos
-            self.scan_plan_widget.grid_position = pos[2]
-        self.volume_model.fov_position = pos
 
     def create_operation_widgets(self, device_name: str, operation_name: str, operation_specs: dict):
         """Create widgets based on operation dictionary attributes from instrument or acquisition
