@@ -206,7 +206,6 @@ class AcquisitionView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            print('yielding pos')
             fov_pos = [None] * 3
             for name, stage in self.instrument.tiling_stages.items():
                 with self.tiling_stage_locks[name]:
