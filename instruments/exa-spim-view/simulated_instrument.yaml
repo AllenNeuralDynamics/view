@@ -1,17 +1,31 @@
 instrument:
   channels:
     '488':
-      filter_wheel:
-        ASI FW-1000: BP405
-      laser: 488nm
+      filter_wheels:
+        -ASI FW-1000
+      lasers:
+        - 488nm
+      cameras:
+        - vnp-604mx
+
     '561':
-      filter_wheel:
-        ASI FW-1000: BP561
-      laser: 561nm
+      filter_wheels:
+        -ASI FW-1000:
+          settings:
+           filter: BP561
+      lasers:
+        - 561nm
+      cameras:
+        - vnp-604mx
     '639':
-      filter_wheel:
-        ASI FW-1000: LP638
-      laser: 639nm
+      filter_wheels:
+        -ASI FW-1000:
+            settings:
+              filter: LP638
+      lasers:
+        - 639nm
+      cameras:
+        - vnp-604mx
   devices:
     639nm:
       color: red
@@ -34,6 +48,38 @@ instrument:
         id: 0
       module: FilterWheel
       type: filter_wheel
+      subdevices:
+        BP405:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP405
+        BP488:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP488
+        BP561:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP561
+        BP638:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP638
+        MB405/488/561/638:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: MB405/488/561/638
+
     ASI LS-100 x axis:
       driver: voxel.devices.stage.simulated
       init:

@@ -70,7 +70,37 @@ instrument:
               MB405/488/561/638: 4
               Empty1: 5
               Empty2: 6
-
+          subdevices:
+            BP405:
+              type: filter
+              driver: voxel.devices.filter.simulated
+              module: Filter
+              init:
+                id: BP405
+            BP488:
+              type: filter
+              driver: voxel.devices.filter.simulated
+              module: Filter
+              init:
+                id: BP488
+            BP561:
+              type: filter
+              driver: voxel.devices.filter.simulated
+              module: Filter
+              init:
+                id: BP561
+            BP638:
+              type: filter
+              driver: voxel.devices.filter.simulated
+              module: Filter
+              init:
+                id: BP638
+            MB405/488/561/638:
+              type: filter
+              driver: voxel.devices.filter.simulated
+              module: Filter
+              init:
+                id: MB405/488/561/638
     combiner_0:
       type: combiner
       driver: oxxius_laser

@@ -116,15 +116,29 @@ acquisition:
         y: 0
         z: 0
         w: 1
-      voxel_size_um:
-        x: 0.748
-        y: 0.748
-        z: 1.000
       prefix: tile
       frame_count_px: 128
-      binning: 1
+      vp-151mx:
+        type: camera
+        settings:
+          binning: 1
+      488 mw:
+        type: laser
+        settings:
+          power_mw: 100
+      w axis:
+        type: rotation stage
+        settings:
+          position_mm: .4
+        dynamic_setting?:
+          position_mm: [.4, .5, .6]
+          iterate: 60
+      nidaq:
+        type: daq
+        autofocus?:
+          module: whatever
       channel: "488"
-      power_mw: 1000
+
     - tile_number:
         x: 1
         y: 0

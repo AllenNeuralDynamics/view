@@ -30,6 +30,7 @@ class InstrumentView:
         self.tiling_stage_locks = {}
         self.laser_locks = {}
         self.filter_wheel_locks = {}
+        self.filter_locks = {}
 
         # Eventual widget groups
         self.laser_widgets = {}
@@ -149,16 +150,8 @@ class InstrumentView:
 
 
     def setup_filter_wheel_widgets(self):
-        """Setup changing filter wheel changes channel of self.livestream_channel """
+        """Stack filter wheels"""
 
-        for wheel_name, wheel_widget in self.filter_wheel_widgets.items():
-            self.channels[self.livestream_channel]['filter_wheel'][wheel_name] = wheel_widget.filter
-            if type(wheel_widget) == BaseDeviceWidget or BaseDeviceWidget in type(wheel_widget).__bases__:
-                wheel_widget.ValueChangedInside[str].connect(lambda val,
-                                                              ch=self.livestream_channel,
-                                                              wh=wheel_name,
-                                                              slot=wheel_widget.filter:
-                                                       pathGet(self.channels, [ch, 'filter_wheel']).__setitem__(wh, slot))
         stacked = self.stack_device_widgets('filter_wheel')
         self.viewer.window.add_dock_widget(stacked, area='bottom', name='Filter Wheels')
 
@@ -216,14 +209,13 @@ class InstrumentView:
             self.instrument.cameras[camera_name].prepare()
             self.instrument.cameras[camera_name].start(frames)
 
-        laser_name = self.channels[self.livestream_channel]['laser']
-        with self.laser_locks[laser_name]:
-            self.instrument.lasers[laser_name].enable()
+        for laser in self.channels[self.livestream_channel]['lasers']:
+            with self.laser_locks[laser]:
+                self.instrument.lasers[laser].enable()
 
-        filter_name, filter_slot = list(self.channels[self.livestream_channel]['filter_wheel'].items())[0]
-        with self.filter_wheel_locks[filter_name]:
-            self.instrument.filter_wheels[filter_name].filter = filter_slot
-            self.filter_wheel_widgets[filter_name].filter = filter_slot
+        for filter in self.channels[self.livestream_channel]['filters']:
+            with self.filter_locks[filter]:
+                self.instrument.filters[filter].enable()
 
         for daq_name, daq in self.instrument.daqs.items():
             with self.daq_locks[daq_name]:
@@ -351,19 +343,20 @@ class InstrumentView:
         :param checked: if button is checked (True) or unchecked(False)"""
 
         if checked:
-            self.livestream_channel = channel
-            filter_name, filter_slot = list(self.channels[self.livestream_channel]['filter_wheel'].items())[0]
-            with self.filter_wheel_locks[filter_name]:
-                self.instrument.filter_wheels[filter_name].filter = filter_slot
-                self.filter_wheel_widgets[filter_name].filter = filter_slot
-            if self.grab_frames_worker.is_running:
-                laser_name = self.channels[self.livestream_channel]['laser']
-                with self.laser_locks[laser_name]:
-                    self.instrument.lasers[laser_name].disable()
+            if self.grab_frames_worker.is_running:  # livestreaming is going
+                for old_laser_name in self.channels[self.livestream_channel]['lasers']:
+                    with self.laser_locks[old_laser_name]:
+                        self.instrument.lasers[old_laser_name].disable()
                 for daq_name, daq in self.instrument.daqs.items():
                     self.write_waveforms(daq, daq_name)
-                with self.laser_locks[laser_name]:
-                    self.instrument.lasers[laser_name].enable()
+                for new_laser_name in self.channels[channel]['lasers']:
+                    with self.laser_locks[new_laser_name]:
+                        self.instrument.lasers[new_laser_name].enable()
+            self.livestream_channel = channel
+            # change filter
+            for filter in self.channels[self.livestream_channel]['filters']:
+                with self.filter_locks[filter]:
+                    self.instrument.filters[filter].enable()
 
     def create_device_widgets(self,  device_name: str, device_specs: dict, lock: Lock = None):
         """Create widgets based on device dictionary attributes from instrument or acquisition

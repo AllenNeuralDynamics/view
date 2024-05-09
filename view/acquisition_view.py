@@ -59,7 +59,7 @@ class AcquisitionView:
         scroll.setWidget(self.metadata_widget)
         scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
 
-        self.main_layout.addWidget(self.volume_widget, 0, 0, 2, 3)
+        self.main_layout.addWidget(self.volume_widget, 0, 0, 5, 3)
 
         # create dock widget for grid widgets
         for coord, widget in zip([[0, 3]],
@@ -81,7 +81,6 @@ class AcquisitionView:
                 dock = QDockWidget(stack.windowTitle())
                 dock.setWidget(scroll)
                 self.main_layout.addWidget(dock, i + 1, 3)
-
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()

@@ -10,7 +10,7 @@ device_widgets:
       driver: instrument_widgets.device_widgets.stage_widget
       module: StageWidget
       init:
-        advanced_user: False
+        advanced_user: True
     ASI LS-100 x axis:
       type:   scanning_stage
       driver: instrument_widgets.device_widgets.stage_widget
@@ -43,13 +43,13 @@ device_widgets:
       module: LaserWidget
       init:
         color: red
-        advanced_user: False
+        advanced_user: True
     ASI FW-1000:
       type: filter_wheel
       driver: instrument_widgets.device_widgets.filter_wheel_widget
       module: FilterWheelWidget
       init:
-        advanced_user: False
+        advanced_user: True
     vp-151mx:
       type: camera
       driver: instrument_widgets.device_widgets.camera_widget
@@ -87,9 +87,12 @@ device_widgets:
                     "561": 2.5
                     "639": 2.5
 operation_widgets:
-  grid_widget:
+  volume_widget:
     init:
       fov_dimensions: [0.686592, 0.686592]
       coordinate_plane: ['x', 'y', 'z']
       unit: 'mm'
-
+      settings:
+        cameras: [binning]
+        lasers: [power_mw]
+        filter_wheels: [filter]
