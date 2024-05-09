@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # instrument
     instrument = Instrument(INSTRUMENT_YAML)
     # acquisition
-    acquisition = Acquisition(instrument, ACQUISITION_YAML)
+    #acquisition = Acquisition(instrument, ACQUISITION_YAML)
 
     instrument_view = InstrumentView(instrument, GUI_YAML)
 
@@ -31,5 +31,5 @@ if __name__ == "__main__":
     while not instrument_view.grab_stage_positions_worker.is_paused:
         sleep(.1)
 
-    acquisition_view = AcquisitionView(acquisition, instrument_view, GUI_YAML)
+    #acquisition_view = AcquisitionView(acquisition, instrument_view, GUI_YAML)
     sys.exit(app.exec_())

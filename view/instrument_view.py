@@ -6,7 +6,7 @@ from instrument_widgets.base_device_widget import BaseDeviceWidget, create_widge
     scan_for_properties, disable_button
 from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
-    QGridLayout, QComboBox, QApplication
+    QGridLayout, QComboBox, QApplication, QVBoxLayout
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 import napari
@@ -60,9 +60,14 @@ class InstrumentView:
         # Set up instrument widgets
         for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
             self.create_device_widgets(device_name, device_specs)
+        # print(self.scanning_stage_locks)
+        # print(self.tiling_stage_locks)
+        # print(self.filter_wheel_locks)
+        # print(self.filter_locks)
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
+        self.setup_laser_widgets()
         self.setup_daq_widgets()
         self.setup_channel_widget()
         self.setup_filter_wheel_widgets()
@@ -87,6 +92,12 @@ class InstrumentView:
         stage_widget = QWidget()
         stage_widget.setLayout(stage_layout)
         self.viewer.window.add_dock_widget(stage_widget, area='left', name='Stages')
+
+    def setup_laser_widgets(self):
+        """Arrange laser widgets"""
+
+        laser_widget = create_widget('H', **self.laser_widgets)
+        self.viewer.window.add_dock_widget(laser_widget, area='bottom', name='Lasers')
 
     def setup_daq_widgets(self):
         """Setup saving to config if widget is from device-widget repo"""
@@ -242,9 +253,9 @@ class InstrumentView:
         for daq_name, daq in self.instrument.daqs.items():
             with self.daq_locks[daq_name]:
                 daq.stop()
-        laser_name = self.channels[self.livestream_channel]['laser']
-        with self.laser_locks[laser_name]:
-            self.instrument.lasers[laser_name].disable()
+        for laser_name in self.channels[self.livestream_channel]['lasers']:
+            with self.laser_locks[laser_name]:
+                self.instrument.lasers[laser_name].disable()
 
     @thread_worker
     def grab_frames(self, camera_name, frames=float("inf")):
@@ -302,7 +313,8 @@ class InstrumentView:
             sleep(.1)
             for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
                                 **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
-                with self.scanning_stage_locks.get(name, Lock()) and self.tiling_stage_locks.get(name, Lock()):
+                lock = self.scanning_stage_locks[name] if name in self.scanning_stage_locks.keys() else self.tiling_stage_locks[name]
+                with lock:
                     position = stage.position_mm  # don't yield while locked
                 yield name, position
 
@@ -325,14 +337,14 @@ class InstrumentView:
         """Create widget to select which laser to livestream with"""
 
         widget = QWidget()
-        widget_layout = QHBoxLayout()
+        widget_layout = QVBoxLayout()
 
         laser_button_group = QButtonGroup(widget)
         for channel, specs in self.channels.items():
             button = QRadioButton(str(channel))
             button.toggled.connect(lambda value, ch=channel: self.change_channel(value, ch))
             laser_button_group.addButton(button)
-            widget_layout.addWidget(create_widget('H', button, self.laser_widgets[specs['laser']]))
+            widget_layout.addWidget(button)
             button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')

@@ -2,21 +2,17 @@ instrument:
   id: speakeasy
   channels:
 #    "405":
-#      laser: 405nm
-#      filter_wheel:
-#        ASI FW-1000: BP488
+#      lasers: ['405nm']
+#      filters: ['BP488']
     "488":
-      laser: 488nm
-      filter_wheel:
-        ASI FW-1000: BP488
+      lasers: ['488nm']
+      filters: ['BP488']
     "561":
-      laser: 561nm
-      filter_wheel:
-        ASI FW-1000: BP561
+      lasers: ['561nm']
+      filters: ['BP561']
 #    "638":
-#      laser: 638nm
-#      filter_wheel:
-#        ASI FW-1000: LP638
+#      lasers: ['638nm']
+#      filters: ['LP638']
   devices:
     ASI MS-8000:
       type: stage
@@ -73,31 +69,31 @@ instrument:
           subdevices:
             BP405:
               type: filter
-              driver: voxel.devices.filter.simulated
+              driver: voxel.devices.filter.asi
               module: Filter
               init:
                 id: BP405
             BP488:
               type: filter
-              driver: voxel.devices.filter.simulated
+              driver: voxel.devices.filter.asi
               module: Filter
               init:
                 id: BP488
             BP561:
               type: filter
-              driver: voxel.devices.filter.simulated
+              driver: voxel.devices.filter.asi
               module: Filter
               init:
                 id: BP561
             BP638:
               type: filter
-              driver: voxel.devices.filter.simulated
+              driver: voxel.devices.filter.asi
               module: Filter
               init:
                 id: BP638
             MB405/488/561/638:
               type: filter
-              driver: voxel.devices.filter.simulated
+              driver: voxel.devices.filter.asi
               module: Filter
               init:
                 id: MB405/488/561/638
@@ -289,8 +285,8 @@ instrument:
                             "561": 1.0
                         offset_volts:
                           channels:
-                            "488": 0.0
-                            "561": 0.0
+                            "488": 1.0
+                            "561": 1.0
                         cutoff_frequency_hz:
                           channels:
                             "488": 200
