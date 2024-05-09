@@ -285,8 +285,8 @@ instrument:
                             "561": 1.0
                         offset_volts:
                           channels:
-                            "488": 1.0
-                            "561": 1.0
+                            "488": 1.01
+                            "561": 1.01
                         cutoff_frequency_hz:
                           channels:
                             "488": 200
