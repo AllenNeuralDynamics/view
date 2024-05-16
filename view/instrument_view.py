@@ -15,6 +15,7 @@ from time import sleep
 import logging
 import inflection
 
+
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
 
@@ -42,7 +43,7 @@ class InstrumentView:
         self.joystick_widgets = {}
 
         # Eventual threads
-        self.grab_frames_worker = create_worker(lambda: None) # dummy thread
+        self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
         self.grab_stage_positions_worker = None
 
         # Eventual attributes
@@ -57,13 +58,12 @@ class InstrumentView:
         # Setup napari window
         self.viewer = napari.Viewer(title='View', ndisplay=2, axis_labels=('x', 'y'))
 
+        # setup daq with livestreaming tasks
+        self.setup_daqs()
+
         # Set up instrument widgets
         for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
             self.create_device_widgets(device_name, device_specs)
-        # print(self.scanning_stage_locks)
-        # print(self.tiling_stage_locks)
-        # print(self.filter_wheel_locks)
-        # print(self.filter_locks)
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
@@ -80,6 +80,19 @@ class InstrumentView:
         app = QApplication.instance()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
         app.focusChanged.connect(self.toggle_grab_stage_positions)
+
+    def setup_daqs(self):
+        """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
+
+        for daq_name, daq in self.instrument.daqs.items():
+            if daq_name in self.config.get('livestream_tasks', {}).keys():
+                daq.tasks = self.config['livestream_tasks'][daq_name]['tasks']
+
+                # Make sure if there is a livestreaming task, there is a corresponding data acquisition task:
+                if not self.instrument.config.get('data_acquisition_tasks', {}).get(daq_name, False):
+                    self.log.error(f'Daq {daq_name} has a livestreaming task but no corresponding data acquisition '
+                                   f'task in instrument yaml.')
+                    raise ValueError
 
     def setup_stage_widgets(self):
         """Arrange stage position and joystick widget"""
@@ -103,10 +116,15 @@ class InstrumentView:
         """Setup saving to config if widget is from device-widget repo"""
 
         for daq_name, daq_widget in self.daq_widgets.items():
-            # if daq_widget is BaseDeviceWidget or inherits from it
+
+            # if daq_widget is BaseDeviceWidget or inherits from it, update waveforms when gui is changed
             if type(daq_widget) == BaseDeviceWidget or BaseDeviceWidget in type(daq_widget).__bases__:
                 daq_widget.ValueChangedInside[str].connect(
                     lambda value, daq=self.instrument.daqs[daq_name], name=daq_name: self.write_waveforms(daq, name))
+                # update tasks if livestreaming task is different from data acquisition task
+                if daq_name in self.config.get('livestream_tasks', {}).keys():
+                    daq_widget.ValueChangedInside[str].connect(lambda attr, widget=daq_widget, name=daq_name:
+                                                               self.update_config_waveforms(widget, daq_name,  attr))
 
         stacked = self.stack_device_widgets('daq')
         self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs')
@@ -159,6 +177,31 @@ class InstrumentView:
                     daq.generate_waveforms('do', self.livestream_channel)
                     daq.write_do_waveforms(rereserve_buffer=False)
 
+    def update_config_waveforms(self, daq_widget, daq_name, attr_name: str):
+        """If waveforms are changed in gui, apply changes to livestream_tasks and data_acquisition_tasks if
+        applicable """
+
+        path = attr_name.split('.')
+        value = getattr(daq_widget, attr_name)
+        self.log.debug(f'{daq_name} {attr_name} changed to {getattr(daq_widget, path[0])}')
+
+        with self.daq_locks[daq_name]:  # lock device
+
+            # update livestream_task
+            self.config['livestream_tasks'][daq_name]['tasks'] = daq_widget.tasks  # is this right?
+
+            # update data_acquisition_tasks if value correlates
+            key = path[-1]
+            try:
+                dictionary = pathGet(self.instrument.config['data_acquisition_tasks'][daq_name], path[:-1])
+                if key not in dictionary.keys():
+                    raise KeyError
+                dictionary[key] = value
+                self.log.debug(f"Data acquisition tasks parameters updated to {self.instrument.config['data_acquisition_tasks'][daq_name]}")
+
+            except KeyError:
+                self.log.warning(f"Path {attr_name} can't be mapped into data acquisition tasks so changes will not "
+                                 f"be reflected in acquisition")
 
     def setup_filter_wheel_widgets(self):
         """Stack filter wheels"""
@@ -214,7 +257,6 @@ class InstrumentView:
         self.grab_frames_worker.yielded.connect(self.update_layer)
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
-
 
         with self.camera_locks[camera_name]:
             self.instrument.cameras[camera_name].prepare()
@@ -293,8 +335,9 @@ class InstrumentView:
         if event.button == 2:  # Left click
             image = Image.fromarray(layer.data)
             fname = QFileDialog()
-            folder = fname.getSaveFileName(directory=str(Path(__file__).parent.resolve()/
-                                  Path(rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")))
+            folder = fname.getSaveFileName(directory=str(Path(__file__).parent.resolve() /
+                                                         Path(
+                                                             rf"\{layer.name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tiff")))
             if folder[0] != '':  # user pressed cancel
                 image.save(folder[0])
 
@@ -311,9 +354,10 @@ class InstrumentView:
 
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
-            for name, stage in {**getattr(self.instrument,'scanning_stages', {}),
-                                **getattr(self.instrument,'tiling_stages', {})}.items():  # combine stage
-                lock = self.scanning_stage_locks[name] if name in self.scanning_stage_locks.keys() else self.tiling_stage_locks[name]
+            for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
+                                **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
+                lock = self.scanning_stage_locks[name] if name in self.scanning_stage_locks.keys() else \
+                    self.tiling_stage_locks[name]
                 with lock:
                     position = stage.position_mm  # don't yield while locked
                 yield name, position
@@ -323,12 +367,12 @@ class InstrumentView:
         :param args: tuple containing the name of stage and position of stage"""
 
         (name, position) = args
-        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}   # group stage widgets dicts to find name
+        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}  # group stage widgets dicts to find name
         if type(position) == dict:
             for k, v in position.items():
                 try:
                     getattr(stages[name], f"position_mm.{k}_widget").setText(str(v))
-                except RuntimeError:    # Pass error when window has been closed
+                except RuntimeError:  # Pass error when window has been closed
                     pass
         else:
             stages[name].position_widget.setText(str(position))
@@ -371,7 +415,7 @@ class InstrumentView:
                 with self.filter_locks[filter]:
                     self.instrument.filters[filter].enable()
 
-    def create_device_widgets(self,  device_name: str, device_specs: dict, lock: Lock = None):
+    def create_device_widgets(self, device_name: str, device_specs: dict, lock: Lock = None):
         """Create widgets based on device dictionary attributes from instrument or acquisition
          :param lock: lock to be used for device
          :param device_name: name of device
@@ -406,7 +450,6 @@ class InstrumentView:
         if not hasattr(self, f'{device_type}_widgets'):
             setattr(self, f'{device_type}_widgets', {})
         getattr(self, f'{device_type}_widgets')[device_name] = gui
-
 
         for subdevice_name, subdevice_specs in device_specs.get('subdevices', {}).items():
             # if device has subdevice, create and pass on same Lock()
@@ -455,6 +498,9 @@ class InstrumentView:
             if widget not in self.viewer.window._qt_window.findChildren(type(widget)):
                 undocked_widget = self.viewer.window.add_dock_widget(widget, name=widget.windowTitle())
                 undocked_widget.setFloating(True)
+                # hide widget if empty property widgets
+                if getattr(widget, 'property_widgets', False) == {}:
+                    undocked_widget.setVisible(False)
 
     def toggle_grab_stage_positions(self):
         """When focus on view has changed, resume or pause grabbing stage positions"""
@@ -465,8 +511,21 @@ class InstrumentView:
                 self.grab_stage_positions_worker.resume()
             elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
                 self.grab_stage_positions_worker.pause()
-        except RuntimeError:    # Pass error when window has been closed
+        except RuntimeError:  # Pass error when window has been closed
             pass
+
+    def setDisabled(self, disable):
+        """Enable/disable viewer"""
+
+        widgets = []
+        for key, dictionary in self.__dict__.items():
+            if '_widgets' in key:
+                widgets.extend(dictionary.values())
+        for widget in widgets:
+            try:
+                widget.setDisabled(disable)
+            except AttributeError:
+                pass
 
     def close(self):
         """Close instruments and end threads"""

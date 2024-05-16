@@ -7,11 +7,10 @@ from instrument_widgets.acquisition_widgets.volume_widget import VolumeWidget
 from qtpy.QtCore import Slot
 import inflection
 from time import sleep
-from napari.qt.threading import thread_worker
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QVBoxLayout, QCheckBox, QHBoxLayout, QButtonGroup, QRadioButton
+    QLabel, QVBoxLayout, QCheckBox, QHBoxLayout, QButtonGroup, QRadioButton, QPushButton
 from qtpy.QtCore import Qt
-import numpy as np
+from napari.qt.threading import thread_worker, create_worker
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -26,9 +25,12 @@ class AcquisitionView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
+        self.instrument_view = instrument_view
+
         # Locks
-        self.tiling_stage_locks = instrument_view.tiling_stage_locks
-        self.scanning_stage_locks = instrument_view.scanning_stage_locks
+        self.tiling_stage_locks = self.instrument_view.tiling_stage_locks
+        self.scanning_stage_locks = self.instrument_view.scanning_stage_locks
+        self.daq_locks = self.instrument_view.daq_locks
 
         # Eventual threads
         self.grab_fov_positions_worker = None
@@ -45,6 +47,8 @@ class AcquisitionView:
         # setup additional widgets
         self.metadata_widget = self.create_metadata_widget()
         self.volume_widget = self.create_volume_widget()
+        self.start_button = self.create_start_button()
+        self.stop_button = self.create_stop_button()
 
         # setup stage thread
         self.setup_fov_position()
@@ -53,21 +57,23 @@ class AcquisitionView:
         self.main_window = QWidget()
         self.main_layout = QGridLayout()
 
+        # Add start and stop button
+        self.main_layout.addWidget(self.start_button, 0, 0, 1, 2)
+        self.main_layout.addWidget(self.stop_button, 0, 2, 1, 2)
+
         # create scroll wheel for metadata widget
         scroll = QScrollArea()
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setWidget(self.metadata_widget)
+        scroll.setWindowTitle('Metadata')
         scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        dock = QDockWidget(scroll.windowTitle(), self.main_window)
+        dock.setWidget(scroll)
+        dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.main_layout.addWidget(dock, 1, 3)
 
-        self.main_layout.addWidget(self.volume_widget, 0, 0, 5, 3)
-
-        # create dock widget for grid widgets
-        for coord, widget in zip([[0, 3]],
-                                 [scroll]):
-            dock = QDockWidget(widget.windowTitle(), self.main_window)
-            dock.setWidget(widget)
-            dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-            self.main_layout.addWidget(dock, coord[0], coord[1])
+        # add volume widget
+        self.main_layout.addWidget(self.volume_widget, 1, 0, 5, 3)
 
         # create dock widget for operations
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
@@ -80,7 +86,7 @@ class AcquisitionView:
                 scroll.setFixedWidth(self.metadata_widget.size().width())
                 dock = QDockWidget(stack.windowTitle())
                 dock.setWidget(scroll)
-                self.main_layout.addWidget(dock, i + 1, 3)
+                self.main_layout.addWidget(dock, i + 2, 3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()
@@ -88,6 +94,88 @@ class AcquisitionView:
         # Set app events
         app = QApplication.instance()
         app.focusChanged.connect(self.toggle_grab_fov_positions)
+
+    def create_start_button(self):
+        """Create button to start acquisition"""
+
+        start = QPushButton('Start')
+        start.clicked.connect(self.start_acquisition)
+        start.setStyleSheet("background-color: green")
+        return start
+
+    def create_stop_button(self):
+        """Create button to stop acquisition"""
+
+        stop = QPushButton('Stop')
+        stop.clicked.connect(self.acquisition.stop_acquisition)
+        stop.setStyleSheet("background-color: red")
+        stop.setDisabled(True)
+
+        return stop
+
+    def start_acquisition(self):
+        """Start acquisition"""
+
+        #TODO: Warn if no channel selected?
+
+        # stop stage threads
+        self.grab_fov_positions_worker.quit()
+        self.instrument_view.grab_stage_positions_worker.quit()
+
+        # add tiles to acquisition config
+        self.acquisition.config['tiles'] = self.volume_widget.create_tile_list()
+
+        if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
+            self.instrument_view.dismantle_live()
+
+        # write correct daq values if different from livestream
+        for daq_name, daq in self.instrument.daqs.items():
+            if daq_name in self.instrument.config.get('data_acquisition_tasks', {}).keys():
+                daq.tasks = self.instrument.config['data_acquisition_tasks'][daq_name]['tasks']
+                # Tasks should be added and written in acquisition?
+
+        # disable acquisition view. Can't disable whole thing so stop button can be functional
+        self.start_button.setEnabled(False)
+        self.volume_widget.setEnabled(False)
+        self.metadata_widget.setEnabled(False)
+        for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
+            if hasattr(self, f'{operation}_widgets'):
+                device_widgets = {f'{inflection.pluralize(operation)} {device_name}': create_widget('V', **widgets)
+                                  for device_name, widgets in getattr(self, f'{operation}_widgets').items()}
+                for widget in device_widgets.values():
+                    widget.setDisabled(True)
+        self.stop_button.setEnabled(True)
+
+        # disable instrument view
+        self.instrument_view.setDisabled(True)
+
+        # Start acquisition
+        self.acquisition_thread = create_worker(self.acquisition.run)
+        self.acquisition_thread.start()
+        self.acquisition_thread.finished.connect(self.acquisition_ended)
+
+    def acquisition_ended(self):
+        """Re-enable UI's and threads after aquisition has ended"""
+
+        # enable acquisition view
+        self.start_button.setEnabled(True)
+        self.volume_widget.setEnabled(True)
+        self.metadata_widget.setEnabled(True)
+        for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
+            if hasattr(self, f'{operation}_widgets'):
+                device_widgets = {f'{inflection.pluralize(operation)} {device_name}': create_widget('V', **widgets)
+                                  for device_name, widgets in getattr(self, f'{operation}_widgets').items()}
+                for widget in device_widgets.values():
+                    widget.setDisabled(False)
+        self.stop_button.setEnabled(False)
+
+        # enable instrument view
+        self.instrument_view.setDisabled(False)
+
+        # restart stage threads
+        self.instrument_view.setup_live_position()
+        self.instrument_view.grab_stage_positions_worker.pause()
+        self.setup_fov_position()
 
     def stack_device_widgets(self, device_type):
         """Stack like device widgets in layout and hide/unhide with combo box

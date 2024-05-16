@@ -85,13 +85,25 @@ device_widgets:
                   channels:
                     "488": 2.5
                     "561": 2.5
-                    "639": 2.5
 operation_widgets:
   volume_widget:
     init:
       fov_dimensions: [0.686592, 0.686592]
       coordinate_plane: ['x', 'y', 'z']
       unit: 'mm'
+      channels:
+        '488':
+          filters: [ BP488 ]
+          lasers: [ 488nm ]
+          cameras: [ vnp-604mx ]
+        '561':
+          filters: [ BP561 ]
+          lasers: [ 561nm ]
+          cameras: [ vnp-604mx ]
+        '639':
+          filters: [ LP638 ]
+          lasers: [ 639nm ]
+          cameras: [ vnp-604mx ]
       settings:
         cameras: [binning]
         lasers: [power_mw]

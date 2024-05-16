@@ -1,31 +1,17 @@
 instrument:
   channels:
     '488':
-      filter_wheels:
-        -ASI FW-1000
-      lasers:
-        - 488nm
-      cameras:
-        - vnp-604mx
-
+      filters: [BP488]
+      lasers: [488nm]
+      cameras: [vnp-604mx]
     '561':
-      filter_wheels:
-        -ASI FW-1000:
-          settings:
-           filter: BP561
-      lasers:
-        - 561nm
-      cameras:
-        - vnp-604mx
+      filters: [BP561]
+      lasers: [561nm]
+      cameras: [vnp-604mx]
     '639':
-      filter_wheels:
-        -ASI FW-1000:
-            settings:
-              filter: LP638
-      lasers:
-        - 639nm
-      cameras:
-        - vnp-604mx
+      filters: [LP638]
+      lasers: [639nm]
+      cameras: [vnp-604mx]
   devices:
     639nm:
       color: red
@@ -67,12 +53,12 @@ instrument:
           module: Filter
           init:
             id: BP561
-        BP638:
+        LP638:
           type: filter
           driver: voxel.devices.filter.simulated
           module: Filter
           init:
-            id: BP638
+            id: LP638
         MB405/488/561/638:
           type: filter
           driver: voxel.devices.filter.simulated
@@ -111,7 +97,6 @@ instrument:
       driver: voxel.devices.daq.ni
       init:
         dev: Dev2
-      module: DAQ
       settings:
         tasks:
           ao_task:
@@ -216,7 +201,7 @@ instrument:
               trigger_port: PFI0
           co_task:
             counters:
-            - ctr0
+              - ctr0
             name: co task
             timing:
               frequency_hz: 2.0
@@ -248,6 +233,7 @@ instrument:
               trigger_mode: 'on'
               trigger_polarity: rising
               trigger_port: PFI0
+      module: DAQ
       type: daq
     combiner_0:
       driver: voxel.devices.lasers.simulated
@@ -301,23 +287,23 @@ instrument:
           polarity: rising
           source: external
       type: camera
-      vp-151mx:
-        driver: voxel.devices.camera.simulated
-        init:
-          id: sim000
-        module: Camera
-        settings:
-          exposure_time_ms: 20.0
-          pixel_type: mono16
-          roi:
-            height_offest_px: 4744
-            height_px: 1152
-            width_offset_px: 6528
-            width_px: 1152
-          trigger:
-            mode: 'off'
-            polarity: rising
-            source: external
-        type: camera
+    vp-151mx:
+      driver: voxel.devices.camera.simulated
+      init:
+        id: sim000
+      module: Camera
+      settings:
+        exposure_time_ms: 20.0
+        pixel_type: mono16
+        roi:
+          height_offest_px: 4744
+          height_px: 1152
+          width_offset_px: 6528
+          width_px: 1152
+        trigger:
+          mode: 'off'
+          polarity: rising
+          source: external
+      type: camera
   id: exaspim-01
   master_device: vnp-604mx
