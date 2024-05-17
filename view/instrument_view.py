@@ -407,7 +407,6 @@ class InstrumentView:
                     self.write_waveforms(daq, daq_name)
                 for new_laser_name in self.channels[channel]['lasers']:
                     with self.laser_locks[new_laser_name]:
-                        print(new_laser_name)
                         self.instrument.lasers[new_laser_name].enable()
             self.livestream_channel = channel
             # change filter

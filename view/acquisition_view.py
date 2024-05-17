@@ -197,7 +197,7 @@ class AcquisitionView:
         overlap_layout.addWidget(visible, 0, 0)
 
         overlap_widget = QWidget()
-        overlap_widget.setWindowTitle(device_type)
+        overlap_widget.setWindowTitle(inflection.pluralize(device_type))
         overlap_widget.setLayout(overlap_layout)
 
         return overlap_widget

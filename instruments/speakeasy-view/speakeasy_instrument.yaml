@@ -339,12 +339,12 @@ data_acquisition_tasks:
     #                            channels:
     #                              "488": 0.0
     #                              "561": 0.0
-        co_task:
-            name: ci task
-            timing:
-                output_port: PFI0
-                frequency_hz: 5.0
-                trigger_mode: off
-            counters: [ctr0]
+#        co_task:
+#            name: ci task
+#            timing:
+#                output_port: PFI0
+#                frequency_hz: 5.0
+#                trigger_mode: off
+#            counters: [ctr0]
 
 

@@ -79,12 +79,13 @@ device_widgets:
               channels:
                 "488": 2.5
         tasks.ao_task.ports.voice box:
-            amplitude_volts:
-              channels:
-                "488": 1.0
-            offset_volts:
-              channels:
-                "488": 1.01
+            parameters:
+              amplitude_volts:
+                channels:
+                  "488": 1.0
+              offset_volts:
+                channels:
+                  "488": 1.01
 livestream_tasks:
   PCIe-6738:
     tasks:
@@ -235,8 +236,17 @@ livestream_tasks:
         counters: [ ctr0 ]
 
 operation_widgets:
-  volume_widgets:
+  volume_widget:
     init:
       fov_dimensions: [0.686592, 0.686592]
       coordinate_plane: ['x', 'y', 'z']
       unit: 'mm'
+      channels:
+        '488':
+          filters: [ BP488 ]
+          lasers: [ 488nm ]
+          cameras: [ C15440-20UP]
+      settings:
+        cameras: [ binning ]
+        lasers: [ power_mw ]
+        filter_wheels: [ filter ]
