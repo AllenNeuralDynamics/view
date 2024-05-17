@@ -1,7 +1,7 @@
 device_widgets:
   ASI FW-1000:
     type: filter_wheel
-    driver: instrument_widgets.device_widgets.filter_wheel_widget
+    driver: view.widgets.device_widgets.filter_wheel_widget
     module: FilterWheelWidget
     init:
       advanced_user: False
@@ -14,14 +14,14 @@ device_widgets:
 #      advanced_user: True
   "488nm":
     type: laser
-    driver: instrument_widgets.device_widgets.laser_widget
+    driver: view.widgets.device_widgets.laser_widget
     module: LaserWidget
     init:
       color: blue
       advanced_user: False
   "561nm":
     type: laser
-    driver: instrument_widgets.device_widgets.laser_widget
+    driver: view.widgets.device_widgets.laser_widget
     module: LaserWidget
     init:
       color: green
@@ -35,29 +35,29 @@ device_widgets:
 #      advanced_user: True
   ASI MS-8000 x axis:
     type: tiling_stage
-    driver: instrument_widgets.device_widgets.stage_widget
+    driver: view.widgets.device_widgets.stage_widget
     module: StageWidget
     init:
       advanced_user: False
   ASI MS-8000 y axis:
     type: tiling_stage
-    driver: instrument_widgets.device_widgets.stage_widget
+    driver: view.widgets.device_widgets.stage_widget
     module: StageWidget
     init:
       advanced_user: False
   ASI MS-8000 z axis:
     type: tiling_stage
-    driver: instrument_widgets.device_widgets.stage_widget
+    driver: view.widgets.device_widgets.stage_widget
     module: StageWidget
     init:
       advanced_user: False
   C15440-20UP:
     type: camera
-    driver: instrument_widgets.device_widgets.camera_widget
+    driver: view.widgets.device_widgets.camera_widget
     module: CameraWidget
   PCIe-6738:
     type: daq
-    driver: instrument_widgets.device_widgets.ni_widget
+    driver: view.widgets.device_widgets.ni_widget
     module: NIWidget
     init:
       advanced_user: True

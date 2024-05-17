@@ -105,4 +105,3 @@ acquisition:
           settings:
             data_type: uint16
             frame_count_px: 10
-  tiles: []
