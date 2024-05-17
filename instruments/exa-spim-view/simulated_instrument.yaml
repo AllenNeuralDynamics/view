@@ -1,17 +1,26 @@
 instrument:
   channels:
     '488':
-      filters: [BP488]
-      lasers: [488nm]
-      cameras: [vnp-604mx]
+      cameras:
+      - vnp-604mx
+      filters:
+      - BP488
+      lasers:
+      - 488nm
     '561':
-      filters: [BP561]
-      lasers: [561nm]
-      cameras: [vnp-604mx]
+      cameras:
+      - vnp-604mx
+      filters:
+      - BP561
+      lasers:
+      - 561nm
     '639':
-      filters: [LP638]
-      lasers: [639nm]
-      cameras: [vnp-604mx]
+      cameras:
+      - vnp-604mx
+      filters:
+      - LP638
+      lasers:
+      - 639nm
   devices:
     639nm:
       color: red
@@ -23,7 +32,7 @@ instrument:
     ASI FW-1000:
       driver: voxel.devices.filterwheel.simulated
       init:
-        filters:
+        filters: &id001
           BP405: 0
           BP488: 1
           BP561: 2
@@ -33,39 +42,48 @@ instrument:
           MB405/488/561/638: 4
         id: 0
       module: FilterWheel
-      type: filter_wheel
       subdevices:
         BP405:
-          type: filter
           driver: voxel.devices.filter.simulated
-          module: Filter
           init:
             id: BP405
-        BP488:
-          type: filter
-          driver: voxel.devices.filter.simulated
+            wheel: &id002 !!python/object:voxel.devices.filterwheel.simulated.FilterWheel
+              _filter: 3
+              filters: *id001
+              id: 0
+              log: !!python/object/apply:logging.getLogger
+              - voxel.devices.filterwheel.simulated.FilterWheel
           module: Filter
+          type: filter
+        BP488:
+          driver: voxel.devices.filter.simulated
           init:
             id: BP488
-        BP561:
-          type: filter
-          driver: voxel.devices.filter.simulated
+            wheel: *id002
           module: Filter
+          type: filter
+        BP561:
+          driver: voxel.devices.filter.simulated
           init:
             id: BP561
-        LP638:
-          type: filter
-          driver: voxel.devices.filter.simulated
+            wheel: *id002
           module: Filter
+          type: filter
+        LP638:
+          driver: voxel.devices.filter.simulated
           init:
             id: LP638
-        MB405/488/561/638:
-          type: filter
-          driver: voxel.devices.filter.simulated
+            wheel: *id002
           module: Filter
+          type: filter
+        MB405/488/561/638:
+          driver: voxel.devices.filter.simulated
           init:
             id: MB405/488/561/638
-
+            wheel: *id002
+          module: Filter
+          type: filter
+      type: filter_wheel
     ASI LS-100 x axis:
       driver: voxel.devices.stage.simulated
       init:
@@ -94,9 +112,10 @@ instrument:
         speed_mm_s: 1.0
       type: tiling_stage
     PCIe-6738:
-      driver: voxel.devices.daq.ni
+      driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
+      module: DAQ
       settings:
         tasks:
           ao_task:
@@ -201,7 +220,7 @@ instrument:
               trigger_port: PFI0
           co_task:
             counters:
-              - ctr0
+            - ctr0
             name: co task
             timing:
               frequency_hz: 2.0
@@ -233,7 +252,6 @@ instrument:
               trigger_mode: 'on'
               trigger_polarity: rising
               trigger_port: PFI0
-      module: DAQ
       type: daq
     combiner_0:
       driver: voxel.devices.lasers.simulated
