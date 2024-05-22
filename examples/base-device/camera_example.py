@@ -1,4 +1,4 @@
-from view.widgets.examples.resources.simulated_camera import Camera
+from examples.resources.simulated_camera import Camera
 from view.widgets.base_device_widget import BaseDeviceWidget
 from qtpy.QtWidgets import QApplication
 import sys

@@ -1,4 +1,4 @@
-from view.widgets.examples.resources.imaris import Writer
+from examples.resources.imaris import Writer
 from view.widgets.base_device_widget import BaseDeviceWidget
 from qtpy.QtWidgets import QApplication
 import sys

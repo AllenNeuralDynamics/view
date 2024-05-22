@@ -2,7 +2,7 @@ from ruamel.yaml import YAML
 from qtpy.QtCore import Slot
 from pathlib import Path
 import importlib
-from instrument_widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
+from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
     scan_for_properties, disable_button
 from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
@@ -428,6 +428,7 @@ class InstrumentView:
         specs = self.config['device_widgets'].get(device_name, {})
         if specs != {} and specs.get('type', '') == device_type:
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
+            print(device_name)
             gui = gui_class(device, **specs.get('init', {}))  # device gets passed into widget
         else:
             properties = scan_for_properties(device)

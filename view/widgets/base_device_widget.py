@@ -55,15 +55,15 @@ class BaseDeviceWidget(QMainWindow):
                 input_specs = value
                 widget_type = 'text'
             boxes = {}
-            if arg_type not in [dict, ruamel.yaml.comments.CommentedMap] or type(arg_type) == enum.EnumMeta:
+            if not hasattr(value, 'keys') or type(arg_type) == enum.EnumMeta:
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
-            elif arg_type in [dict, ruamel.yaml.comments.CommentedMap]:
+            elif hasattr(value, 'keys'):
                 for k, v in input_specs.items():
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
                     label = QLabel(label_maker(k))
-                    if type(v) in [dict,
-                                   ruamel.yaml.comments.CommentedMap] and widget_type != 'combo':  # values are complex and should be another widget
+                    print(value)
+                    if hasattr(v, 'keys') and widget_type != 'combo':  # values are complex and should be another widget
                         box = create_widget('V', **self.create_property_widgets(
                             {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # unique key for attribute
                     else:
@@ -128,6 +128,7 @@ class BaseDeviceWidget(QMainWindow):
         if value_type in (float, int):
             validator = QIntValidator() if value_type == int else QDoubleValidator()
             textbox.setValidator(validator)
+
         return textbox
 
     def create_combo_box(self, name, items):
@@ -135,7 +136,7 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name to emit when combobox index is changed
         :param items: items to add to combobox"""
 
-        options = items.keys() if type(items) in [dict, ruamel.yaml.comments.CommentedMap] else items
+        options = items.keys() if hasattr(items, 'keys') else items
         box = QComboBox()
         box.addItems([str(x) for x in options])
         name_lst = name.split('.')
@@ -154,7 +155,7 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name of attribute and widget"""
 
         value = getattr(self, name, None)
-        if type(value) not in [dict, ruamel.yaml.comments.CommentedMap]:  # single widget to set value for
+        if not hasattr(value, 'keys'):   # not a dictionary like value
             self._set_widget_text(name, value)
         else:
             for k, v in value.items():  # multiple widgets to set values for
@@ -168,10 +169,9 @@ class BaseDeviceWidget(QMainWindow):
         if hasattr(self, f'{name}_widget'):
             widget = getattr(self, f'{name}_widget')
             widget.blockSignals(True)  # block signal indicating change since changing internally
-            widget_type = type(widget)
-            if widget_type == QLineEdit:
+            if hasattr(widget, 'setText'):
                 widget.setText(str(value))
-            elif widget_type == QComboBox:
+            elif hasattr(widget, 'setCurrentText'):
                 widget.setCurrentText(str(value))
             widget.blockSignals(False)
         else:

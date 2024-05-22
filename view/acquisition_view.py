@@ -2,8 +2,8 @@ from pathlib import Path
 import logging
 from ruamel.yaml import YAML
 import importlib
-from instrument_widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
-from instrument_widgets.acquisition_widgets.volume_widget import VolumeWidget
+from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
+from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
 from qtpy.QtCore import Slot
 import inflection
 from time import sleep

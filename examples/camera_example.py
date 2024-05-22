@@ -25,13 +25,13 @@ def widget_property_changed(name, device, widget):
     :param name: name of attribute and widget"""
 
     name_lst = name.split('.')
-    print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
+    #print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
     value = getattr(widget, name_lst[0])
     setattr(device, name_lst[0], value)
-    print('Device', name, ' changed to ', getattr(device, name_lst[0]))
+    #print('Device', name, ' changed to ', getattr(device, name_lst[0]))
     for k, v in widget.property_widgets.items():
         instrument_value = getattr(device, k)
-        print(k, instrument_value)
+        # print(k, instrument_value)
         setattr(widget, k, instrument_value)
 
 
@@ -40,9 +40,8 @@ if __name__ == "__main__":
     camera_object = Camera('')
     props = {'exposure_time_ms': 20.0,
      'pixel_type': 'mono16',
-     'roi':
-         {'width_px': 1152,
-          'height_px': 1152},
+     'width_px': 1152,
+     'height_px': 1152,
      'trigger':
          {'mode': 'off',
           'source': 'external',
