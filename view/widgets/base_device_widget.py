@@ -62,7 +62,6 @@ class BaseDeviceWidget(QMainWindow):
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
                     label = QLabel(label_maker(k))
-                    print(value)
                     if hasattr(v, 'keys') and widget_type != 'combo':  # values are complex and should be another widget
                         box = create_widget('V', **self.create_property_widgets(
                             {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # unique key for attribute
