@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     settings = {
         'cameras': ['binning'],
-        'lasers': ['power_mw']
+        'lasers': ['power_setpoint_mw']
     }
     volume_widget = VolumeWidget(channels, settings)
 

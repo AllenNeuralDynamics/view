@@ -249,7 +249,7 @@ class AcquisitionView:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
         kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
 
-        volume_widget = VolumeWidget(**kwds)
+        volume_widget = VolumeWidget(self.instrument_view, **kwds)
         volume_widget.fovMoved.connect(self.move_stage)
         volume_widget.fovStop.connect(self.stop_stage)
 

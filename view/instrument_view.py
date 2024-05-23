@@ -428,7 +428,6 @@ class InstrumentView:
         specs = self.config['device_widgets'].get(device_name, {})
         if specs != {} and specs.get('type', '') == device_type:
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
-            print(device_name)
             gui = gui_class(device, **specs.get('init', {}))  # device gets passed into widget
         else:
             properties = scan_for_properties(device)

@@ -14,6 +14,7 @@ class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
 
     def __init__(self,
+                 instrument,
                  channels: dict,
                  settings: dict,
                  limits=[[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]],
@@ -73,7 +74,7 @@ class VolumeWidget(QWidget):
         self.layout.addWidget(self.scan_plan_widget, 1, 0)
 
         # create channel plan widget
-        self.channel_plan = ChannelPlanWidget(channels, settings)
+        self.channel_plan = ChannelPlanWidget(instrument, channels, settings)
         self.channel_plan.channelAdded.connect(self.channel_added)
         self.channel_plan.apply_to_all = True
 
