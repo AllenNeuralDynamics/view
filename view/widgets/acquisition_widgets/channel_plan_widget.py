@@ -170,7 +170,14 @@ class ChannelPlanWidget(QTabWidget):
         for device_type, devices in self.possible_channels[channel].items():
             for device in devices:
                 for setting in self.settings.get(device_type, []):
-                    getattr(self, f'{device}_{setting}')[channel] = np.zeros(self._tile_volumes.shape)
+                    delegate = getattr(self, f'{device}_{setting}_{channel}_delegate')
+                    if type(delegate) == QSpinItemDelegate:
+                        getattr(self, f'{device}_{setting}')[channel] = np.zeros(self._tile_volumes.shape)
+                    elif type(delegate) == QComboItemDelegate:
+                        getattr(self, f'{device}_{setting}')[channel] = np.empty(self._tile_volumes.shape)
+                        getattr(self, f'{device}_{setting}')[channel][:, :] = delegate.items[0]
+                    else:
+                        getattr(self, f'{device}_{setting}')[channel] = np.empty(self._tile_volumes.shape)
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
