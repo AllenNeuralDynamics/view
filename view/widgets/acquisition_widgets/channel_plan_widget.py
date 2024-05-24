@@ -97,17 +97,17 @@ class ChannelPlanWidget(QTabWidget):
                             delegate_type.append(QComboItemDelegate(items=items))
                         else:  # TODO: How to handle dictionary values
                             delegate_type.append(QTextItemDelegate())
-
             columns.append('row, column')
 
+            for i, delegate in enumerate(delegate_type):
+                # table does not take ownership of the delegates, so they are removed from memory as they
+                # are local variables causing a Segmentation fault. Need to be attributes
+                setattr(self, f'{columns[i]}_{channel}_delegate', delegate)
+                table.setItemDelegateForColumn(i, delegate)
             table.setColumnCount(len(columns))
             table.setHorizontalHeaderLabels(columns)
             table.resizeColumnsToContents()
             table.setColumnHidden(len(columns) - 1, True)  # hide row, column since it will only be used internally
-
-            # set column item delegates
-            for i, delegate in enumerate(delegate_type):
-                table.setItemDelegateForColumn(i, delegate)
 
             table.verticalHeader().hide()
 
@@ -166,15 +166,12 @@ class ChannelPlanWidget(QTabWidget):
         """Add channel to acquisition"""
 
         table = getattr(self, f'{channel}_table')
-
         table.cellChanged.connect(self.cell_edited)
 
-        columns = ['step_size', 'steps', 'prefix']
         for device_type, devices in self.possible_channels[channel].items():
             for device in devices:
                 for setting in self.settings.get(device_type, []):
                     getattr(self, f'{device}_{setting}')[channel] = np.zeros(self._tile_volumes.shape)
-                    columns.append(f'{device}_{setting}')
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
@@ -223,12 +220,11 @@ class ChannelPlanWidget(QTabWidget):
             for column, array in enumerate(arrays):
                 item = QTableWidgetItem(str(array[*tile]))
                 table.setItem(table_row, column, item)
-                print('setting data to ', array[*tile], type(array[*tile]))
-                item.setData(Qt.EditRole, array[*tile])
+                #item.setData(Qt.EditRole, array[*tile])
                 if table_row != 0:  # first row/tile always enabled
                     self.enable_item(item, not self.apply_to_all)
         table.blockSignals(False)
-        print('end channels to row')
+
     def remove_channel(self, channel):
         """Remove channel from acquisition"""
 
