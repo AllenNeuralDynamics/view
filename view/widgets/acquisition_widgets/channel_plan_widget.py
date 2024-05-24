@@ -1,12 +1,11 @@
 from qtpy.QtWidgets import QTabWidget, QTabBar, QWidget, QPushButton, \
-    QMenu, QToolButton, QAction, QTableWidget, QTableWidgetItem, QComboBox, QLineEdit, QSpinBox
+    QMenu, QToolButton, QAction, QTableWidget, QTableWidgetItem, QComboBox, QSpinBox
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate, QTextItemDelegate, QComboItemDelegate
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 import numpy as np
 from qtpy.QtCore import Signal, Qt
 from inflection import singularize
-from threading import Lock
-
+from math import isnan
 
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
@@ -128,7 +127,7 @@ class ChannelPlanWidget(QTabWidget):
                         item = table.item(i, j)
                         self.enable_item(item, not value)
                         if value:
-                            item.setText(table.item(0, j).text())
+                            item.setData(Qt.EditRole, table.item(0, j).data(Qt.EditRole))
         self._apply_to_all = value
 
     @property
@@ -208,9 +207,11 @@ class ChannelPlanWidget(QTabWidget):
         table.setRowCount(0)
 
         arrays = []
+        delegates = []
         # iterate through columns to find relevant arrays to update
         for i in range(table.columnCount() - 1):  # skip row, column
             arrays.append(getattr(self, table.horizontalHeaderItem(i).text())[channel])
+            delegates.append(getattr(self, f'{table.horizontalHeaderItem(i).text()}_{channel}_delegate'))
 
         for tile in order:
             table_row = table.rowCount()
@@ -218,9 +219,12 @@ class ChannelPlanWidget(QTabWidget):
             item = QTableWidgetItem(str(tile))
             table.setItem(table_row, table.columnCount() - 1, item)
             for column, array in enumerate(arrays):
-                item = QTableWidgetItem(str(array[*tile]))
+                item = QTableWidgetItem()
+                if type(delegates[column]) == QSpinItemDelegate:
+                    item.setData(Qt.EditRole, float(array[*tile]))
+                else:
+                    item.setData(Qt.EditRole, str(array[*tile]))
                 table.setItem(table_row, column, item)
-                #item.setData(Qt.EditRole, array[*tile])
                 if table_row != 0:  # first row/tile always enabled
                     self.enable_item(item, not self.apply_to_all)
         table.blockSignals(False)
@@ -260,29 +264,28 @@ class ChannelPlanWidget(QTabWidget):
             volume = self.tile_volumes[*tile_index]
             index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
             if column == 0:  # step_size changed so round to fit in volume
-                steps = round(volume / float(table.item(row, 0).text()))
+                steps = round(volume / float(table.item(row, 0).data(Qt.EditRole)))
                 step_size = round(volume / steps, 4) if steps != 0 else 0
                 self.steps[channel][*index] = steps
             else:  # step number changed
-                step_size = round(volume / float(table.item(row, 1).text()), 4)
-                steps = round(volume / step_size) if step_size != 0 else 0
+                step_size = round(volume / float(table.item(row, 1).data(Qt.EditRole)), 4)
+                steps = round(volume / step_size) if step_size != 0 and not isnan(step_size) else 0
                 self.step_size[channel][*index] = step_size
 
-            table.item(row, 0).setText(str(step_size))
-            table.item(row, 1).setText(str(steps))
+            table.item(row, 0).setData(Qt.EditRole,float(step_size))
+            table.item(row, 1).setData(Qt.EditRole,int(steps))
 
         array = getattr(self, table.horizontalHeaderItem(column).text())[channel]
-        value = float(table.item(row, column).text()) if table.item(row, column).text().isdigit() \
-            else str(table.item(row, column).text())
+        value = table.item(row, column).data(Qt.EditRole)
         if self.apply_to_all:
             array[:, :] = value
             for i in range(1, table.rowCount()):
                 item_0 = table.item(0, column)
-                table.item(i, column).setText(item_0.text())
+                table.item(i, column).setData(Qt.EditRole,item_0.data(Qt.EditRole))
                 if column == 0:  # update steps as well
-                    table.item(i, column + 1).setText(str(steps))
+                    table.item(i, column + 1).setData(Qt.EditRole, steps)
                 elif column == 1:  # update step_szie as well
-                    table.item(i, column - 1).setText(str(step_size))
+                    table.item(i, column - 1).setData(Qt.EditRole, step_size)
         else:
             array[*tile_index] = value
 
