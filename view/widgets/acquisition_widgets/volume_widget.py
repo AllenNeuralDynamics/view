@@ -134,7 +134,7 @@ class VolumeWidget(QWidget):
 
         # update tile plan widget
         for i, anchor in enumerate(self.tile_plan_widget.anchor_widgets):
-            if not anchor.isChecked():
+            if not anchor.isChecked() and anchor.isEnabled():
                 self.tile_starts[i].setValue(value[i])
                 # update scan plan widget
                 if i == 2:
@@ -345,7 +345,7 @@ class VolumeWidget(QWidget):
         tile_end_col = self.table.columnCount() - 1
         for i in range(1, self.table.rowCount()):  # skip first row
             self.toggle_item_flags(self.table.item(i, tile_end_col), not checked)
-            if not checked or self.anchor_widgets[2].isChecked():  # unchecking apply all disables anchoring
+            if self.anchor_widgets[2].isChecked():  # unchecking apply all disables anchoring
                 self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
 
         if not checked:

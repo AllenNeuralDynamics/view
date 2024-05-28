@@ -271,12 +271,22 @@ class ChannelPlanWidget(QTabWidget):
             volume = self.tile_volumes[*tile_index]
             index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
             if column == 0:  # step_size changed so round to fit in volume
-                steps = round(volume / float(table.item(row, 0).data(Qt.EditRole)))
-                step_size = round(volume / steps, 4) if steps != 0 else 0
+                steps = volume / float(table.item(row, 0).data(Qt.EditRole))
+                if steps != 0 and not isnan(steps):
+                    step_size = round(volume / steps, 4)
+                    steps = round(steps)
+                else:
+                    steps = 0
+                    step_size = 0
                 self.steps[channel][*index] = steps
             else:  # step number changed
-                step_size = round(volume / float(table.item(row, 1).data(Qt.EditRole)), 4)
-                steps = round(volume / step_size) if step_size != 0 and not isnan(step_size) else 0
+                step_size = volume / float(table.item(row, 1).data(Qt.EditRole))
+                if step_size != 0 and not isnan(step_size):
+                    steps = round(volume / step_size)
+                    step_size = round(step_size, 4)
+                else:
+                    steps = 0
+                    step_size = 0
                 self.step_size[channel][*index] = step_size
 
             table.item(row, 0).setData(Qt.EditRole,float(step_size))
@@ -291,7 +301,7 @@ class ChannelPlanWidget(QTabWidget):
                 table.item(i, column).setData(Qt.EditRole,item_0.data(Qt.EditRole))
                 if column == 0:  # update steps as well
                     table.item(i, column + 1).setData(Qt.EditRole, steps)
-                elif column == 1:  # update step_szie as well
+                elif column == 1:  # update step_size as well
                     table.item(i, column - 1).setData(Qt.EditRole, step_size)
         else:
             array[*tile_index] = value

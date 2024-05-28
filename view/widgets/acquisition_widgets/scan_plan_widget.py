@@ -66,8 +66,6 @@ class ScanPlanWidget(QWidget):
             self.z_plan_widgets[0, 0].start.setValue(value)
             self.apply_all.setChecked(False)
 
-        else:
-            self.z_plan_widgets[0, 0].start.setValue(value)
         self._grid_position = value
 
     @property
