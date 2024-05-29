@@ -145,7 +145,10 @@ class ChannelPlanWidget(QTabWidget):
             table = getattr(self, f'{channel}_table')
             for i in range(table.columnCount() - 1):  # skip row, column
                 header = table.horizontalHeaderItem(i).text()
-                getattr(self, header)[channel] = np.resize(getattr(self, header)[channel], value.shape)
+                if header == 'step size [um]':
+                    getattr(self, 'step_size')[channel] = np.resize(getattr(self, 'step_size')[channel], value.shape)
+                else:
+                    getattr(self, header)[channel] = np.resize(getattr(self, header)[channel], value.shape)
             self.step_size[channel] = np.resize(self.step_size[channel], value.shape)
             self.steps[channel] = np.resize(self.steps[channel], value.shape)
             self.prefix[channel] = np.resize(self.prefix[channel], value.shape)
@@ -295,8 +298,8 @@ class ChannelPlanWidget(QTabWidget):
 
             table.item(row, 0).setData(Qt.EditRole,float(step_size))
             table.item(row, 1).setData(Qt.EditRole,int(steps))
-
-        array = getattr(self, table.horizontalHeaderItem(column).text())[channel]
+        # FIXME: I think this is would be considered unexpected behavior
+        array = getattr(self, table.horizontalHeaderItem(column).text(), 'step_size')[channel]
         value = table.item(row, column).data(Qt.EditRole)
         if self.apply_to_all:
             array[:, :] = value
