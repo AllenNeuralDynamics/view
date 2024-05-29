@@ -98,7 +98,19 @@ class InstrumentView:
         """Arrange stage position and joystick widget"""
 
         stage_layout = QGridLayout()
-        stage_layout.addWidget(create_widget('V', **self.scanning_stage_widgets, **self.tiling_stage_widgets))
+
+        stage_widgets = []
+        for name, widget in {**self.scanning_stage_widgets, **self.tiling_stage_widgets}.items():
+            label = QLabel(name)
+            horizontal = QFrame()
+            layout = QVBoxLayout()
+            layout.addWidget(create_widget('H', label, widget))
+            horizontal.setLayout(layout)
+            border_color = get_theme(self.viewer.theme, as_dict=False).foreground
+            horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
+            stage_widgets.append(horizontal)
+        stage_layout.addWidget(create_widget('V', *stage_widgets))
+
         stacked = self.stack_device_widgets('joystick')
         stage_layout.addWidget(stacked)
 
@@ -109,17 +121,17 @@ class InstrumentView:
     def setup_laser_widgets(self):
         """Arrange laser widgets"""
 
-        test = []
+        laser_widgets = []
         for name, widget in self.laser_widgets.items():
             label = QLabel(name)
             horizontal = QFrame()
             layout = QVBoxLayout()
-            layout.addWidget(create_widget('H', label, *widget.children()))
+            layout.addWidget(create_widget('H', label, widget))
             horizontal.setLayout(layout)
             border_color = get_theme(self.viewer.theme, as_dict=False).foreground
             horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
-            test.append(horizontal)
-        laser_widget = create_widget('V', *test)
+            laser_widgets.append(horizontal)
+        laser_widget = create_widget('V', *laser_widgets)
         self.viewer.window.add_dock_widget(laser_widget, area='bottom', name='Lasers')
 
     def setup_daq_widgets(self):
@@ -435,6 +447,7 @@ class InstrumentView:
 
         device_type = device_specs['type']
         device = getattr(self.instrument, inflection.pluralize(device_type))[device_name]
+        print(device_name, self.config['device_widgets'].keys(), device_name in self.config['device_widgets'].keys())
 
         specs = self.config['device_widgets'].get(device_name, {})
         if specs != {} and specs.get('type', '') == device_type:

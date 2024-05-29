@@ -66,7 +66,7 @@ instrument:
           init:
             id: MB405/488/561/638
 
-    ASI LS-100 x axis:
+    ASI MS-8000 z axis:
       driver: voxel.devices.stage.simulated
       init:
         hardware_axis: x
