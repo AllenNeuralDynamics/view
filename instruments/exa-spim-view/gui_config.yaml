@@ -106,5 +106,5 @@ operation_widgets:
           cameras: [ vnp-604mx ]
       settings:
         cameras: [binning]
-        lasers: [power_mw]
+        lasers: [power_setpoint_mw]
         filter_wheels: [filter]

@@ -8,7 +8,7 @@ class LaserWidget(BaseDeviceWidget):
 
     def __init__(self, laser,
                  color: str = 'blue',
-                 advanced_user: bool = True):  # TODO: Is it okay to pass in device and not use it except to find properties?
+                 advanced_user: bool = True):
         """Modify BaseDeviceWidget to be specifically for laser. Main need is adding slider .
         :param laser: laser object
         :param color: color of laser slider"""
@@ -18,7 +18,6 @@ class LaserWidget(BaseDeviceWidget):
         self.laser_module = importlib.import_module(laser.__module__)
         self.slider_color = color
         super().__init__(type(laser), self.laser_properties)
-        print()
         self.max_power_mw = getattr(type(laser).power_setpoint_mw, 'maximum', 110)
         self.add_power_slider()
 
@@ -27,7 +26,7 @@ class LaserWidget(BaseDeviceWidget):
 
         textbox = self.power_setpoint_mw_widget
         if type(textbox.validator()) == QDoubleValidator:
-            textbox.validator().setRange(0.0, self.max_power_mw, decimals=2)  # Todo: how to handle minimum power?
+            textbox.validator().setRange(0.0, self.max_power_mw, decimals=2)
         elif type(textbox.validator()) == QIntValidator:
             textbox.validator().setRange(0, self.max_power_mw)
         textbox.validator().fixup = self.power_slider_fixup
