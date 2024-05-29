@@ -6,15 +6,16 @@ from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pat
     scan_for_properties, disable_button
 from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
-    QGridLayout, QComboBox, QApplication, QVBoxLayout
+    QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
+from napari.utils.theme import get_theme
 import napari
 import datetime
 from time import sleep
 import logging
 import inflection
-
+from PIL import ImageColor
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -67,9 +68,9 @@ class InstrumentView:
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
+        self.setup_channel_widget()
         self.setup_laser_widgets()
         self.setup_daq_widgets()
-        self.setup_channel_widget()
         self.setup_filter_wheel_widgets()
         self.setup_stage_widgets()
         self.setup_live_position()
@@ -109,7 +110,18 @@ class InstrumentView:
     def setup_laser_widgets(self):
         """Arrange laser widgets"""
 
-        laser_widget = create_widget('H', **self.laser_widgets)
+        test = []
+        for name, widget in self.laser_widgets.items():
+            label = QLabel(name)
+            horizontal = QFrame()
+            layout = QVBoxLayout()
+            layout.addWidget(create_widget('H', label, *widget.children()))
+            horizontal.setLayout(layout)
+            border_color = get_theme(self.viewer.theme, as_dict=False).foreground
+            print(border_color)
+            horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
+            test.append(horizontal)
+        laser_widget = create_widget('V', *test)
         self.viewer.window.add_dock_widget(laser_widget, area='bottom', name='Lasers')
 
     def setup_daq_widgets(self):
@@ -391,6 +403,7 @@ class InstrumentView:
             widget_layout.addWidget(button)
             button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
+        widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
 
     def change_channel(self, checked, channel):
