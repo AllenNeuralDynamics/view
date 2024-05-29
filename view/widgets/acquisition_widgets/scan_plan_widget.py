@@ -1,5 +1,5 @@
 from pymmcore_widgets import ZPlanWidget as ZPlanWidgetMMCore
-from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy
+from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget
 from qtpy.QtCore import Qt, Signal
 import useq
 import enum
@@ -35,6 +35,8 @@ class ScanPlanWidget(QWidget):
         self._tile_visibility = np.ones([1, 1], dtype=bool)  # init as True
         self._scan_starts = np.zeros([0, 1], dtype=float)
         self._scan_volumes = np.zeros([0, 1], dtype=float)
+
+        self.stacked_widget = QStackedWidget()
 
         checkbox_layout = QHBoxLayout()
         self.apply_all = QCheckBox('Apply to All')
@@ -163,10 +165,13 @@ class ScanPlanWidget(QWidget):
             if rows - old_row < 0:
                 for i in range(rows, old_row):
                     for j in range(old_col):
+                        self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
                         self.z_plan_widgets[i, j].close()
+
             if cols - old_col < 0:
                 for j in range(cols, old_col):
                     for i in range(old_row):
+                        self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
                         self.z_plan_widgets[i, j].close()
 
             # resize array to new size
@@ -220,7 +225,9 @@ class ScanPlanWidget(QWidget):
 
         # added label identifying what tile it corresponds to
         z._grid_layout.addWidget(QLabel(f'({row}, {column})'), 7, 1)
+        self.stacked_widget.addWidget(z)
         self.tileAdded.emit(row, column)
+
         return z
 
     def toggle_signals(self, z, block):
