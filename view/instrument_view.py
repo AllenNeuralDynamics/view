@@ -15,7 +15,6 @@ import datetime
 from time import sleep
 import logging
 import inflection
-from PIL import ImageColor
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -99,7 +98,7 @@ class InstrumentView:
         """Arrange stage position and joystick widget"""
 
         stage_layout = QGridLayout()
-        stage_layout.addWidget(create_widget('H', **self.scanning_stage_widgets, **self.tiling_stage_widgets))
+        stage_layout.addWidget(create_widget('V', **self.scanning_stage_widgets, **self.tiling_stage_widgets))
         stacked = self.stack_device_widgets('joystick')
         stage_layout.addWidget(stacked)
 
@@ -118,7 +117,6 @@ class InstrumentView:
             layout.addWidget(create_widget('H', label, *widget.children()))
             horizontal.setLayout(layout)
             border_color = get_theme(self.viewer.theme, as_dict=False).foreground
-            print(border_color)
             horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
             test.append(horizontal)
         laser_widget = create_widget('V', *test)
