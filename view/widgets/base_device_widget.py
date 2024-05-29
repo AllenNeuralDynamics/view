@@ -5,7 +5,6 @@ from inspect import currentframe
 import importlib
 import enum
 import types
-import ruamel.yaml
 import re
 import logging
 import inflection
@@ -220,8 +219,15 @@ def label_maker(string):
     :param string: string to make label out of
     """
 
+    possible_units = ['mm', 'um', 'px', 'mW', 'W', 'ms', 'C', 'V', 'us']
+
     label = string.split('_')
     label = [words.capitalize() for words in label]
+    for i, word in enumerate(label):
+        for unit in possible_units:
+            if unit.lower() == word.lower():    # TODO: Consider using regular expression here for better results?
+                label[i] = f'[{unit}]'
+
     label = " ".join(label)
     return label
 

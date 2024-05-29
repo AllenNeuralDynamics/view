@@ -3,7 +3,6 @@ from qtpy.QtWidgets import QTabWidget, QTabBar, QWidget, QPushButton, \
 import numpy as np
 from qtpy.QtCore import Signal, Qt
 
-
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
 
