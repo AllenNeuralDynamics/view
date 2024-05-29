@@ -362,6 +362,7 @@ class VolumeWidget(QWidget):
         tile_end_col = self.table.columnCount() - 1
         for i in range(self.table.rowCount()):  # skip first row
             self.toggle_item_flags(self.table.item(i, tile_end_col), not checked)
+            #TODO: only enable start column if apply all isn't checked or anchor is checked
             self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
         self.toggle_item_flags(self.table.item(0, tile_end_col), not checked)   # 0,0 z end always enabled
 
