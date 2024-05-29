@@ -1,5 +1,6 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
     QGridLayout, QTableWidgetItem, QTableWidget, QSizePolicy
+from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
 from view.widgets.acquisition_widgets.tile_plan_widget import TilePlanWidget
@@ -85,7 +86,16 @@ class VolumeWidget(QWidget):
         self.table.setColumnCount(len(self.columns))
         self.table.setHorizontalHeaderLabels(self.columns)
         self.table.resizeColumnsToContents()
-        # TODO: Allow cells to be changed and reflect changes in z widgets
+        # add spinbox validator for columns
+
+        for i in range(1,self.table.columnCount()): # skip first column
+            column_name = self.table.horizontalHeaderItem(i).text()
+            delegate = QSpinItemDelegate()
+            # table does not take ownership of the delegates, so they are removed from memory as they
+            # are local variables causing a Segmentation fault. Need to be attributes
+            setattr(self, f'table_column_{column_name}_delegate', delegate)
+            self.table.setItemDelegateForColumn(i, delegate)
+
         self.table.itemChanged.connect(self.table_changed)
         self.table.currentCellChanged.connect(self.toggle_z_show)
         self.table.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
@@ -172,8 +182,8 @@ class VolumeWidget(QWidget):
             table_row = self.table.findItems(str([tile.row, tile.col]), Qt.MatchExactly)[0].row()
             scan_dim_0 = self.table.item(table_row, 1)
             scan_dim_1 = self.table.item(table_row, 2)
-            self.undercover_update_item(self.tile_plan_widget.tile_positions[tile.row][tile.col][0], scan_dim_0)
-            self.undercover_update_item(self.tile_plan_widget.tile_positions[tile.row][tile.col][1], scan_dim_1)
+            self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][0]), scan_dim_0)
+            self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][1]), scan_dim_1)
 
     def update_model(self):
         """When scan changes, update model"""
@@ -228,9 +238,16 @@ class VolumeWidget(QWidget):
                   f'{self.coordinate_plane[2]} max': z.value()[-1]}
         table_row = self.table.rowCount()
         self.table.insertRow(table_row)
-        items = {k: QTableWidgetItem(str(v)) for k, v in kwargs.items()}
+        items = {}
         for header_col, header in enumerate(self.columns):
-            self.table.setItem(table_row, header_col, items[header])
+            item = QTableWidgetItem()
+            if header == 'row, column':
+                item.setText(str(kwargs[header]))
+            else:
+                value = float(kwargs[header])
+                item.setData(Qt.EditRole, value)
+            items[header] = item
+            self.table.setItem(table_row, header_col, item)
 
         # disable cells
         disable = list(kwargs.keys())
@@ -274,8 +291,8 @@ class VolumeWidget(QWidget):
         item = self.table.findItems(str([row, column]), Qt.MatchExactly)[0]
         tile_start = self.table.item(item.row(), self.table.columnCount() - 2)
         tile_end = self.table.item(item.row(), self.table.columnCount() - 1)
-        self.undercover_update_item(value[0], tile_start)
-        self.undercover_update_item(value[-1], tile_end)
+        self.undercover_update_item(float(value[0]), tile_start)
+        self.undercover_update_item(float(value[-1]), tile_end)
 
     def table_changed(self, item):
         """Update corresponding z widget with correct values """
@@ -287,7 +304,7 @@ class VolumeWidget(QWidget):
         z.blockSignals(True)
 
         if item.column() == self.table.columnCount() - 1:  # max edited
-            value = float(item.text())
+            value = float(item.data(Qt.EditRole))
             if z.mode().value == 'top_bottom':
                 z.top.setValue(value)
             elif z.mode().value == 'range_around':
@@ -296,7 +313,7 @@ class VolumeWidget(QWidget):
                 z.below.setValue(value)
 
         elif item.column() == self.table.columnCount() - 2:  # start edited
-            value = float(item.text())
+            value = float(item.data(Qt.EditRole))
             if z.mode().value == 'top_bottom':
                 z.start.setValue(value)
             elif z.mode().value == 'range_around':
@@ -311,7 +328,7 @@ class VolumeWidget(QWidget):
         """Update table with latest z value"""
 
         self.table.blockSignals(True)
-        item.setText(str(value))
+        item.setData(Qt.EditRole,value)
         self.table.blockSignals(False)
 
     def update_scan_start(self, value):
@@ -343,17 +360,17 @@ class VolumeWidget(QWidget):
         # toggle edit ability for table items
         tile_start_col = self.table.columnCount() - 2
         tile_end_col = self.table.columnCount() - 1
-        for i in range(1, self.table.rowCount()):  # skip first row
+        for i in range(self.table.rowCount()):  # skip first row
             self.toggle_item_flags(self.table.item(i, tile_end_col), not checked)
-            if self.anchor_widgets[2].isChecked():  # unchecking apply all disables anchoring
-                self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
+            self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
+        self.toggle_item_flags(self.table.item(0, tile_end_col), not checked)   # 0,0 z end always enabled
 
         if not checked:
             self.table.blockSignals(True)
             self.table.setCurrentCell(0, 0)
             self.table.blockSignals(False)
 
-        if checked:
+        if checked:     # set tile 0,0 visible
             current_row = 0 if self.table.currentRow() == -1 else self.table.currentRow()
             hide_row, hide_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
             self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
@@ -415,7 +432,7 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).text() for j, k in enumerate(self.columns[1:-1])},
+            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
 
