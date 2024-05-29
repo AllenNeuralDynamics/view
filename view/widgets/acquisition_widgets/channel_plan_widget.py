@@ -1,14 +1,18 @@
 from qtpy.QtWidgets import QTabWidget, QTabBar, QWidget, QPushButton, \
-    QMenu, QToolButton, QAction, QTableWidget, QTableWidgetItem, QComboBox
+    QMenu, QToolButton, QAction, QTableWidget, QTableWidgetItem, QComboBox, QSpinBox
+from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate, QTextItemDelegate, QComboItemDelegate
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 import numpy as np
 from qtpy.QtCore import Signal, Qt
+from inflection import singularize
+from math import isnan
 
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
 
     channelAdded = Signal([str])
 
-    def __init__(self, channels: dict, settings: dict):
+    def __init__(self, instrument_view, channels: dict, settings: dict):
         """
         :param channels: dictionary defining channels for instrument
         :param settings: allowed setting for devices
@@ -36,6 +40,9 @@ class ChannelPlanWidget(QTabWidget):
         self.mode = self.channel_order.currentText()
         self.channel_order.currentTextChanged.connect(lambda value: setattr(self, 'mode', value))
 
+        # initialize column dictionaries and column delgates
+        self.initialize_tables(instrument_view)
+
         # add tab with button to add channels
         self.add_tool = QToolButton()
         self.add_tool.setText('+')
@@ -54,6 +61,55 @@ class ChannelPlanWidget(QTabWidget):
                                       setattr(self, 'channels', [self.tabText(ch) for ch in range(self.count() - 1)]))
         self._apply_to_all = True  # external flag to dictate behaviour of added tab
 
+    def initialize_tables(self, instrument_view):
+        """Initialize table for all channels with proper columns and delegates"""
+
+        # TODO: Checks here if setting or device isn't part of the instrument? Or go in instrument validation?
+
+        for channel in self.possible_channels:
+
+            setattr(self, f'{channel}_table', QTableWidget())
+            table = getattr(self, f'{channel}_table')
+            table.cellChanged.connect(self.cell_edited)
+
+            columns = ['step_size', 'steps', 'prefix']
+            delegate_type = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
+            for device_type, device_names in self.possible_channels[channel].items():
+                for device_name in device_names:
+                    device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
+                    device_object = getattr(instrument_view.instrument, device_type)[device_name]
+                    for setting in self.settings.get(device_type, []):
+                        setattr(self, f'{device_name}_{setting}', {})
+                        columns.append(f'{device_name}_{setting}')
+                        # select delegate to use based on type
+                        with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
+                            # value = getattr(device_object, setting)
+                            descriptor = getattr(type(device_object), setting)
+                        if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
+                            minimum = getattr(descriptor, 'minimum', float('-inf'))
+                            maximum = getattr(descriptor, 'maximum', float('inf'))
+                            step = getattr(descriptor, 'step', .001)
+                            delegate_type.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
+                        elif type(getattr(device_widget, f'{setting}_widget')) == QComboBox:
+                            widget = getattr(device_widget, f'{setting}_widget')
+                            items = [widget.itemText(i) for i in range(widget.count())]
+                            delegate_type.append(QComboItemDelegate(items=items))
+                        else:  # TODO: How to handle dictionary values
+                            delegate_type.append(QTextItemDelegate())
+            columns.append('row, column')
+
+            for i, delegate in enumerate(delegate_type):
+                # table does not take ownership of the delegates, so they are removed from memory as they
+                # are local variables causing a Segmentation fault. Need to be attributes
+                setattr(self, f'{columns[i]}_{channel}_delegate', delegate)
+                table.setItemDelegateForColumn(i, delegate)
+            table.setColumnCount(len(columns))
+            table.setHorizontalHeaderLabels(columns)
+            table.resizeColumnsToContents()
+            table.setColumnHidden(len(columns) - 1, True)  # hide row, column since it will only be used internally
+
+            table.verticalHeader().hide()
+
     @property
     def apply_to_all(self):
         return self._apply_to_all
@@ -71,7 +127,7 @@ class ChannelPlanWidget(QTabWidget):
                         item = table.item(i, j)
                         self.enable_item(item, not value)
                         if value:
-                            item.setText(table.item(0, j).text())
+                            item.setData(Qt.EditRole, table.item(0, j).data(Qt.EditRole))
         self._apply_to_all = value
 
     @property
@@ -108,29 +164,25 @@ class ChannelPlanWidget(QTabWidget):
     def add_channel(self, channel):
         """Add channel to acquisition"""
 
-        setattr(self, f'{channel}_table', QTableWidget())
         table = getattr(self, f'{channel}_table')
         table.cellChanged.connect(self.cell_edited)
 
-        columns = ['step_size', 'steps', 'prefix']
         for device_type, devices in self.possible_channels[channel].items():
             for device in devices:
                 for setting in self.settings.get(device_type, []):
-                    if not hasattr(self, f'{device}_{setting}'):
-                        setattr(self, f'{device}_{setting}', {})
-                    getattr(self, f'{device}_{setting}')[channel] = np.zeros(self._tile_volumes.shape)
-                    columns.append(f'{device}_{setting}')
-        columns.append('row, column')
+                    delegate = getattr(self, f'{device}_{setting}_{channel}_delegate')
+                    if type(delegate) == QSpinItemDelegate:
+                        getattr(self, f'{device}_{setting}')[channel] = np.zeros(self._tile_volumes.shape)
+                    elif type(delegate) == QComboItemDelegate:
+                        getattr(self, f'{device}_{setting}')[channel] = np.empty(self._tile_volumes.shape)
+                        getattr(self, f'{device}_{setting}')[channel][:, :] = delegate.items[0]
+                    else:
+                        getattr(self, f'{device}_{setting}')[channel] = np.empty(self._tile_volumes.shape)
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
         self.prefix[channel] = np.zeros(self._tile_volumes.shape, dtype=str)
 
-        table.setColumnCount(len(columns))
-        table.setHorizontalHeaderLabels(columns)
-        table.resizeColumnsToContents()
-        table.setColumnHidden(len(columns) - 1, True)  # hide row, column header since it will only be used internally
-        table.verticalHeader().hide()
         self.insertTab(0, table, channel)
         self.setCurrentIndex(0)
 
@@ -162,9 +214,11 @@ class ChannelPlanWidget(QTabWidget):
         table.setRowCount(0)
 
         arrays = []
+        delegates = []
         # iterate through columns to find relevant arrays to update
         for i in range(table.columnCount() - 1):  # skip row, column
             arrays.append(getattr(self, table.horizontalHeaderItem(i).text())[channel])
+            delegates.append(getattr(self, f'{table.horizontalHeaderItem(i).text()}_{channel}_delegate'))
 
         for tile in order:
             table_row = table.rowCount()
@@ -172,9 +226,12 @@ class ChannelPlanWidget(QTabWidget):
             item = QTableWidgetItem(str(tile))
             table.setItem(table_row, table.columnCount() - 1, item)
             for column, array in enumerate(arrays):
-                item = QTableWidgetItem(str(array[*tile]))
+                item = QTableWidgetItem()
+                if type(delegates[column]) == QSpinItemDelegate:
+                    item.setData(Qt.EditRole, float(array[*tile]))
+                else:
+                    item.setData(Qt.EditRole, str(array[*tile]))
                 table.setItem(table_row, column, item)
-                item.setText(str(array[*tile]))
                 if table_row != 0:  # first row/tile always enabled
                     self.enable_item(item, not self.apply_to_all)
         table.blockSignals(False)
@@ -201,8 +258,6 @@ class ChannelPlanWidget(QTabWidget):
         menu.addAction(action)
         self.add_tool.setMenu(menu)
 
-        del table
-
     def cell_edited(self, row, column):
         """Update table based on cell edit"""
 
@@ -216,29 +271,38 @@ class ChannelPlanWidget(QTabWidget):
             volume = self.tile_volumes[*tile_index]
             index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
             if column == 0:  # step_size changed so round to fit in volume
-                steps = round(volume / float(table.item(row, 0).text()))
-                step_size = round(volume / steps, 4) if steps != 0 else 0
+                steps = volume / float(table.item(row, 0).data(Qt.EditRole))
+                if steps != 0 and not isnan(steps):
+                    step_size = round(volume / steps, 4)
+                    steps = round(steps)
+                else:
+                    steps = 0
+                    step_size = 0
                 self.steps[channel][*index] = steps
             else:  # step number changed
-                step_size = round(volume / float(table.item(row, 1).text()), 4)
-                steps = round(volume / step_size) if step_size != 0 else 0
+                step_size = volume / float(table.item(row, 1).data(Qt.EditRole))
+                if step_size != 0 and not isnan(step_size):
+                    steps = round(volume / step_size)
+                    step_size = round(step_size, 4)
+                else:
+                    steps = 0
+                    step_size = 0
                 self.step_size[channel][*index] = step_size
 
-            table.item(row, 0).setText(str(step_size))
-            table.item(row, 1).setText(str(steps))
+            table.item(row, 0).setData(Qt.EditRole,float(step_size))
+            table.item(row, 1).setData(Qt.EditRole,int(steps))
 
         array = getattr(self, table.horizontalHeaderItem(column).text())[channel]
-        value = float(table.item(row, column).text()) if table.item(row, column).text().isdigit() \
-            else str(table.item(row, column).text())
+        value = table.item(row, column).data(Qt.EditRole)
         if self.apply_to_all:
             array[:, :] = value
             for i in range(1, table.rowCount()):
                 item_0 = table.item(0, column)
-                table.item(i, column).setText(item_0.text())
+                table.item(i, column).setData(Qt.EditRole,item_0.data(Qt.EditRole))
                 if column == 0:  # update steps as well
-                    table.item(i, column + 1).setText(str(steps))
-                elif column == 1:  # update step_szie as well
-                    table.item(i, column - 1).setText(str(step_size))
+                    table.item(i, column + 1).setData(Qt.EditRole, steps)
+                elif column == 1:  # update step_size as well
+                    table.item(i, column - 1).setData(Qt.EditRole, step_size)
         else:
             array[*tile_index] = value
 
