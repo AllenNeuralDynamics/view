@@ -1,6 +1,7 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, scan_for_properties
-from qtpy.QtWidgets import QPushButton, QStyle, QLabel
-
+from qtpy.QtWidgets import QPushButton, QStyle, QLabel, QSizePolicy, QWidget
+from qtpy.QtCore import Qt
+import itertools
 
 class CameraWidget(BaseDeviceWidget):
 
@@ -13,46 +14,65 @@ class CameraWidget(BaseDeviceWidget):
         self.camera_properties = scan_for_properties(camera) if advanced_user else {}
         super().__init__(type(camera), self.camera_properties)
 
-        self.organize_roi()
-        self.add_live_button()
-        self.add_snapshot_button()
+        # create and format livestream button and snapshot button
+        self.live_button = self.create_live_button()
+        self.snapshot_button = self.create_snapshot_button()
+        picture_buttons = create_widget('H', self.live_button, self.snapshot_button)
 
-        self.roi_widget = create_widget('H', QLabel('ROI: '),
-                                        self.property_widgets['width_px'],
-                                        self.property_widgets['width_offset_px'],
-                                        self.property_widgets['height_px'],
-                                        self.property_widgets['height_offset_px'])
 
-        self.centralWidget().layout().addWidget(self.roi_widget)
+        if advanced_user:  # Format widgets better in advaced user mode
 
-    def add_live_button(self):
+            _ = QWidget()  # dummy widget
+            direct = Qt.FindDirectChildrenOnly
+
+            # reformat binning and pixel type
+            pixel_widgets = create_widget('VH',
+                               *self.property_widgets.get('binning', _).findChildren(QWidget, options=direct),
+                               *self.property_widgets.get('pixel_type', _).findChildren(QWidget, options=direct))
+
+            # reformat timing widgets
+            timing_widgets = create_widget('VH',
+                               *self.property_widgets.get('exposure_time_ms', _).findChildren(QWidget, options=direct),
+                               *self.property_widgets.get('frame_time_ms', _).findChildren(QWidget, options=direct),
+                               *self.property_widgets.get('line_interval_us', _).findChildren(QWidget, options=direct))
+
+
+            # reformat sensor height and width widget
+            sensor_size_widget = create_widget('VH',
+                               *self.property_widgets.get('sensor_height_px', _).findChildren(QWidget, options=direct),
+                               *self.property_widgets.get('sensor_width_px', _).findChildren(QWidget, options=direct))
+            sensor_size_widget.setEnabled(False)
+
+            # reformat roi widget
+            self.roi_widget = create_widget('VH',
+                                *self.property_widgets.get('width_px', _).findChildren(QWidget, options=direct),
+                                *self.property_widgets.get('width_offset_px', _).findChildren(QWidget, options=direct),
+                                *self.property_widgets.get('height_px', _).findChildren(QWidget, options=direct),
+                                *self.property_widgets.get('height_offset_px', _).findChildren(QWidget, options=direct))
+            self.roi_widget.setContentsMargins(0, 0, 0, 0)
+
+            central_widget = self.centralWidget()
+            self.setCentralWidget(create_widget('V',
+                                                picture_buttons,
+                                                pixel_widgets,
+                                                central_widget,
+                                                timing_widgets,
+                                                sensor_size_widget,
+                                                self.roi_widget))
+
+    def create_live_button(self):
         """Add live button"""
 
         button = QPushButton('Live')
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
         button.setIcon(icon)
-        widget = self.centralWidget()
-        self.setCentralWidget(create_widget('V', button, widget))
-        setattr(self, 'live_button', button)
 
-    def add_snapshot_button(self):
+        return button
+
+    def create_snapshot_button(self):
         """Add snapshot button"""
 
         button = QPushButton('Snapshot')
         # icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
         # button.setIcon(icon)
-        widget = self.centralWidget()
-        self.setCentralWidget(create_widget('V', button, widget))
-        setattr(self, 'snapshot_button', button)
-
-    def organize_roi(self):
-        """Organize width, height, and offsets widgets"""
-
-
-        self.property_widgets['width_px'] = create_widget('V', *self.property_widgets['width_px'].children())
-        self.property_widgets['width_offset_px'] = create_widget('V',
-                                                                 *self.property_widgets['width_offset_px'].children())
-        self.property_widgets['height_px'] = create_widget('V', *self.property_widgets['height_px'].children())
-        self.property_widgets['height_offset_px'] = create_widget('V',
-                                                                 *self.property_widgets['height_offset_px'].children())
-
+        return button
