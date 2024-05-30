@@ -16,7 +16,7 @@ device_widgets:
       driver: view.widgets.device_widgets.stage_widget
       module: StageWidget
       init:
-        advanced_user: True
+        advanced_user: False
     tigerbox:
       type: joystick
       driver: view.widgets.device_widgets.joystick_widget

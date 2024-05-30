@@ -101,7 +101,7 @@ class InstrumentView:
 
         stage_widgets = []
         for name, widget in {**self.scanning_stage_widgets, **self.tiling_stage_widgets}.items():
-            label = QLabel(name)
+            label = QLabel()
             horizontal = QFrame()
             layout = QVBoxLayout()
             layout.addWidget(create_widget('H', label, widget))
@@ -390,14 +390,10 @@ class InstrumentView:
 
         (name, position) = args
         stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}  # group stage widgets dicts to find name
-        if type(position) == dict:
-            for k, v in position.items():
-                try:
-                    getattr(stages[name], f"position_mm.{k}_widget").setText(str(v))
-                except RuntimeError:  # Pass error when window has been closed
-                    pass
-        else:
-            stages[name].position_widget.setText(str(position))
+        try:
+            stages[name].position_mm_widget.setText(str(position))
+        except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
+            pass
 
     def setup_channel_widget(self):
         """Create widget to select which laser to livestream with"""
@@ -447,7 +443,6 @@ class InstrumentView:
 
         device_type = device_specs['type']
         device = getattr(self.instrument, inflection.pluralize(device_type))[device_name]
-        print(device_name, self.config['device_widgets'].keys(), device_name in self.config['device_widgets'].keys())
 
         specs = self.config['device_widgets'].get(device_name, {})
         if specs != {} and specs.get('type', '') == device_type:
