@@ -17,10 +17,9 @@ class FilterWheelWidget(BaseDeviceWidget):
         properties = scan_for_properties(filter_wheel)
 
         # wrap filterwheel filter property to emit signal when set
-        filter_setter = getattr(type(filter_wheel).filter, 'setter')
-        filter_getter = getattr(type(filter_wheel).filter, 'getter')
+        filter_setter = getattr(type(filter_wheel).filter, 'fset')
+        filter_getter = getattr(type(filter_wheel).filter, 'fget')
         setattr(type(filter_wheel), 'filter', property(filter_getter, self.filter_change_wrapper(filter_setter)))
-
 
         super().__init__(type(filter_wheel), properties)
 
@@ -47,7 +46,7 @@ class FilterWheelWidget(BaseDeviceWidget):
     def filter_change_wrapper(self, func):
         """Wrapper function that emits a signal when filterwheel filter setter has been called"""
         def wrapper(object, value):
-            func(value)
+            func(object, value)
             self.filter = value
             self.ValueChangedOutside[str].emit('filter')
         return wrapper
