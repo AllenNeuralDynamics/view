@@ -2,6 +2,7 @@ from view.widgets.base_device_widget import BaseDeviceWidget
 from qtpy.QtWidgets import QLabel
 import importlib
 
+
 def scan_for_properties(device):
     """Scan for properties with setters and getters in class and return dictionary
     :param device: object to scan through for properties
@@ -30,5 +31,6 @@ class StageWidget(BaseDeviceWidget):
 
         # alter position_mm widget to use instrument_axis as label
         position_label = self.property_widgets['position_mm'].findChild(QLabel)
-        unit = getattr(type(stage).position_mm, 'unit', 'mm')   # TODO: Change when deliminated property is updated
+        unit = getattr(type(stage).position_mm, 'unit', 'mm')  # TODO: Change when deliminated property is updated
         position_label.setText(f'{stage.instrument_axis} [{unit}]')
+        
