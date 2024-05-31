@@ -44,12 +44,12 @@ device_widgets:
       init:
         color: red
         advanced_user: True
-    ASI FW-1000:
-      type: filter_wheel
-      driver: view.widgets.device_widgets.filter_wheel_widget
-      module: FilterWheelWidget
-      init:
-        advanced_user: True
+#    ASI FW-1000:
+#      type: filter_wheel
+#      driver: view.widgets.device_widgets.filter_wheel_widget
+#      module: FilterWheelWidget
+#      init:
+#        advanced_user: True
     vp-151mx:
       type: camera
       driver: view.widgets.device_widgets.camera_widget
