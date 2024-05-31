@@ -1,5 +1,6 @@
 from view.widgets.base_device_widget import BaseDeviceWidget
-from qtpy.QtWidgets import QLabel
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+from qtpy.QtWidgets import QLabel, QTextEdit
 import importlib
 
 
@@ -33,4 +34,15 @@ class StageWidget(BaseDeviceWidget):
         position_label = self.property_widgets['position_mm'].findChild(QLabel)
         unit = getattr(type(stage).position_mm, 'unit', 'mm')  # TODO: Change when deliminated property is updated
         position_label.setText(f'{stage.instrument_axis} [{unit}]')
-        
+
+        # update property_widgets['position_mm'] text to be white
+        style = """
+        QScrollableLineEdit {
+            color: white;
+        } 
+
+        QLabel {
+            color : white;     
+        }    
+        """
+        self.property_widgets['position_mm'].setStyleSheet(style)
