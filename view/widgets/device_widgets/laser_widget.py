@@ -3,7 +3,7 @@ from qtpy.QtCore import Qt
 import importlib
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-
+from qtpy.QtWidgets import QSizePolicy
 class LaserWidget(BaseDeviceWidget):
 
     def __init__(self, laser,
@@ -31,8 +31,10 @@ class LaserWidget(BaseDeviceWidget):
             textbox.validator().setRange(0, self.max_power_mw)
         textbox.validator().fixup = self.power_slider_fixup
         textbox.editingFinished.connect(lambda: slider.setValue(round(float(textbox.text()))))
+        textbox.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
 
         slider = QScrollableFloatSlider(orientation=Qt.Horizontal)
+        slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         slider.setStyleSheet("QSlider::groove:horizontal {border: 1px solid #777;height: 10px;border-radius: 4px;}"
                              "QSlider::handle:horizontal {background-color: grey; width: 16px; height: 20px; "
                              "line-height: 20px; margin-top: -5px; margin-bottom: -5px; border-radius: 10px; }"
