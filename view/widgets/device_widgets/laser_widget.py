@@ -18,7 +18,6 @@ class LaserWidget(BaseDeviceWidget):
         self.laser_module = importlib.import_module(laser.__module__)
         self.slider_color = color
         super().__init__(type(laser), self.laser_properties)
-        print()
         self.max_power_mw = getattr(type(laser).power_setpoint_mw, 'maximum', 110)
         self.add_power_slider()
 

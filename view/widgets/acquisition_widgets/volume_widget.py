@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSizePolicy
+    QGridLayout, QTableWidgetItem, QTableWidget, QSizePolicy, QStackedWidget
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
 from view.widgets.acquisition_widgets.tile_plan_widget import TilePlanWidget
@@ -70,6 +70,7 @@ class VolumeWidget(QWidget):
 
         # create scan widgets
         self.scan_plan_widget = ScanPlanWidget(limits[2], unit)
+        self.layout.addWidget(self.scan_plan_widget.stacked_widget, 2, 0)
         self.layout.addWidget(self.scan_plan_widget, 1, 0)
 
         # create channel plan widget
@@ -115,8 +116,6 @@ class VolumeWidget(QWidget):
 
         # initialize first tile and add to layout
         self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
-        self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[0, 0], 2, 0)
-        self.scan_plan_widget.z_plan_widgets[0, 0].setVisible(True)
         self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         self.setLayout(self.layout)
@@ -160,6 +159,7 @@ class VolumeWidget(QWidget):
         """When tile plan has been changed, trigger scan plan construction and update volume model path
         :param value: latest tile plan value"""
 
+
         self.scan_plan_widget.scan_plan_construction(value)
         self.volume_model.path.setData(pos=
                                        [[self.volume_model.grid_coords[t.row][t.col][i] + .5 * self.fov_dimensions[i]
@@ -183,22 +183,17 @@ class VolumeWidget(QWidget):
         setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                              self.scan_plan_widget.scan_starts)))
 
-        current_row = 0 if self.scan_plan_widget.apply_to_all or self.table.currentRow() == -1 \
-            else self.table.currentRow()
-
         # update table
         table_order = [[int(x) for x in self.table.item(i, 0).text() if x.isdigit()] for i in
                        range(self.table.rowCount())]
         scan_order = [[t.row, t.col] for t in self.tile_plan_widget.value()]
         if table_order != scan_order and len(scan_order) != 0:
+
             # clear table and add back tiles in the correct order if
             self.table.clearContents()
             self.table.setRowCount(0)
             for tile in self.tile_plan_widget.value():
                 self.add_tile_to_table(tile.row, tile.col)
-
-            show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
 
         # update channel plan
         self.channel_plan.tile_volumes = self.scan_plan_widget.scan_volumes
@@ -243,10 +238,6 @@ class VolumeWidget(QWidget):
             items[var].setFlags(flags)
 
         self.table.blockSignals(False)
-
-        # add new tile to layout
-        self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[row, column], 2, 0)
-        self.scan_plan_widget.z_plan_widgets[row, column].setVisible(False)
 
     def tile_added(self, row, column):
         """Connect new tile to proper signals. Only do when tile added to scan, not to table, to avoid connect signals
@@ -347,17 +338,8 @@ class VolumeWidget(QWidget):
             if not checked or self.anchor_widgets[2].isChecked():  # unchecking apply all disables anchoring
                 self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
 
-        if not checked:
-            self.table.blockSignals(True)
-            self.table.setCurrentCell(0, 0)
-            self.table.blockSignals(False)
-
         if checked:
-            current_row = 0 if self.table.currentRow() == -1 else self.table.currentRow()
-            hide_row, hide_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
-
-            self.scan_plan_widget.z_plan_widgets[0, 0].setVisible(True)
+            self.scan_plan_widget.stacked_widget.setCurrentIndex(0)
             setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                                  self.scan_plan_widget.scan_starts)))
         # update channel plan
@@ -381,14 +363,9 @@ class VolumeWidget(QWidget):
         """If apply all is not checked, show corresponding z widget for selected row"""
 
         if not self.scan_plan_widget.apply_to_all:
-            current_row = 0 if current_row == -1 else current_row
-            previous_row = 0 if previous_row == -1 else previous_row
+            print('show index', current_row)
+            self.scan_plan_widget.stacked_widget.setCurrentIndex(current_row)
 
-            hide_row, hide_col = [int(x) for x in self.table.item(previous_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
-
-            show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
 
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
