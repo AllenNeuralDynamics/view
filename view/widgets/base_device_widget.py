@@ -1,6 +1,6 @@
 from qtpy.QtCore import Signal, Slot, QTimer
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-from qtpy.QtWidgets import QWidget, QLineEdit, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow, QGridLayout
+from qtpy.QtWidgets import QWidget, QLineEdit, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow, QGridLayout, QFrame
 from inspect import currentframe
 import importlib
 import enum

@@ -1,5 +1,5 @@
 from pyqtgraph import PlotWidget, TextItem, mkPen, mkBrush, ScatterPlotItem, setConfigOptions
-from qtpy.QtWidgets import QGraphicsEllipseItem
+from qtpy.QtWidgets import QGraphicsEllipseItem, QSizePolicy
 from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot
 from math import sin, cos, pi, atan, degrees, radians
 from qtpy.QtGui import QFont

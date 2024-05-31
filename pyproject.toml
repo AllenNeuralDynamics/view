@@ -15,5 +15,5 @@ dependencies = [
     'PyQt6 >= 6.6.1',
     'napari >= 0.4.19',
     'pyclesperanto >= 0.8.2',
-    'lxml_html_clean >= 0.1.1'
+    'lxml_html_clean >= 0.1.1',
 ]
