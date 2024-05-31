@@ -299,13 +299,13 @@ class AcquisitionView:
                     if stage.instrument_axis in self.volume_widget.coordinate_plane:
                         fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
                         position = stage.position_mm
-                        # FIXME: Sometimes tigerbox yields empty stage position so just give last position
-                        fov_pos[fov_index] = position.get(stage.instrument_axis,
-                                                          self.volume_widget.fov_position[fov_index])
+                        # FIXME: Sometimes tigerbox yields empty stage position so return None if this happens?
+                        fov_pos[fov_index] = position if position is not None \
+                            else self.volume_widget.fov_position[fov_index]
                 (scan_name, scan_stage), = self.instrument.scanning_stages.items()
                 with self.scanning_stage_locks[scan_name]:
                     position = scan_stage.position_mm
-                    fov_pos[2] = position.get(scan_stage.instrument_axis, self.volume_widget.fov_position[2])
+                    fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
 
             yield fov_pos  # don't yield while locked
 
