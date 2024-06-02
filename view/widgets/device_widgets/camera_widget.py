@@ -76,8 +76,8 @@ class CameraWidget(BaseDeviceWidget):
                                                 picture_buttons,
                                                 pixel_widgets,
                                                 timing_widgets,
-                                                sensor_size_widget,
                                                 self.roi_widget,
+                                                sensor_size_widget,
                                                 central_widget))
 
     def create_live_button(self):
