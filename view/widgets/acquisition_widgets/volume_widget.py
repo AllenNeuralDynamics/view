@@ -187,7 +187,7 @@ class VolumeWidget(QWidget):
 
     def update_model(self):
         """When scan changes, update model"""
-
+        
         # When scan changes, update model
         setattr(self.volume_model, '_scan_volumes', self.scan_plan_widget.scan_volumes)
         setattr(self.volume_model, '_tile_visibility', self.scan_plan_widget.tile_visibility)
