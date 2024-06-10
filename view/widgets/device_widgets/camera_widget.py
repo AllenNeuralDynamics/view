@@ -48,7 +48,6 @@ class CameraWidget(BaseDeviceWidget):
     def organize_roi(self):
         """Organize width, height, and offsets widgets"""
 
-
         self.property_widgets['width_px'] = create_widget('V', *self.property_widgets['width_px'].children())
         self.property_widgets['width_offset_px'] = create_widget('V',
                                                                  *self.property_widgets['width_offset_px'].children())
