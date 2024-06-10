@@ -110,7 +110,7 @@ class VolumeWidget(QWidget):
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
         self.tile_starts[2].disconnect()  # disconnect to only trigger update graph once
-        self.tile_starts[2].valueChanged.connect(lambda value: setattr(self.scan_plan_widget, 'grid_position', value))
+        #self.tile_starts[2].valueChanged.connect(lambda value: setattr(self.scan_plan_widget, 'grid_position', value))
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
 
@@ -141,15 +141,12 @@ class VolumeWidget(QWidget):
     def fov_position(self, value):
         """Update all relevant widgets with new fov_position value"""
         self._fov_position = value
-
         # update tile plan widget
-        for i, anchor in enumerate(self.tile_plan_widget.anchor_widgets):
-            if not anchor.isChecked() and anchor.isEnabled():
-                self.tile_starts[i].setValue(value[i])
-                # update scan plan widget
-                if i == 2:
-                    self.scan_plan_widget.grid_position = value[2]
-
+        self.tile_plan_widget.fov_position = value
+        # update scan plan
+        tile_anchor = self.tile_plan_widget.anchor_widgets[2]
+        if not tile_anchor.isChecked() and tile_anchor.isEnabled():
+            self.scan_plan_widget.z_plan_widgets[0,0].start.setValue(value[2])
         # update model
         self.volume_model.fov_position = value
 
@@ -254,7 +251,7 @@ class VolumeWidget(QWidget):
         if not self.scan_plan_widget.apply_to_all or (row, column) == (0, 0):
             disable.remove(f'{self.coordinate_plane[2]} max [{self.unit}]')
             if self.anchor_widgets[2].isChecked():
-                disable.remove(self.coordinate_plane[2])
+                disable.remove(f'{self.coordinate_plane[2]} [{self.unit}]')
         flags = QTableWidgetItem().flags()
         flags &= ~Qt.ItemIsEditable
         for var in disable:
@@ -408,7 +405,8 @@ class VolumeWidget(QWidget):
 
             show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
             self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
-
+            print(show_row, show_col)
+            print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in self.scan_plan_widget.z_plan_widgets]))
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
 
