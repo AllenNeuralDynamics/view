@@ -3,12 +3,12 @@ from qtpy.QtCore import Qt
 import importlib
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-
+from qtpy.QtWidgets import QSizePolicy
 class LaserWidget(BaseDeviceWidget):
 
     def __init__(self, laser,
                  color: str = 'blue',
-                 advanced_user: bool = True):  # TODO: Is it okay to pass in device and not use it except to find properties?
+                 advanced_user: bool = True):
         """Modify BaseDeviceWidget to be specifically for laser. Main need is adding slider .
         :param laser: laser object
         :param color: color of laser slider"""
@@ -26,13 +26,15 @@ class LaserWidget(BaseDeviceWidget):
 
         textbox = self.power_setpoint_mw_widget
         if type(textbox.validator()) == QDoubleValidator:
-            textbox.validator().setRange(0.0, self.max_power_mw, decimals=2)  # Todo: how to handle minimum power?
+            textbox.validator().setRange(0.0, self.max_power_mw, decimals=2)
         elif type(textbox.validator()) == QIntValidator:
             textbox.validator().setRange(0, self.max_power_mw)
         textbox.validator().fixup = self.power_slider_fixup
         textbox.editingFinished.connect(lambda: slider.setValue(round(float(textbox.text()))))
+        textbox.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
 
         slider = QScrollableFloatSlider(orientation=Qt.Horizontal)
+        slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         slider.setStyleSheet("QSlider::groove:horizontal {border: 1px solid #777;height: 10px;border-radius: 4px;}"
                              "QSlider::handle:horizontal {background-color: grey; width: 16px; height: 20px; "
                              "line-height: 20px; margin-top: -5px; margin-bottom: -5px; border-radius: 10px; }"

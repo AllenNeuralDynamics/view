@@ -1,5 +1,5 @@
 from pyqtgraph import PlotWidget, TextItem, mkPen, mkBrush, ScatterPlotItem, setConfigOptions
-from qtpy.QtWidgets import QGraphicsEllipseItem
+from qtpy.QtWidgets import QGraphicsEllipseItem, QSizePolicy
 from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot
 from math import sin, cos, pi, atan, degrees, radians
 from qtpy.QtGui import QFont
@@ -8,12 +8,19 @@ from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_propertie
 setConfigOptions(antialias=True)
 
 class FilterWheelWidget(BaseDeviceWidget):
+
     def __init__(self, filter_wheel,
                  advanced_user: bool = True):
         """Simple scroll widget for filter wheel
         :param filter_wheel: filter wheel device"""
 
         properties = scan_for_properties(filter_wheel)
+
+        # wrap filterwheel filter property to emit signal when set
+        filter_setter = getattr(type(filter_wheel).filter, 'fset')
+        filter_getter = getattr(type(filter_wheel).filter, 'fget')
+        setattr(type(filter_wheel), 'filter', property(filter_getter, self.filter_change_wrapper(filter_setter)))
+
         super().__init__(type(filter_wheel), properties)
 
         # Remove filter widget
@@ -26,15 +33,23 @@ class FilterWheelWidget(BaseDeviceWidget):
         self.property_widgets['filter'].layout().addWidget(self.filter_widget)
 
         # Create wheel widget and connect to signals
-        wheel_widget = FilterWheelGraph(list(filter_wheel.filters.keys()))
-        wheel_widget.ValueChangedInside[str].connect(lambda value: self.filter_widget.setCurrentText(str(value)))
-        self.filter_widget.currentTextChanged.connect(lambda value: wheel_widget.set_index(value))
-        self.ValueChangedOutside[str].connect(lambda name: wheel_widget.set_index(getattr(self, name)))
-        self.centralWidget().layout().addWidget(wheel_widget)
+        self.wheel_widget = FilterWheelGraph(list(filter_wheel.filters.keys()))
+        self.wheel_widget.ValueChangedInside[str].connect(lambda value: self.filter_widget.setCurrentText(str(value)))
+        self.filter_widget.currentTextChanged.connect(lambda value: self.wheel_widget.set_index(value))
+        self.ValueChangedOutside[str].connect(lambda name: self.wheel_widget.set_index(self.filter))
+        self.centralWidget().layout().addWidget(self.wheel_widget)
 
         if not advanced_user:
-            wheel_widget.setDisabled(True)
+            self.wheel_widget.setDisabled(True)
             self.filter_widget.setDisabled(True)
+
+    def filter_change_wrapper(self, func):
+        """Wrapper function that emits a signal when filterwheel filter setter has been called"""
+        def wrapper(object, value):
+            func(object, value)
+            self.filter = value
+            self.ValueChangedOutside[str].emit('filter')
+        return wrapper
 
 class FilterWheelGraph(PlotWidget):
     ValueChangedInside = Signal((str,))

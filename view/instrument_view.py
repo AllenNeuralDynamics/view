@@ -6,15 +6,15 @@ from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pat
     scan_for_properties, disable_button
 from threading import Lock
 from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
-    QGridLayout, QComboBox, QApplication, QVBoxLayout
+    QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
+from napari.utils.theme import get_theme
 import napari
 import datetime
 from time import sleep
 import logging
 import inflection
-
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -67,9 +67,9 @@ class InstrumentView:
 
         # setup widget additional functionalities
         self.setup_camera_widgets()
+        self.setup_channel_widget()
         self.setup_laser_widgets()
         self.setup_daq_widgets()
-        self.setup_channel_widget()
         self.setup_filter_wheel_widgets()
         self.setup_stage_widgets()
         self.setup_live_position()
@@ -98,7 +98,19 @@ class InstrumentView:
         """Arrange stage position and joystick widget"""
 
         stage_layout = QGridLayout()
-        stage_layout.addWidget(create_widget('H', **self.scanning_stage_widgets, **self.tiling_stage_widgets))
+
+        stage_widgets = []
+        for name, widget in {**self.scanning_stage_widgets, **self.tiling_stage_widgets}.items():
+            label = QLabel()
+            horizontal = QFrame()
+            layout = QVBoxLayout()
+            layout.addWidget(create_widget('H', label, widget))
+            horizontal.setLayout(layout)
+            border_color = get_theme(self.viewer.theme, as_dict=False).foreground
+            horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
+            stage_widgets.append(horizontal)
+        stage_layout.addWidget(create_widget('V', *stage_widgets))
+
         stacked = self.stack_device_widgets('joystick')
         stage_layout.addWidget(stacked)
 
@@ -109,7 +121,17 @@ class InstrumentView:
     def setup_laser_widgets(self):
         """Arrange laser widgets"""
 
-        laser_widget = create_widget('H', **self.laser_widgets)
+        laser_widgets = []
+        for name, widget in self.laser_widgets.items():
+            label = QLabel(name)
+            horizontal = QFrame()
+            layout = QVBoxLayout()
+            layout.addWidget(create_widget('H', label, widget))
+            horizontal.setLayout(layout)
+            border_color = get_theme(self.viewer.theme, as_dict=False).foreground
+            horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
+            laser_widgets.append(horizontal)
+        laser_widget = create_widget('V', *laser_widgets)
         self.viewer.window.add_dock_widget(laser_widget, area='bottom', name='Lasers')
 
     def setup_daq_widgets(self):
@@ -368,14 +390,10 @@ class InstrumentView:
 
         (name, position) = args
         stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}  # group stage widgets dicts to find name
-        if type(position) == dict:
-            for k, v in position.items():
-                try:
-                    getattr(stages[name], f"position_mm.{k}_widget").setText(str(v))
-                except RuntimeError:  # Pass error when window has been closed
-                    pass
-        else:
-            stages[name].position_widget.setText(str(position))
+        try:
+            stages[name].position_mm_widget.setText(str(position))
+        except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
+            pass
 
     def setup_channel_widget(self):
         """Create widget to select which laser to livestream with"""
@@ -391,6 +409,7 @@ class InstrumentView:
             widget_layout.addWidget(button)
             button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
+        widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
 
     def change_channel(self, checked, channel):

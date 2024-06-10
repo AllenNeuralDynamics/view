@@ -1,6 +1,6 @@
 device_widgets:
-    ASI MS-8000 x axis:
-      type:   tiling_stage
+    ASI MS-8000 z axis:
+      type:   scanning_stage
       driver: view.widgets.device_widgets.stage_widget
       module: StageWidget
       init:
@@ -10,9 +10,9 @@ device_widgets:
       driver: view.widgets.device_widgets.stage_widget
       module: StageWidget
       init:
-        advanced_user: True
-    ASI LS-100 x axis:
-      type:   scanning_stage
+        advanced_user: False
+    ASI MS-8000 x axis:
+      type:   tiling_stage
       driver: view.widgets.device_widgets.stage_widget
       module: StageWidget
       init:
@@ -106,5 +106,5 @@ operation_widgets:
           cameras: [ vnp-604mx ]
       settings:
         cameras: [binning]
-        lasers: [power_mw]
+        lasers: [power_setpoint_mw]
         filter_wheels: [filter]

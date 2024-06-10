@@ -20,7 +20,7 @@ GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 # INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
 # GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
 
-class ExASPIMInstrumentView(InstrumentView):
+class SimulatedInstrumentView(InstrumentView):
     """View for ExASPIM Instrument"""
 
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
@@ -109,6 +109,6 @@ if __name__ == "__main__":
     # acquisition
     acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
-    instrument_view = ExASPIMInstrumentView(instrument, GUI_YAML)
+    instrument_view = SimulatedInstrumentView(instrument, GUI_YAML)
     acquisition_view = AcquisitionView(acquisition, instrument_view, GUI_YAML)
     sys.exit(app.exec_())
