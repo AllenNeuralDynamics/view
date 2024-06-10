@@ -38,6 +38,7 @@ class VolumeWidget(QWidget):
         """
         super().__init__()
 
+        self.unit = unit
         self.layout = QGridLayout()
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
@@ -80,8 +81,8 @@ class VolumeWidget(QWidget):
         self.channel_plan.apply_to_all = True
 
         # setup table
-        self.columns = ['row, column', *coordinate_plane, f'{coordinate_plane[2]} max']
-
+        self.columns = ['row, column', *[f'{x} [{unit}]' for x in coordinate_plane],
+                        f'{coordinate_plane[2]} max [{unit}]']
         self.table = QTableWidget()
         self.table.setColumnCount(len(self.columns))
         self.table.setHorizontalHeaderLabels(self.columns)
@@ -98,7 +99,7 @@ class VolumeWidget(QWidget):
 
         self.table.itemChanged.connect(self.table_changed)
         self.table.currentCellChanged.connect(self.toggle_z_show)
-        self.table.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
+        #self.table.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
 
         # add table and channel plan to layout
         widget = QWidget()  # dummy widget to move table down in layout
@@ -122,7 +123,6 @@ class VolumeWidget(QWidget):
         self.coordinate_plane = coordinate_plane
         self.fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
         self.fov_position = fov_position
-        self.unit = unit
 
         # initialize first tile and add to layout
         self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
@@ -232,10 +232,10 @@ class VolumeWidget(QWidget):
         self.table.blockSignals(True)
         z = self.scan_plan_widget.z_plan_widgets[row, column]
         kwargs = {'row, column': [row, column],
-                  self.coordinate_plane[0]: self.tile_plan_widget.tile_positions[row][column][0],
-                  self.coordinate_plane[1]: self.tile_plan_widget.tile_positions[row][column][1],
-                  self.coordinate_plane[2]: z.value()[0],
-                  f'{self.coordinate_plane[2]} max': z.value()[-1]}
+                  f'{self.coordinate_plane[0]} [{self.unit}]': self.tile_plan_widget.tile_positions[row][column][0],
+                  f'{self.coordinate_plane[1]} [{self.unit}]': self.tile_plan_widget.tile_positions[row][column][1],
+                  f'{self.coordinate_plane[2]} [{self.unit}]': z.value()[0],
+                  f'{self.coordinate_plane[2]} max [{self.unit}]': z.value()[-1]}
         table_row = self.table.rowCount()
         self.table.insertRow(table_row)
         items = {}
@@ -252,7 +252,7 @@ class VolumeWidget(QWidget):
         # disable cells
         disable = list(kwargs.keys())
         if not self.scan_plan_widget.apply_to_all or (row, column) == (0, 0):
-            disable.remove(f'{self.coordinate_plane[2]} max')
+            disable.remove(f'{self.coordinate_plane[2]} max [{self.unit}]')
             if self.anchor_widgets[2].isChecked():
                 disable.remove(self.coordinate_plane[2])
         flags = QTableWidgetItem().flags()
