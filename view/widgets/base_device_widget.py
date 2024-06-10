@@ -72,7 +72,7 @@ class BaseDeviceWidget(QMainWindow):
 
             if attr := getattr(self.device_object, name, False):  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring
-                if not getattr(attr, 'fset', False):  # Constant, unchangeable attribute
+                if getattr(attr, 'fset', None) is None:  # Constant, unchangeable attribute
                     widgets[name].setDisabled(True)
 
         # Add attribute of grouped widgets for easy access

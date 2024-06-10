@@ -1,5 +1,5 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, label_maker, pathGet
-from qtpy.QtWidgets import QTreeWidget, QTreeWidgetItem
+from qtpy.QtWidgets import QTreeWidget, QTreeWidgetItem, QSizePolicy
 from qtpy.QtCore import Qt
 import qtpy.QtGui as QtGui
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
@@ -60,6 +60,8 @@ class NIWidget(BaseDeviceWidget):
 
         self.setCentralWidget(self.tree)
         self.tree.expandAll()
+
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
     def update_waveform(self, channel_name):
         """Add waveforms to waveform widget"""
