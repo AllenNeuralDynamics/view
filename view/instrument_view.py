@@ -284,11 +284,11 @@ class InstrumentView:
             self.instrument.cameras[camera_name].prepare()
             self.instrument.cameras[camera_name].start(frames)
 
-        for laser in self.channels[self.livestream_channel]['lasers']:
+        for laser in self.channels[self.livestream_channel].get('lasers', []):
             with self.laser_locks[laser]:
                 self.instrument.lasers[laser].enable()
 
-        for filter in self.channels[self.livestream_channel]['filters']:
+        for filter in self.channels[self.livestream_channel].get('filters', []):
             with self.filter_locks[filter]:
                 self.instrument.filters[filter].enable()
 
@@ -317,7 +317,7 @@ class InstrumentView:
         for daq_name, daq in self.instrument.daqs.items():
             with self.daq_locks[daq_name]:
                 daq.stop()
-        for laser_name in self.channels[self.livestream_channel]['lasers']:
+        for laser_name in self.channels[self.livestream_channel].get('lasers', []):
             with self.laser_locks[laser_name]:
                 self.instrument.lasers[laser_name].disable()
 
@@ -419,17 +419,17 @@ class InstrumentView:
 
         if checked:
             if self.grab_frames_worker.is_running:  # livestreaming is going
-                for old_laser_name in self.channels[self.livestream_channel]['lasers']:
+                for old_laser_name in self.channels[self.livestream_channel].get('lasers', []):
                     with self.laser_locks[old_laser_name]:
                         self.instrument.lasers[old_laser_name].disable()
                 for daq_name, daq in self.instrument.daqs.items():
                     self.write_waveforms(daq, daq_name)
-                for new_laser_name in self.channels[channel]['lasers']:
+                for new_laser_name in self.channels[channel].get('lasers', []):
                     with self.laser_locks[new_laser_name]:
                         self.instrument.lasers[new_laser_name].enable()
             self.livestream_channel = channel
             # change filter
-            for filter in self.channels[self.livestream_channel]['filters']:
+            for filter in self.channels[self.livestream_channel].get('filters', []):
                 with self.filter_locks[filter]:
                     self.instrument.filters[filter].enable()
 
