@@ -9,7 +9,7 @@ from view.widgets.base_device_widget import create_widget
 from qtpy.QtCore import Qt
 import numpy as np
 import useq
-
+from view.widgets.base_device_widget import label_maker
 
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
@@ -433,7 +433,7 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in enumerate(self.columns[1:-1])},
+            'position': {k[0]: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
 
@@ -442,7 +442,7 @@ class VolumeWidget(QWidget):
             for device in devices:
                 tile_dict[device] = {}
                 for setting in self.channel_plan.settings.get(device_type, []):
-                    array = getattr(self.channel_plan, f'{device}_{setting}')[channel]
+                    array = getattr(self.channel_plan, label_maker(f'{device}_{setting}'))[channel]
                     tile_dict[device][setting] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
