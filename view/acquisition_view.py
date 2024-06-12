@@ -122,6 +122,9 @@ class AcquisitionView:
         self.grab_fov_positions_worker.quit()
         self.instrument_view.grab_stage_positions_worker.quit()
 
+        if self.grab_fov_positions_worker.is_running or self.instrument_view.grab_stage_positions_worker.is_running:
+            sleep(0.1)
+
         # add tiles to acquisition config
         self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
 
@@ -153,7 +156,7 @@ class AcquisitionView:
         self.acquisition_thread = create_worker(self.acquisition.run)
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
-        print('finished setting up acq')
+
 
     def acquisition_ended(self):
         """Re-enable UI's and threads after aquisition has ended"""

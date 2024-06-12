@@ -57,7 +57,7 @@ class InstrumentView:
 
         # Setup napari window
         self.viewer = napari.Viewer(title='View', ndisplay=2, axis_labels=('x', 'y'))
-
+    
         # setup daq with livestreaming tasks
         self.setup_daqs()
 
