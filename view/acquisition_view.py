@@ -30,6 +30,7 @@ class AcquisitionView:
         # Locks
         self.tiling_stage_locks = self.instrument_view.tiling_stage_locks
         self.scanning_stage_locks = self.instrument_view.scanning_stage_locks
+        #self.focusing_stage_locks = self.instrument_view.focusing_stage_locks  #TODO: update acquisiiton widgets to include focusing stage
         self.daq_locks = self.instrument_view.daq_locks
 
         # Eventual threads
