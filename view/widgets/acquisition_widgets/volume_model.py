@@ -1,9 +1,10 @@
 from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem
-from qtpy.QtWidgets import QMessageBox
+from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
 from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
+from scipy import spatial
 
 # TODO: Use this else where to. Consider moving it so we don't have to copy paste?
 class SignalChangeVar:
@@ -203,7 +204,11 @@ class VolumeModel(GLViewWidget):
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
-        return msgBox.exec()
+        checkbox = QCheckBox('Move to nearest tile')
+        checkbox.setChecked(True)
+        msgBox.setCheckBox(checkbox)
+
+        return msgBox.exec(), checkbox.isChecked()
 
     def mousePressEvent(self, event):
         """Override mouseMoveEvent so user can't change view
@@ -233,11 +238,20 @@ class VolumeModel(GLViewWidget):
             new_pos = {transform[0]: (center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]],
                        transform[1]: (center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]],
                        transform[2]: pos[transform[2]]}
-            return_value = self.move_fov_query([new_pos['x'], new_pos['y'], new_pos['z']])
+            return_value, checkbox = self.move_fov_query([new_pos['x'], new_pos['y'], new_pos['z']])
+
             if return_value == QMessageBox.Ok:
-                self.fov_position = [new_pos['x'], new_pos['y'], new_pos['z']]
+                if not checkbox:    # Move to exact location
+                    pos = new_pos
+                else:   # move to the nearest tile
+                    flattened = self.grid_coords.reshape([-1, 3])
+                    tree = spatial.KDTree(self.grid_coords.reshape([-1, 3]))
+                    distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
+                    tile = flattened[index]
+                    pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
+                self.fov_position = [pos['x'], pos['y'], pos['z']]
                 self.grid_plane = plane  # make sure grid plane remains the same
-                self.fovMoved.emit([new_pos['x'], new_pos['y'], new_pos['z']])
+                self.fovMoved.emit([pos['x'], pos['y'], pos['z']])
 
             else:
                 return
