@@ -46,10 +46,10 @@ class VolumeWidget(QWidget):
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()
-        path = QCheckBox('Show Path')
-        path.setChecked(True)
-        path.toggled.connect(self.volume_model.toggle_path_visibility)
-        checkboxes.addWidget(path)
+        self.path_show = QCheckBox('Show Path')
+        self.path_show.setChecked(True)
+        self.path_show.toggled.connect(self.volume_model.toggle_path_visibility)
+        checkboxes.addWidget(self.path_show)
 
         checkboxes.addWidget(QLabel('Plane View: '))
         view_plane = QButtonGroup(self)
@@ -276,12 +276,18 @@ class VolumeWidget(QWidget):
         """Update grid plane and remap path
         :param button: button that was clicked"""
 
-        setattr(self.volume_model, 'grid_plane', tuple(x for x in button.text() if x.isalpha()))
-        self.volume_model.path.setData(pos=
-                                       [[self.volume_model.grid_coords[t.row][t.col][i] + .5 * self.fov_dimensions[i]
-                                         if self.coordinate_plane[i] in self.volume_model.grid_plane else 0. for i in
-                                         range(3)] for t in self.tile_plan_widget.value()])  # update path
+        grid_plane = tuple(x for x in button.text() if x.isalpha())
+        setattr(self.volume_model, 'grid_plane', grid_plane)
 
+        if grid_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
+            self.volume_model.path.setData(pos=[[
+                self.volume_model.grid_coords[t.row][t.col][i] + .5 * self.fov_dimensions[i]
+                if self.coordinate_plane[i] in self.volume_model.grid_plane else 0. for i in range(3)]
+                for t in self.tile_plan_widget.value()])  # update path
+            if not self.volume_model.path.visible() and self.path_show.isChecked():
+                self.volume_model.toggle_path_visibility(True)
+        else:   # hide path if not in tiling grid plane
+            self.volume_model.toggle_path_visibility(False)
     def change_table(self, value, row, column):
         """If z widget is changed, update table"""
 
@@ -405,8 +411,7 @@ class VolumeWidget(QWidget):
 
             show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
             self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
-            print(show_row, show_col)
-            print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in self.scan_plan_widget.z_plan_widgets]))
+            
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
 

@@ -80,7 +80,7 @@ class BaseDeviceWidget(QMainWindow):
         return widgets
 
     def create_attribute_widget(self, name, widget_type, values):
-        """Create a widget and create coresponding attribute
+        """Create a widget and create corresponding attribute
                 :param name: name of property
                 :param widget_type: widget type (QLineEdit or QCombobox)
                 :param values: input into widget"""

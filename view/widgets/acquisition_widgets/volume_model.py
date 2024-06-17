@@ -77,7 +77,7 @@ class VolumeModel(GLViewWidget):
         """Update attributes of grid
         :param attribute_name: name of attribute to update"""
 
-        print('updating', attribute_name)
+        #print('updating', attribute_name)
         if attribute_name == 'fov_position':
             # update fov_pos
             x = self.fov_position[0] if self.coordinate_plane[0] in self.grid_plane else 0
@@ -118,6 +118,7 @@ class VolumeModel(GLViewWidget):
                     box.setVisible(self.tile_visibility[row, column])
                     self.grid_BoxItems.append(box)
                     self.addItem(box)
+
         self._update_opts()
 
     def toggle_path_visibility(self, visible):
