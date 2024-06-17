@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSizePolicy
+    QGridLayout, QTableWidgetItem, QTableWidget
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -99,7 +99,6 @@ class VolumeWidget(QWidget):
 
         self.table.itemChanged.connect(self.table_changed)
         self.table.currentCellChanged.connect(self.toggle_z_show)
-        #self.table.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
 
         # add table and channel plan to layout
         widget = QWidget()  # dummy widget to move table down in layout
@@ -110,7 +109,6 @@ class VolumeWidget(QWidget):
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
         self.tile_starts[2].disconnect()  # disconnect to only trigger update graph once
-        #self.tile_starts[2].valueChanged.connect(lambda value: setattr(self.scan_plan_widget, 'grid_position', value))
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
 
@@ -126,8 +124,7 @@ class VolumeWidget(QWidget):
 
         # initialize first tile and add to layout
         self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
-        self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[0, 0], 2, 0)
-        self.scan_plan_widget.z_plan_widgets[0, 0].setVisible(True)
+        self.layout.addWidget(self.scan_plan_widget.group_box, 2, 0)
         self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         self.setLayout(self.layout)
@@ -205,9 +202,6 @@ class VolumeWidget(QWidget):
             for tile in self.tile_plan_widget.value():
                 self.add_tile_to_table(tile.row, tile.col)
 
-            show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
-
         # update channel plan
         self.channel_plan.tile_volumes = self.scan_plan_widget.scan_volumes
         for tab_index in range(self.channel_plan.count() - 1):  # skip add tab
@@ -259,9 +253,9 @@ class VolumeWidget(QWidget):
 
         self.table.blockSignals(False)
 
-        # add new tile to layout
-        self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[row, column], 2, 0)
-        self.scan_plan_widget.z_plan_widgets[row, column].setVisible(False)
+        # # add new tile to layout
+        # self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[row, column], 2, 0)
+        # self.scan_plan_widget.z_plan_widgets[row, column].setVisible(False)
 
     def tile_added(self, row, column):
         """Connect new tile to proper signals. Only do when tile added to scan, not to table, to avoid connect signals
@@ -379,7 +373,7 @@ class VolumeWidget(QWidget):
             hide_row, hide_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
             self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
 
-            self.scan_plan_widget.z_plan_widgets[0, 0].setVisible(True)
+            self.scan_plan_widget.stacked_widget.setCurrentWidget(self.scan_plan_widget.z_plan_widgets[0, 0])
             setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                                  self.scan_plan_widget.scan_starts)))
         # update channel plan
@@ -404,14 +398,11 @@ class VolumeWidget(QWidget):
 
         if not self.scan_plan_widget.apply_to_all:
             current_row = 0 if current_row == -1 else current_row
-            previous_row = 0 if previous_row == -1 else previous_row
-
-            hide_row, hide_col = [int(x) for x in self.table.item(previous_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
 
             show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
-            
+            z = self.scan_plan_widget.z_plan_widgets[show_row, show_col]
+            self.scan_plan_widget.stacked_widget.setCurrentWidget(z)
+
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
 

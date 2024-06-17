@@ -1,5 +1,5 @@
 from pymmcore_widgets import ZPlanWidget as ZPlanWidgetMMCore
-from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget
+from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget, QGroupBox
 from qtpy.QtCore import Qt, Signal
 import useq
 import enum
@@ -37,6 +37,15 @@ class ScanPlanWidget(QWidget):
         self._scan_volumes = np.zeros([0, 1], dtype=float)
 
         self.stacked_widget = QStackedWidget()
+        # put widget into group box to display info in title
+        self.group_box = QGroupBox()
+        layout = QHBoxLayout()
+        layout.addWidget(self.stacked_widget)
+        self.group_box.setLayout(layout)
+        self.group_box.setTitle(f'Tile Volume')
+        self.group_box.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.stacked_widget.currentChanged.connect(lambda index: self.group_box.setTitle(
+            f'Tile Volume {self.stacked_widget.currentWidget().windowTitle()}'))
 
         checkbox_layout = QHBoxLayout()
         self.apply_all = QCheckBox('Apply to All')
@@ -200,8 +209,6 @@ class ScanPlanWidget(QWidget):
         elif (row, column) == (0, 0):
             z._mode_group.triggered.connect(self.toggle_mode)
 
-        # added label identifying what tile it corresponds to
-        z._grid_layout.addWidget(QLabel(f'({row}, {column})'), 7, 1)
         self.stacked_widget.addWidget(z)
         self.tileAdded.emit(row, column)
 
