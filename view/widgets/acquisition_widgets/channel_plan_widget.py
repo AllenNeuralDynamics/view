@@ -234,6 +234,7 @@ class ChannelPlanWidget(QTabWidget):
             table.setItem(table_row, table.columnCount() - 1, item)
             for column, array in enumerate(arrays):
                 item = QTableWidgetItem()
+                item.setTextAlignment(Qt.AlignHCenter)  # change the alignment
                 if type(delegates[column]) == QSpinItemDelegate:
                     item.setData(Qt.EditRole, float(array[*tile]))
                 else:
