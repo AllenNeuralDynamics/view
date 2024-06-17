@@ -118,6 +118,7 @@ class VolumeModel(GLViewWidget):
                     box.setVisible(self.tile_visibility[row, column])
                     self.grid_BoxItems.append(box)
                     self.addItem(box)
+
         self._update_opts()
 
     def toggle_path_visibility(self, visible):

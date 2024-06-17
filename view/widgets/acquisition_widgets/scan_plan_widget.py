@@ -50,27 +50,6 @@ class ScanPlanWidget(QWidget):
         self.show()
 
     @property
-    def grid_position(self):
-        """Return the start position of grid"""
-        return self._grid_position
-
-    @grid_position.setter
-    def grid_position(self, value):
-        """Set start position of grid for all tiles"""
-
-        # mimic apply all if not checked so  only need to set_scan_start once for (0,0) and other widgets will update
-        if not self.apply_all.isChecked():
-            # block signals to only trigger graph update once
-            self.blockSignals(True)
-            self.apply_all.setChecked(True)
-            self.blockSignals(False)
-
-            self.z_plan_widgets[0, 0].start.setValue(value)
-            self.apply_all.setChecked(False)
-
-        self._grid_position = value
-
-    @property
     def scan_starts(self):
         """Return the start position of grid"""
         return self._scan_starts
