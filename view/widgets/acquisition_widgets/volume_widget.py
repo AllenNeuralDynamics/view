@@ -110,7 +110,7 @@ class VolumeWidget(QWidget):
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
         self.tile_starts[2].disconnect()  # disconnect to only trigger update graph once
-        #self.tile_starts[2].valueChanged.connect(lambda value: setattr(self.scan_plan_widget, 'grid_position', value))
+        self.tile_starts[2].valueChanged.connect(lambda value: self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value))
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
 
@@ -184,7 +184,7 @@ class VolumeWidget(QWidget):
 
     def update_model(self):
         """When scan changes, update model"""
-        
+        print('updating model')
         # When scan changes, update model
         setattr(self.volume_model, '_scan_volumes', self.scan_plan_widget.scan_volumes)
         setattr(self.volume_model, '_tile_visibility', self.scan_plan_widget.tile_visibility)
@@ -199,6 +199,7 @@ class VolumeWidget(QWidget):
                        range(self.table.rowCount())]
         scan_order = [[t.row, t.col] for t in self.tile_plan_widget.value()]
         if table_order != scan_order and len(scan_order) != 0:
+            print('table order')
             # clear table and add back tiles in the correct order if
             self.table.clearContents()
             self.table.setRowCount(0)
@@ -294,8 +295,8 @@ class VolumeWidget(QWidget):
         item = self.table.findItems(str([row, column]), Qt.MatchExactly)[0]
         tile_start = self.table.item(item.row(), self.table.columnCount() - 2)
         tile_end = self.table.item(item.row(), self.table.columnCount() - 1)
-        self.undercover_update_item(float(value[0]), tile_start)
-        self.undercover_update_item(float(value[-1]), tile_end)
+        self.undercover_update_item(float(min(value)), tile_start)
+        self.undercover_update_item(float(max(value)), tile_end)
 
     def table_changed(self, item):
         """Update corresponding z widget with correct values """
