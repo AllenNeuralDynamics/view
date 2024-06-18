@@ -9,7 +9,7 @@ from view.widgets.base_device_widget import create_widget
 from qtpy.QtCore import Qt
 import numpy as np
 import useq
-
+from view.widgets.base_device_widget import label_maker
 
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
@@ -267,10 +267,6 @@ class VolumeWidget(QWidget):
 
         self.table.blockSignals(False)
 
-        # # add new tile to layout
-        # self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[row, column], 2, 0)
-        # self.scan_plan_widget.z_plan_widgets[row, column].setVisible(False)
-
     def tile_added(self, row, column):
         """Connect new tile to proper signals. Only do when tile added to scan, not to table, to avoid connect signals
         multiple times"""
@@ -371,23 +367,24 @@ class VolumeWidget(QWidget):
         # toggle edit ability for table items
         tile_start_col = self.table.columnCount() - 2
         tile_end_col = self.table.columnCount() - 1
-        for i in range(self.table.rowCount()):  # skip first row
+        for i in range(self.table.rowCount()):
             self.toggle_item_flags(self.table.item(i, tile_end_col), not checked)
-            # TODO: only enable start column if apply all isn't checked or anchor is checked
             self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
-        self.toggle_item_flags(self.table.item(0, tile_end_col), not checked)  # 0,0 z end always enabled
+        tile_start_state = False if (checked == True and not self.anchor_widgets[2].isChecked()) else True
+        self.toggle_item_flags(self.table.item(0, tile_start_col), tile_start_state)
+        self.toggle_item_flags(self.table.item(0, tile_end_col), True)  # 0,0 z end always enabled
+
+        self.scan_plan_widget.stacked_widget.setCurrentWidget(self.scan_plan_widget.z_plan_widgets[0, 0])
 
         if not checked:
+            self.scan_plan_widget.group_box.setTitle(f'Tile Volume '
+                                                     f'{self.scan_plan_widget.stacked_widget.currentWidget().windowTitle()}')
             self.table.blockSignals(True)
             self.table.setCurrentCell(0, 0)
             self.table.blockSignals(False)
 
         if checked:  # set tile 0,0 visible
-            current_row = 0 if self.table.currentRow() == -1 else self.table.currentRow()
-            hide_row, hide_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
-
-            self.scan_plan_widget.stacked_widget.setCurrentWidget(self.scan_plan_widget.z_plan_widgets[0, 0])
+            self.scan_plan_widget.group_box.setTitle(f'Tile Volume')
             setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                                  self.scan_plan_widget.scan_starts)))
         # update channel plan
@@ -451,7 +448,7 @@ class VolumeWidget(QWidget):
             for device in devices:
                 tile_dict[device] = {}
                 for setting in self.channel_plan.settings.get(device_type, []):
-                    array = getattr(self.channel_plan, f'{device}_{setting}')[channel]
+                    array = getattr(self.channel_plan, label_maker(f'{device}_{setting}'))[channel]
                     tile_dict[device][setting] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:

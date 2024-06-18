@@ -220,13 +220,12 @@ class ChannelPlanWidget(QTabWidget):
         table.clearContents()
         table.setRowCount(0)
 
-        arrays = [self.steps[channel]]
+        arrays = [self.step_size[channel]]
         delegates = [getattr(self, f'step size [um]_{channel}_delegate')]
         # iterate through columns to find relevant arrays to update
         for i in range(1, table.columnCount() - 1):  # skip row, column
             arrays.append(getattr(self, table.horizontalHeaderItem(i).text())[channel])
             delegates.append(getattr(self, f'{table.horizontalHeaderItem(i).text()}_{channel}_delegate'))
-
         for tile in order:
             table_row = table.rowCount()
             table.insertRow(table_row)
@@ -299,7 +298,7 @@ class ChannelPlanWidget(QTabWidget):
             table.item(row, 0).setData(Qt.EditRole,float(step_size))
             table.item(row, 1).setData(Qt.EditRole,int(steps))
         # FIXME: I think this is would be considered unexpected behavior
-        array = getattr(self, table.horizontalHeaderItem(column).text(), 'step_size')[channel]
+        array = getattr(self, table.horizontalHeaderItem(column).text(), self.step_size)[channel]
         value = table.item(row, column).data(Qt.EditRole)
         if self.apply_to_all:
             array[:, :] = value
@@ -307,9 +306,9 @@ class ChannelPlanWidget(QTabWidget):
                 item_0 = table.item(0, column)
                 table.item(i, column).setData(Qt.EditRole,item_0.data(Qt.EditRole))
                 if column == 0:  # update steps as well
-                    table.item(i, column + 1).setData(Qt.EditRole, steps)
+                    table.item(i, column + 1).setData(Qt.EditRole, int(steps))
                 elif column == 1:  # update step_size as well
-                    table.item(i, column - 1).setData(Qt.EditRole, step_size)
+                    table.item(i, column - 1).setData(Qt.EditRole, float(step_size))
         else:
             array[*tile_index] = value
 
