@@ -450,8 +450,9 @@ class VolumeWidget(QWidget):
             for device in devices:
                 tile_dict[device] = {}
                 for setting in self.channel_plan.settings.get(device_type, []):
-                    array = getattr(self.channel_plan, label_maker(f'{device}_{setting}'))[channel]
-                    tile_dict[device][setting] = array[row, column]
+                    if getattr(self.channel_plan, label_maker(f'{device}_{setting}'), None) is not None:
+                        array = getattr(self.channel_plan, label_maker(f'{device}_{setting}'))[channel]
+                        tile_dict[device][setting] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
             array = getattr(self.channel_plan, name)[channel]

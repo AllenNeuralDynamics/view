@@ -29,6 +29,7 @@ class InstrumentView:
         self.camera_locks = {}
         self.scanning_stage_locks = {}
         self.tiling_stage_locks = {}
+        self.focusing_stage_locks = {}
         self.laser_locks = {}
         self.filter_wheel_locks = {}
         self.filter_locks = {}
@@ -39,6 +40,7 @@ class InstrumentView:
         self.camera_widgets = {}
         self.scanning_stage_widgets = {}
         self.tiling_stage_widgets = {}
+        self.focusing_stage_widgets = {}
         self.filter_wheel_widgets = {}
         self.joystick_widgets = {}
 
@@ -57,7 +59,7 @@ class InstrumentView:
 
         # Setup napari window
         self.viewer = napari.Viewer(title='View', ndisplay=2, axis_labels=('x', 'y'))
-    
+
         # setup daq with livestreaming tasks
         self.setup_daqs()
 
@@ -100,7 +102,9 @@ class InstrumentView:
         stage_layout = QGridLayout()
 
         stage_widgets = []
-        for name, widget in {**self.scanning_stage_widgets, **self.tiling_stage_widgets}.items():
+        for name, widget in {**self.scanning_stage_widgets,
+                             **self.tiling_stage_widgets,
+                             **self.focusing_stage_widgets}.items():
             label = QLabel()
             horizontal = QFrame()
             layout = QVBoxLayout()
@@ -377,9 +381,10 @@ class InstrumentView:
         while True:  # best way to do this or have some sort of break?
             sleep(.1)
             for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
-                                **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
-                lock = self.scanning_stage_locks[name] if name in self.scanning_stage_locks.keys() else \
-                    self.tiling_stage_locks[name]
+                                **getattr(self.instrument, 'tiling_stages', {}),
+                                **getattr(self.instrument, 'focusing_stages', {})}.items():  # combine stage
+                lock = {**self.tiling_stage_locks, **self.scanning_stage_locks, **self.focusing_stage_locks}[name]
+
                 with lock:
                     position = stage.position_mm  # don't yield while locked
                 yield name, position
@@ -389,7 +394,7 @@ class InstrumentView:
         :param args: tuple containing the name of stage and position of stage"""
 
         (name, position) = args
-        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets}  # group stage widgets dicts to find name
+        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets, **self.focusing_stage_widgets}  # group stage widgets dicts to find name
         try:
             stages[name].position_mm_widget.setText(str(position))
         except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
@@ -488,22 +493,21 @@ class InstrumentView:
             name_lst = attr_name.split('.')
             self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')
             value = getattr(widget, name_lst[0])
-            try:  # Make sure name is referring to same thing in UI and device
-                dictionary = getattr(device, name_lst[0])
-                for k in name_lst[1:]:
-                    dictionary = dictionary[k]
-                setattr(device, name_lst[0], value)
-                self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
-                # Update ui with new device values that might have changed
-                # WARNING: Infinite recursion might occur if device property not set correctly
-                for k, v in widget.property_widgets.items():
-                    if getattr(widget, k, False):
-                        device_value = getattr(device, k)
-                        setattr(widget, k, device_value)
-
-            except (KeyError, TypeError):
-                self.log.warning(f"{attr_name} can't be mapped into device properties")
-                pass
+        try:  # Make sure name is referring to same thing in UI and device
+            dictionary = getattr(device, name_lst[0])
+            for k in name_lst[1:]:
+                dictionary = dictionary[k]
+            setattr(device, name_lst[0], value)
+            self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
+            # Update ui with new device values that might have changed
+            # WARNING: Infinite recursion might occur if device property not set correctly
+            for k, v in widget.property_widgets.items():
+                if getattr(widget, k, False):
+                    device_value = getattr(device, k)
+                    setattr(widget, k, device_value)
+        except (KeyError, TypeError):
+            self.log.warning(f"{attr_name} can't be mapped into device properties")
+            pass
 
     def add_undocked_widgets(self):
         """Add undocked widget so all windows close when closing napari viewer"""

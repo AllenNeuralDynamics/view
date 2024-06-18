@@ -31,6 +31,7 @@ class StageWidget(BaseDeviceWidget):
         super().__init__(type(stage), self.stage_properties)
 
         # alter position_mm widget to use instrument_axis as label
+        self.property_widgets['position_mm'].setEnabled(False)
         position_label = self.property_widgets['position_mm'].findChild(QLabel)
         unit = getattr(type(stage).position_mm, 'unit', 'mm')  # TODO: Change when deliminated property is updated
         position_label.setText(f'{stage.instrument_axis} [{unit}]')
