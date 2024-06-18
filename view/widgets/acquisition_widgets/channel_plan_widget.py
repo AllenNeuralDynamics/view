@@ -259,7 +259,10 @@ class ChannelPlanWidget(QTabWidget):
         # remove key from attributes
         for i in range(table.columnCount() - 1):  # skip row, column
             header = table.horizontalHeaderItem(i).text()
-            del getattr(self, header)[channel]
+            if header == 'step size [um]':
+                del getattr(self, 'step_size')[channel]
+            else:
+                del getattr(self, header)[channel]
 
         # add channel back to add_tool
         menu = self.add_tool.menu()
