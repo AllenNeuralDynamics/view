@@ -89,7 +89,7 @@ class VolumeWidget(QWidget):
         self.table.resizeColumnsToContents()
         # add spinbox validator for columns
 
-        for i in range(1,self.table.columnCount()): # skip first column
+        for i in range(1, self.table.columnCount()):  # skip first column
             column_name = self.table.horizontalHeaderItem(i).text()
             delegate = QSpinItemDelegate()
             # table does not take ownership of the delegates, so they are removed from memory as they
@@ -143,7 +143,7 @@ class VolumeWidget(QWidget):
         # update scan plan
         tile_anchor = self.tile_plan_widget.anchor_widgets[2]
         if not tile_anchor.isChecked() and tile_anchor.isEnabled():
-            self.scan_plan_widget.z_plan_widgets[0,0].start.setValue(value[2])
+            self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value[2])
         # update model
         self.volume_model.fov_position = value
 
@@ -171,7 +171,7 @@ class VolumeWidget(QWidget):
                                          if self.coordinate_plane[i] in self.volume_model.grid_plane else 0. for i in
                                          range(3)] for t in value])  # update path
 
-        #update scanning coords of table
+        # update scanning coords of table
         for tile in value:
             table_row = self.table.findItems(str([tile.row, tile.col]), Qt.MatchExactly)[0].row()
             scan_dim_0 = self.table.item(table_row, 1)
@@ -181,7 +181,7 @@ class VolumeWidget(QWidget):
 
     def update_model(self):
         """When scan changes, update model"""
-        
+
         # When scan changes, update model
         setattr(self.volume_model, '_scan_volumes', self.scan_plan_widget.scan_volumes)
         setattr(self.volume_model, '_tile_visibility', self.scan_plan_widget.tile_visibility)
@@ -265,7 +265,6 @@ class VolumeWidget(QWidget):
         z = self.scan_plan_widget.z_plan_widgets[row, column]
         z.valueChanged.connect(lambda value: self.change_table(value, row, column))
 
-
     def grid_plane_change(self, button):
         """Update grid plane and remap path
         :param button: button that was clicked"""
@@ -280,8 +279,9 @@ class VolumeWidget(QWidget):
                 for t in self.tile_plan_widget.value()])  # update path
             if not self.volume_model.path.visible() and self.path_show.isChecked():
                 self.volume_model.toggle_path_visibility(True)
-        else:   # hide path if not in tiling grid plane
+        else:  # hide path if not in tiling grid plane
             self.volume_model.toggle_path_visibility(False)
+
     def change_table(self, value, row, column):
         """If z widget is changed, update table"""
 
@@ -325,7 +325,7 @@ class VolumeWidget(QWidget):
         """Update table with latest z value"""
 
         self.table.blockSignals(True)
-        item.setData(Qt.EditRole,value)
+        item.setData(Qt.EditRole, value)
         self.table.blockSignals(False)
 
     def update_scan_start(self, value):
@@ -357,21 +357,23 @@ class VolumeWidget(QWidget):
         # toggle edit ability for table items
         tile_start_col = self.table.columnCount() - 2
         tile_end_col = self.table.columnCount() - 1
-        for i in range(self.table.rowCount()):  # skip first row
+        for i in range(self.table.rowCount()):
             self.toggle_item_flags(self.table.item(i, tile_end_col), not checked)
-            #TODO: only enable start column if apply all isn't checked or anchor is checked
             self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
-        self.toggle_item_flags(self.table.item(0, tile_end_col), not checked)   # 0,0 z end always enabled
+        tile_start_state = False if (checked == True and not self.anchor_widgets[2].isChecked()) else True
+        self.toggle_item_flags(self.table.item(0, tile_start_col), tile_start_state)
+        self.toggle_item_flags(self.table.item(0, tile_end_col), True)  # 0,0 z end always enabled
 
         self.scan_plan_widget.stacked_widget.setCurrentWidget(self.scan_plan_widget.z_plan_widgets[0, 0])
 
         if not checked:
-            self.scan_plan_widget.group_box.setTitle(f'Tile Volume {self.scan_plan_widget.stacked_widget.currentWidget().windowTitle()}')
+            self.scan_plan_widget.group_box.setTitle(f'Tile Volume '
+                                                     f'{self.scan_plan_widget.stacked_widget.currentWidget().windowTitle()}')
             self.table.blockSignals(True)
             self.table.setCurrentCell(0, 0)
             self.table.blockSignals(False)
 
-        if checked:     # set tile 0,0 visible
+        if checked:  # set tile 0,0 visible
             self.scan_plan_widget.group_box.setTitle(f'Tile Volume')
             setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                                  self.scan_plan_widget.scan_starts)))
@@ -380,7 +382,7 @@ class VolumeWidget(QWidget):
 
     def toggle_item_flags(self, item, enable):
         """Change flags for enabling/disabling items in channel_plan table"""
-
+        print('toggle items flags ', enable)
         self.table.blockSignals(True)
         flags = QTableWidgetItem().flags()
         if not enable:
@@ -426,7 +428,8 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in enumerate(self.columns[1:-1])},
+            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
+                         enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
 
