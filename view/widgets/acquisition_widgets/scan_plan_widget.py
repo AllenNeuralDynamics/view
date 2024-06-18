@@ -176,6 +176,7 @@ class ScanPlanWidget(QWidget):
                 for i in range(old_row):  # if new rows, already taken care of in previous loop
                     for j in range(old_col, cols):
                         self.create_z_plan_widget(i, j)
+
         self.scanChanged.emit()
 
     def create_z_plan_widget(self, row, column):
@@ -184,13 +185,13 @@ class ScanPlanWidget(QWidget):
         z = ZPlanWidget(self.z_limits, self.unit)
         self.z_plan_widgets[row, column] = z
         z.setWindowTitle(f'({row}, {column})')
-
+        z.setMode(self.z_plan_widgets[0, 0].mode())
         # connect signals for each input
         for name in ['start', 'top', 'step', 'steps', 'range', 'above', 'below']:
             widget = getattr(z, name)
-            widget.valueChanged.connect(lambda value, attr=name: self.update_scan(value, attr, row, column))
-            if self.apply_all.isChecked() and (row, column) != (0, 0):  # update widget with appropriate values
+            if (row, column) != (0, 0):  # update widget with appropriate values
                 widget.setValue(getattr(self.z_plan_widgets[0, 0], name).value())
+            widget.valueChanged.connect(lambda value, attr=name: self.update_scan(value, attr, row, column))
         z.hide.toggled.connect(lambda value: self.update_scan(value, 'hide', row, column))
         z.hide.setChecked(not self._tile_visibility[row, column])
 
@@ -286,6 +287,5 @@ class ZPlanWidget(ZPlanWidgetMMCore):
         """Overwrite to round step to stay within z range"""
         if steps:
             with signals_blocked(self.step):
-                print(self.currentZRange() / steps)
                 self.step.setValue(self.currentZRange() / steps)
         self._on_change(update_steps=False)

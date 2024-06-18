@@ -184,7 +184,7 @@ class VolumeWidget(QWidget):
 
     def update_model(self):
         """When scan changes, update model"""
-        print('updating model')
+
         # When scan changes, update model
         setattr(self.volume_model, '_scan_volumes', self.scan_plan_widget.scan_volumes)
         setattr(self.volume_model, '_tile_visibility', self.scan_plan_widget.tile_visibility)
@@ -199,7 +199,7 @@ class VolumeWidget(QWidget):
                        range(self.table.rowCount())]
         scan_order = [[t.row, t.col] for t in self.tile_plan_widget.value()]
         if table_order != scan_order and len(scan_order) != 0:
-            print('table order')
+
             # clear table and add back tiles in the correct order if
             self.table.clearContents()
             self.table.setRowCount(0)
@@ -232,8 +232,9 @@ class VolumeWidget(QWidget):
         kwargs = {'row, column': [row, column],
                   f'{self.coordinate_plane[0]} [{self.unit}]': self.tile_plan_widget.tile_positions[row][column][0],
                   f'{self.coordinate_plane[1]} [{self.unit}]': self.tile_plan_widget.tile_positions[row][column][1],
-                  f'{self.coordinate_plane[2]} [{self.unit}]': z.value()[0],
-                  f'{self.coordinate_plane[2]} max [{self.unit}]': z.value()[-1]}
+                  f'{self.coordinate_plane[2]} [{self.unit}]': min(z.value()),
+                  f'{self.coordinate_plane[2]} max [{self.unit}]': max(z.value())}
+
         table_row = self.table.rowCount()
         self.table.insertRow(table_row)
         items = {}
@@ -295,6 +296,7 @@ class VolumeWidget(QWidget):
         item = self.table.findItems(str([row, column]), Qt.MatchExactly)[0]
         tile_start = self.table.item(item.row(), self.table.columnCount() - 2)
         tile_end = self.table.item(item.row(), self.table.columnCount() - 1)
+
         self.undercover_update_item(float(min(value)), tile_start)
         self.undercover_update_item(float(max(value)), tile_end)
 
@@ -412,7 +414,7 @@ class VolumeWidget(QWidget):
 
             show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
             self.scan_plan_widget.z_plan_widgets[show_row, show_col].setVisible(True)
-            
+
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
 
