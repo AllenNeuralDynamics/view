@@ -363,17 +363,16 @@ class VolumeWidget(QWidget):
             self.toggle_item_flags(self.table.item(i, tile_start_col), not checked)
         self.toggle_item_flags(self.table.item(0, tile_end_col), not checked)   # 0,0 z end always enabled
 
+        self.scan_plan_widget.stacked_widget.setCurrentWidget(self.scan_plan_widget.z_plan_widgets[0, 0])
+
         if not checked:
+            self.scan_plan_widget.group_box.setTitle(f'Tile Volume {self.scan_plan_widget.stacked_widget.currentWidget().windowTitle()}')
             self.table.blockSignals(True)
             self.table.setCurrentCell(0, 0)
             self.table.blockSignals(False)
 
         if checked:     # set tile 0,0 visible
-            current_row = 0 if self.table.currentRow() == -1 else self.table.currentRow()
-            hide_row, hide_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
-            self.scan_plan_widget.z_plan_widgets[hide_row, hide_col].setVisible(False)
-
-            self.scan_plan_widget.stacked_widget.setCurrentWidget(self.scan_plan_widget.z_plan_widgets[0, 0])
+            self.scan_plan_widget.group_box.setTitle(f'Tile Volume')
             setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                                  self.scan_plan_widget.scan_starts)))
         # update channel plan
