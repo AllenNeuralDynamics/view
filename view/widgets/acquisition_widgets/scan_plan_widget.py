@@ -1,10 +1,12 @@
 from pymmcore_widgets import ZPlanWidget as ZPlanWidgetMMCore
-from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget
+from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget, \
+    QGroupBox
 from qtpy.QtCore import Qt, Signal
 import useq
 import enum
 import numpy as np
 from superqt.utils import signals_blocked
+
 
 class Mode(enum.Enum):
     """Recognized ZPlanWidget modes."""
@@ -37,6 +39,16 @@ class ScanPlanWidget(QWidget):
         self._scan_volumes = np.zeros([0, 1], dtype=float)
 
         self.stacked_widget = QStackedWidget()
+        # put widget into group box to display info in title
+        self.group_box = QGroupBox()
+        layout = QHBoxLayout()
+        layout.addWidget(self.stacked_widget)
+        self.group_box.setLayout(layout)
+        self.group_box.setTitle(f'Tile Volume')
+        self.group_box.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.stacked_widget.currentChanged.connect(lambda index: self.group_box.setTitle(
+            f'Tile Volume {self.stacked_widget.currentWidget().windowTitle()}') if not self.apply_all.isChecked()
+                                                                else self.group_box.setTitle(f'Tile Volume'))
 
         checkbox_layout = QHBoxLayout()
         self.apply_all = QCheckBox('Apply to All')
@@ -80,7 +92,7 @@ class ScanPlanWidget(QWidget):
             self._tile_visibility[:, :] = not z0.hide.isChecked()
 
             for i, j in np.ndindex(self.z_plan_widgets.shape):
-                if (i, j) == (0,0):
+                if (i, j) == (0, 0):
                     continue
                 z = self.z_plan_widgets[i, j]
                 if type(getattr(z, attr)) == QCheckBox:
@@ -124,10 +136,10 @@ class ScanPlanWidget(QWidget):
 
         if self.apply_all.isChecked():
             for i, j in np.ndindex(self.z_plan_widgets.shape):
-                if (i, j) == (0,0):
+                if (i, j) == (0, 0):
                     continue
                 z = self.z_plan_widgets[i, j]
-                z.setMode(self.z_plan_widgets[0, 0].mode())    # set mode to the same as 0, 0 to update correctly
+                z.setMode(self.z_plan_widgets[0, 0].mode())  # set mode to the same as 0, 0 to update correctly
 
     def scan_plan_construction(self, value: useq.GridFromEdges | useq.GridRowsColumns | useq.GridWidthHeight):
         """Create new z_plan widget for each new tile """
@@ -155,7 +167,7 @@ class ScanPlanWidget(QWidget):
             for array, name in zip([self.z_plan_widgets, self.tile_visibility, self.scan_starts, self.scan_volumes],
                                    ['z_plan_widgets', '_tile_visibility', '_scan_starts', '_scan_volumes']):
 
-                v = array[0, 0] if array.shape != (0,1) else 0  # initialize array with value from first tile
+                v = array[0, 0] if array.shape != (0, 1) else 0  # initialize array with value from first tile
                 if rows > old_row:  # add row
                     add_on = [[v] * array.shape[1]] * (rows - old_row)
                     setattr(self, name, np.concatenate((array, add_on), axis=0))
@@ -201,8 +213,6 @@ class ScanPlanWidget(QWidget):
         elif (row, column) == (0, 0):
             z._mode_group.triggered.connect(self.toggle_mode)
 
-        # added label identifying what tile it corresponds to
-        z._grid_layout.addWidget(QLabel(f'({row}, {column})'), 7, 1)
         self.stacked_widget.addWidget(z)
         self.tileAdded.emit(row, column)
 
@@ -215,6 +225,7 @@ class ScanPlanWidget(QWidget):
 
         for name in ['start', 'top', 'step', 'steps', 'range', 'above', 'below']:
             getattr(z, name).blockSignals(block)
+
 
 class ZPlanWidget(ZPlanWidgetMMCore):
     """Widget to plan out scanning dimension"""
@@ -242,7 +253,7 @@ class ZPlanWidget(ZPlanWidgetMMCore):
                 elif widget.text() == '\u00b5m':
                     widget.setText(unit)
 
-        self._set_row_visible(0, False) # hide steps row
+        self._set_row_visible(0, False)  # hide steps row
         self._bottom_to_top.hide()
         self._top_to_bottom.hide()
         self.layout().children()[-1].itemAt(2).widget().hide()  # Direction label
@@ -264,9 +275,9 @@ class ZPlanWidget(ZPlanWidgetMMCore):
         if self._mode.value == 'top_bottom':
             return [self.start.value(), self.top.value()]
         elif self._mode.value == 'range_around':
-            return [self.start.value() + self.range.value()/2, self.start.value() - self.range.value()/2]
+            return [self.start.value() + self.range.value() / 2, self.start.value() - self.range.value() / 2]
         elif self._mode.value == 'above_below':
-            return [self.start.value()+self.above.value(), self.start.value()-self.below.value()]
+            return [self.start.value() + self.above.value(), self.start.value() - self.below.value()]
 
     def _on_change(self, update_steps: bool = True):
         """Overwrite to change setting step behaviour"""
