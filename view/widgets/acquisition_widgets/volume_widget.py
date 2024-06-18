@@ -9,7 +9,7 @@ from view.widgets.base_device_widget import create_widget
 from qtpy.QtCore import Qt
 import numpy as np
 import useq
-
+from view.widgets.base_device_widget import label_maker
 
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
@@ -253,10 +253,6 @@ class VolumeWidget(QWidget):
 
         self.table.blockSignals(False)
 
-        # # add new tile to layout
-        # self.layout.addWidget(self.scan_plan_widget.z_plan_widgets[row, column], 2, 0)
-        # self.scan_plan_widget.z_plan_widgets[row, column].setVisible(False)
-
     def tile_added(self, row, column):
         """Connect new tile to proper signals. Only do when tile added to scan, not to table, to avoid connect signals
         multiple times"""
@@ -382,7 +378,7 @@ class VolumeWidget(QWidget):
 
     def toggle_item_flags(self, item, enable):
         """Change flags for enabling/disabling items in channel_plan table"""
-        print('toggle items flags ', enable)
+
         self.table.blockSignals(True)
         flags = QTableWidgetItem().flags()
         if not enable:
@@ -438,7 +434,7 @@ class VolumeWidget(QWidget):
             for device in devices:
                 tile_dict[device] = {}
                 for setting in self.channel_plan.settings.get(device_type, []):
-                    array = getattr(self.channel_plan, f'{device}_{setting}')[channel]
+                    array = getattr(self.channel_plan, label_maker(f'{device}_{setting}'))[channel]
                     tile_dict[device][setting] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
