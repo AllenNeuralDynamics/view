@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QStyledItemDelegate, QTextEdit, QSpinBox, QComboBox, QDoubleSpinBox
-
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 
 class QTextItemDelegate(QStyledItemDelegate):
     """QStyledItemDelegate acting like QTextEdit"""
@@ -41,11 +41,13 @@ class QSpinItemDelegate(QStyledItemDelegate):
         self.step = step if step is not None else .01
 
     def createEditor(self, parent, options, index):
-        box = QSpinBox(parent) if type(self.step) == int else QDoubleSpinBox(parent)
+        box = QScrollableLineEdit(parent) if type(self.step) == int else QDoubleSpinBox(parent)
         if self.minimum is not None:
             box.setMinimum(self.minimum)
         if self.maximum is not None:
             box.setMaximum(self.maximum)
+        if type(box) == QDoubleSpinBox:
+            box.setDecimals(5)
         box.setSingleStep(self.step)
         return box
 

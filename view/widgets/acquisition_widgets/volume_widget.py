@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -104,7 +104,21 @@ class VolumeWidget(QWidget):
         widget = QWidget()  # dummy widget to move table down in layout
         widget.setMinimumHeight(25)
         extended_table = create_widget('V', widget, self.table)
-        self.layout.addWidget(create_widget('H', extended_table, self.channel_plan), 3, 0, 1, 3)
+        table = QSplitter(Qt.Horizontal)
+        table.addWidget(extended_table)
+        table.addWidget(self.channel_plan)
+        table.setHandleWidth(20)
+
+        # format splitter handle
+        handle = table.handle(1)
+        layout = QHBoxLayout(handle)
+        line = QFrame(handle)
+        line.setStyleSheet('QFrame {border: 1px dotted grey;}')
+        line.setFixedHeight(50)
+        line.setFrameShape(QFrame.VLine)
+        layout.addWidget(line)
+
+        self.layout.addWidget(table, 3, 0, 1, 3)
 
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
