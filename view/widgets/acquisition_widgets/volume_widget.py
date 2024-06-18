@@ -210,6 +210,7 @@ class VolumeWidget(QWidget):
 
         if not self.anchor_widgets[2].isChecked():  # disable start widget for any new widgets
             self.disable_scan_start_widgets(True)
+        self.table.resizeColumnsToContents()
 
     def channel_added(self, channel):
         """Update new channel with tiles"""
@@ -232,6 +233,7 @@ class VolumeWidget(QWidget):
         items = {}
         for header_col, header in enumerate(self.columns):
             item = QTableWidgetItem()
+            item.setTextAlignment(Qt.AlignHCenter)  # change the alignment
             if header == 'row, column':
                 item.setText(str(kwargs[header]))
             else:
