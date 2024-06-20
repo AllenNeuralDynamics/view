@@ -86,13 +86,16 @@ class ChannelPlanWidget(QTabWidget):
                     device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
                     device_object = getattr(instrument_view.instrument, device_type)[device_name]
                     for setting in self.settings.get(device_type, []):
-                        column_name = label_maker(f'{device_name}_{setting}')
-                        setattr(self, column_name, {})
-                        columns.append(column_name)
                         # select delegate to use based on type
                         with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
                             # value = getattr(device_object, setting)
                             descriptor = getattr(type(device_object), setting)
+                            if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or getattr(descriptor, 'fset', False) is None:
+                                print('no setter', setting)
+                                continue
+                        column_name = label_maker(f'{device_name}_{setting}')
+                        setattr(self, column_name, {})
+                        columns.append(column_name)
                         if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
                             minimum = getattr(descriptor, 'minimum', float('-inf'))
                             maximum = getattr(descriptor, 'maximum', float('inf'))
@@ -182,14 +185,15 @@ class ChannelPlanWidget(QTabWidget):
             for device in devices:
                 for setting in self.settings.get(device_type, []):
                     column_name = label_maker(f'{device}_{setting}')
-                    delegate = getattr(self, f'{column_name}_{channel}_delegate')
-                    if type(delegate) == QSpinItemDelegate:
-                        getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
-                    elif type(delegate) == QComboItemDelegate:
-                        getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
-                        getattr(self, f'{column_name}')[channel][:, :] = delegate.items[0]
-                    else:
-                        getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
+                    delegate = getattr(self, f'{column_name}_{channel}_delegate', None)
+                    if delegate is not None:    # Skip if setting did not have setter
+                        if type(delegate) == QSpinItemDelegate:
+                            getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
+                        elif type(delegate) == QComboItemDelegate:
+                            getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
+                            getattr(self, f'{column_name}')[channel][:, :] = delegate.items[0]
+                        else:
+                            getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
