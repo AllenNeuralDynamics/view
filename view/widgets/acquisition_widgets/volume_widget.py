@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame, QDoubleSpinBox
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -76,7 +76,7 @@ class VolumeWidget(QWidget):
         self.layout.addWidget(self.scan_plan_widget, 1, 0)
 
         # create channel plan widget
-        self.channel_plan = ChannelPlanWidget(instrument, channels, settings)
+        self.channel_plan = ChannelPlanWidget(instrument, channels, settings, unit)
         self.channel_plan.channelAdded.connect(self.channel_added)
         self.channel_plan.apply_to_all = True
 
@@ -203,9 +203,6 @@ class VolumeWidget(QWidget):
         setattr(self.volume_model, 'grid_coords', np.dstack((self.tile_plan_widget.tile_positions,
                                                              self.scan_plan_widget.scan_starts)))
 
-        current_row = 0 if self.scan_plan_widget.apply_to_all or self.table.currentRow() == -1 \
-            else self.table.currentRow()
-
         # update table
         table_order = [[int(x) for x in self.table.item(i, 0).text() if x.isdigit()] for i in
                        range(self.table.rowCount())]
@@ -241,15 +238,13 @@ class VolumeWidget(QWidget):
         kwargs = {'row, column': [row, column],
                   f'{self.coordinate_plane[0]} [{self.unit}]': self.tile_plan_widget.tile_positions[row][column][0],
                   f'{self.coordinate_plane[1]} [{self.unit}]': self.tile_plan_widget.tile_positions[row][column][1],
-                  f'{self.coordinate_plane[2]} [{self.unit}]': min(z.value()),
-                  f'{self.coordinate_plane[2]} max [{self.unit}]': max(z.value())}
-
+                  f'{self.coordinate_plane[2]} [{self.unit}]': z.value()[0],
+                  f'{self.coordinate_plane[2]} max [{self.unit}]': z.value()[-1]}
         table_row = self.table.rowCount()
         self.table.insertRow(table_row)
         items = {}
         for header_col, header in enumerate(self.columns):
             item = QTableWidgetItem()
-            item.setTextAlignment(Qt.AlignHCenter)  # change the alignment
             if header == 'row, column':
                 item.setText(str(kwargs[header]))
             else:
@@ -263,7 +258,7 @@ class VolumeWidget(QWidget):
         if not self.scan_plan_widget.apply_to_all or (row, column) == (0, 0):
             disable.remove(f'{self.coordinate_plane[2]} max [{self.unit}]')
             if self.anchor_widgets[2].isChecked():
-                disable.remove(f'{self.coordinate_plane[2]} [{self.unit}]')
+                disable.remove(self.coordinate_plane[2])
         flags = QTableWidgetItem().flags()
         flags &= ~Qt.ItemIsEditable
         for var in disable:
@@ -295,15 +290,20 @@ class VolumeWidget(QWidget):
                 self.volume_model.toggle_path_visibility(True)
         else:  # hide path if not in tiling grid plane
             self.volume_model.toggle_path_visibility(False)
+
     def change_table(self, value, row, column):
         """If z widget is changed, update table"""
 
         item = self.table.findItems(str([row, column]), Qt.MatchExactly)[0]
         tile_start = self.table.item(item.row(), self.table.columnCount() - 2)
         tile_end = self.table.item(item.row(), self.table.columnCount() - 1)
+        self.undercover_update_item(float(value[0]), tile_start)
+        self.undercover_update_item(float(value[-1]), tile_end)
 
-        self.undercover_update_item(float(min(value)), tile_start)
-        self.undercover_update_item(float(max(value)), tile_end)
+        # If volume has changed, update channel table steps and step size accordingly
+        if (self.channel_plan.apply_to_all and [row, column] == [0, 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
+            for channel in self.channel_plan.channels:
+                self.channel_plan.cell_edited(item.row(), 0, channel)
 
     def table_changed(self, item):
         """Update corresponding z widget with correct values """
@@ -313,6 +313,14 @@ class VolumeWidget(QWidget):
 
         z = self.scan_plan_widget.z_plan_widgets[row, column]
         z.blockSignals(True)
+
+        min_item = self.table.item(item.row(), self.table.columnCount() - 2)
+        max_item = self.table.item(item.row(), self.table.columnCount() - 1)
+        min_value = min_item.data(Qt.EditRole)
+        max_value = max_item.data(Qt.EditRole)
+
+        if min_value > max_value:
+            self.undercover_update_item(min_value, max_item)
 
         if item.column() == self.table.columnCount() - 1:  # max edited
             value = float(item.data(Qt.EditRole))
@@ -335,9 +343,14 @@ class VolumeWidget(QWidget):
         z.blockSignals(False)
         self.table.blockSignals(False)
 
+        # If volume has changed, update channel table steps and step size accordingly
+        if (self.channel_plan.apply_to_all and [row, column] == [0, 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
+            for channel in self.channel_plan.channels:
+                self.channel_plan.cell_edited(item.row(), 0, channel)
+
     def undercover_update_item(self, value, item):
         """Update table with latest z value"""
-
+        
         self.table.blockSignals(True)
         item.setData(Qt.EditRole, value)
         self.table.blockSignals(False)
@@ -398,6 +411,7 @@ class VolumeWidget(QWidget):
         """Change flags for enabling/disabling items in channel_plan table"""
 
         self.table.blockSignals(True)
+
         flags = QTableWidgetItem().flags()
         if not enable:
             flags &= ~Qt.ItemIsEditable
@@ -406,6 +420,7 @@ class VolumeWidget(QWidget):
             flags |= Qt.ItemIsEnabled
             flags |= Qt.ItemIsSelectable
         item.setFlags(flags)
+
         self.table.blockSignals(False)
 
     def toggle_z_show(self, current_row, current_column, previous_row, previous_column):
@@ -442,7 +457,7 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
+            'position': {k: self.table.item(table_row, j + 1).value() for j, k in
                          enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }

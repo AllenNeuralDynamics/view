@@ -7,6 +7,7 @@ import numpy as np
 from qtpy.QtCore import Signal, Qt
 from inflection import singularize
 from math import isnan
+import pint
 
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
@@ -24,7 +25,11 @@ class ChannelPlanWidget(QTabWidget):
         self.possible_channels = channels
         self.channels = []
         self.settings = settings
-        self.unit = unit
+
+        # setup units for step size and step calculation
+        unit_registry = pint.UnitRegistry()
+        self.unit = getattr(unit_registry, unit)   # TODO: How to check if unit is in pint?
+        self.micron = unit_registry.um
 
         self.steps = {}  # dictionary of number of steps for each tile in each channel
         self.step_size = {}  # dictionary of step size for each tile in each channel
@@ -256,7 +261,10 @@ class ChannelPlanWidget(QTabWidget):
         # remove key from attributes
         for i in range(table.columnCount() - 1):  # skip row, column
             header = table.horizontalHeaderItem(i).text()
-            del getattr(self, header)[channel]
+            if header == 'step size [um]':
+                del getattr(self, 'step_size')[channel]
+            else:
+                del getattr(self, header)[channel]
 
         # add channel back to add_tool
         menu = self.add_tool.menu()
@@ -265,39 +273,21 @@ class ChannelPlanWidget(QTabWidget):
         menu.addAction(action)
         self.add_tool.setMenu(menu)
 
-    def cell_edited(self, row, column):
+    def cell_edited(self, row, column, channel=None):
         """Update table based on cell edit"""
 
-        channel = self.tabText(self.currentIndex())
+        channel = self.tabText(self.currentIndex()) if channel is None else channel
         table = getattr(self, f'{channel}_table')
 
         table.blockSignals(True)  # block signals so updating cells doesn't trigger cell edit again
         tile_index = [int(x) for x in table.item(row, table.columnCount() - 1).text() if x.isdigit()]
 
         if column in [0, 1]:
-            volume = self.tile_volumes[*tile_index]
-            index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
-            if column == 0:  # step_size changed so round to fit in volume
-                steps = volume / float(table.item(row, 0).data(Qt.EditRole))
-                if steps != 0 and not isnan(steps):
-                    step_size = round(volume / steps, 4)
-                    steps = round(steps)
-                else:
-                    steps = 0
-                    step_size = 0
-                self.steps[channel][*index] = steps
-            else:  # step number changed
-                step_size = volume / float(table.item(row, 1).data(Qt.EditRole))
-                if step_size != 0 and not isnan(step_size):
-                    steps = round(volume / step_size)
-                    step_size = round(step_size, 4)
-                else:
-                    steps = 0
-                    step_size = 0
-                self.step_size[channel][*index] = step_size
+            step_size, steps = self.update_steps(tile_index, row, channel) if column == 0 else \
+                self.update_step_size(tile_index, row, channel)
+            table.item(row, 0).setData(Qt.EditRole,step_size)
+            table.item(row, 1).setData(Qt.EditRole,steps)
 
-            table.item(row, 0).setData(Qt.EditRole,float(step_size))
-            table.item(row, 1).setData(Qt.EditRole,int(steps))
         # FIXME: I think this is would be considered unexpected behavior
         array = getattr(self, table.horizontalHeaderItem(column).text(), self.step_size)[channel]
         value = table.item(row, column).data(Qt.EditRole)
@@ -315,6 +305,37 @@ class ChannelPlanWidget(QTabWidget):
 
         table.blockSignals(False)
 
+    def update_steps(self, tile_index, row,  channel):
+        """Update number of steps based on volume"""
+
+        volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
+        index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
+        steps = volume_um / (float(getattr(self, f'{channel}_table').item(row, 0).data(Qt.EditRole))*self.micron)
+        if steps != 0 and not isnan(steps) and steps not in [float('inf'), float('-inf')]:
+            step_size = float(round(volume_um / steps, 4)/self.micron)  # make dimensionless again for simplicity in code
+            steps = int(round(steps))
+        else:
+            steps = 0
+            step_size = 0
+        self.steps[channel][*index] = steps
+
+        return step_size, steps
+
+    def update_step_size(self, tile_index, row,  channel):
+        """Update step size based on volume"""
+
+        volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
+        index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
+        # make dimensionless again for simplicity in code
+        step_size = (volume_um / float(getattr(self, f'{channel}_table').item(row, 1).data(Qt.EditRole)))/self.micron
+        if step_size != 0 and not isnan(step_size) and step_size not in [float('inf'), float('-inf')]:
+            steps = int(round(volume_um / (step_size*self.micron)))
+            step_size = float(round(step_size, 4))
+        else:
+            steps = 0
+            step_size = 0
+        self.step_size[channel][*index] = step_size
+        return step_size, steps
 
 class ChannelPlanTabBar(QTabBar):
     """TabBar that will keep add channel tab at end"""

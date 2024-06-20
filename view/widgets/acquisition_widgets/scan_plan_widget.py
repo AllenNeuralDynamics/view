@@ -1,6 +1,6 @@
 from pymmcore_widgets import ZPlanWidget as ZPlanWidgetMMCore
 from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget, \
-    QGroupBox
+    QGroupBox, QDoubleSpinBox
 from qtpy.QtCore import Qt, Signal
 import useq
 import enum
@@ -87,8 +87,8 @@ class ScanPlanWidget(QWidget):
         value = z0.value()
         if self.apply_all.isChecked() and (row, column) == (0, 0):
             # update scan start, volume, and tile visibility
-            self._scan_starts[:, :] = value[0]
-            self._scan_volumes[:, :] = value[-1] - value[0]
+            self._scan_starts[:, :] = min(value)
+            self._scan_volumes[:, :] = max(value) - min(value)
             self._tile_visibility[:, :] = not z0.hide.isChecked()
 
             for i, j in np.ndindex(self.z_plan_widgets.shape):
@@ -101,8 +101,8 @@ class ScanPlanWidget(QWidget):
                     getattr(z, attr).setValue(widget_value)
                 z._on_change()  # update widget
         else:
-            self._scan_starts[row, column] = value[0]
-            self._scan_volumes[row, column] = value[-1] - value[0]
+            self._scan_starts[row, column] = min(value)
+            self._scan_volumes[row, column] = max(value) - min(value)
             self._tile_visibility[row, column] = not z0.hide.isChecked()
 
         self.scanChanged.emit()
@@ -117,8 +117,8 @@ class ScanPlanWidget(QWidget):
             if (row, column) == (0, 0):
                 z0 = self.z_plan_widgets[0, 0]
                 value = z0.value()
-                self._scan_starts[:, :] = value[0]
-                self._scan_volumes[:, :] = value[-1] - value[0]
+                self._scan_starts[:, :] = min(value)
+                self._scan_volumes[:, :] = max(value) - min(value)
                 self._tile_visibility[:, :] = not z0.hide.isChecked()
             else:
                 # if not checked, enable all widgets and connect signals: else, disable all and disconnect signals
@@ -201,6 +201,8 @@ class ScanPlanWidget(QWidget):
         # connect signals for each input
         for name in ['start', 'top', 'step', 'steps', 'range', 'above', 'below']:
             widget = getattr(z, name)
+            if type(widget) == QDoubleSpinBox:
+                widget.setDecimals(6)
             if (row, column) != (0, 0):  # update widget with appropriate values
                 widget.setValue(getattr(self.z_plan_widgets[0, 0], name).value())
             widget.valueChanged.connect(lambda value, attr=name: self.update_scan(value, attr, row, column))
@@ -212,6 +214,10 @@ class ScanPlanWidget(QWidget):
             z.setEnabled(False)
         elif (row, column) == (0, 0):
             z._mode_group.triggered.connect(self.toggle_mode)
+
+        # update minimum value of end if start changes
+        z.top.setMinimum(z.start.value())
+        z.start.valueChanged.connect(lambda value: z.top.setMinimum(value))
 
         self.stacked_widget.addWidget(z)
         self.tileAdded.emit(row, column)
