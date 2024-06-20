@@ -81,7 +81,7 @@ class InstrumentView:
         # Set app events
         app = QApplication.instance()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
-        app.focusChanged.connect(self.toggle_grab_stage_positions)
+        #app.focusChanged.connect(self.toggle_grab_stage_positions)
 
     def setup_daqs(self):
         """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
@@ -524,17 +524,17 @@ class InstrumentView:
                 if getattr(widget, 'property_widgets', False) == {}:
                     undocked_widget.setVisible(False)
 
-    def toggle_grab_stage_positions(self):
-        """When focus on view has changed, resume or pause grabbing stage positions"""
-        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
-        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
-        try:
-            if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
-                self.grab_stage_positions_worker.resume()
-            elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
-                self.grab_stage_positions_worker.pause()
-        except RuntimeError:  # Pass error when window has been closed
-            pass
+    # def toggle_grab_stage_positions(self):
+    #     """When focus on view has changed, resume or pause grabbing stage positions"""
+    #     # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
+    #     # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
+    #     try:
+    #         if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
+    #             self.grab_stage_positions_worker.resume()
+    #         elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
+    #             self.grab_stage_positions_worker.pause()
+    #     except RuntimeError:  # Pass error when window has been closed
+    #         pass
 
     def setDisabled(self, disable):
         """Enable/disable viewer"""

@@ -91,7 +91,6 @@ class ChannelPlanWidget(QTabWidget):
                             # value = getattr(device_object, setting)
                             descriptor = getattr(type(device_object), setting)
                             if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or getattr(descriptor, 'fset', False) is None:
-                                print('no setter', setting)
                                 continue
                         column_name = label_maker(f'{device_name}_{setting}')
                         setattr(self, column_name, {})

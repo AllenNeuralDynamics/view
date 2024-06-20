@@ -12,8 +12,12 @@ class CameraWidget(BaseDeviceWidget):
         live view button, and snapshot button.
         :param camera: camera object"""
 
-        self.camera_properties = scan_for_properties(camera) if advanced_user else {}
+        self.camera_properties = scan_for_properties(camera)
         super().__init__(type(camera), self.camera_properties)
+
+        if not advanced_user:   # hide widgets
+            for widget in self.property_widgets.values():
+                widget.setVisible(False)
 
         # create and format livestream button and snapshot button
         self.live_button = self.create_live_button()
@@ -89,6 +93,10 @@ class CameraWidget(BaseDeviceWidget):
                                                 self.roi_widget,
                                                 sensor_size_widget,
                                                 central_widget))
+        else: # add snapshot button and liveview
+            central_widget = self.centralWidget()
+            central_widget.layout().setSpacing(0)  # remove space between central widget and newly formatted widgets
+            self.setCentralWidget(create_widget('H',self.live_button, self.snapshot_button))
 
     def create_live_button(self):
         """Add live button"""
