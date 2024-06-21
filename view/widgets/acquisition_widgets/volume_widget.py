@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame, QDoubleSpinBox
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -10,12 +10,13 @@ from qtpy.QtCore import Qt
 import numpy as np
 import useq
 from view.widgets.base_device_widget import label_maker
+import inspect
 
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
 
     def __init__(self,
-                 instrument,
+                 instrument_view,
                  channels: dict,
                  settings: dict,
                  limits=[[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]],
@@ -38,6 +39,7 @@ class VolumeWidget(QWidget):
         """
         super().__init__()
 
+        self.instrument_view = instrument_view
         self.unit = unit
         self.layout = QGridLayout()
 
@@ -76,7 +78,7 @@ class VolumeWidget(QWidget):
         self.layout.addWidget(self.scan_plan_widget, 1, 0)
 
         # create channel plan widget
-        self.channel_plan = ChannelPlanWidget(instrument, channels, settings, unit)
+        self.channel_plan = ChannelPlanWidget(instrument_view, channels, settings, unit)
         self.channel_plan.channelAdded.connect(self.channel_added)
         self.channel_plan.apply_to_all = True
 
@@ -464,12 +466,21 @@ class VolumeWidget(QWidget):
 
         # load channel plan values
         for device_type, devices in self.channel_plan.possible_channels[channel].items():
-            for device in devices:
-                tile_dict[device] = {}
+            for device_name in devices:
+                tile_dict[device_name] = {}
                 for setting in self.channel_plan.settings.get(device_type, []):
-                    if getattr(self.channel_plan, label_maker(f'{device}_{setting}'), None) is not None:
-                        array = getattr(self.channel_plan, label_maker(f'{device}_{setting}'))[channel]
-                        tile_dict[device][setting] = array[row, column]
+                    if getattr(self.channel_plan, label_maker(f'{device_name}_{setting}'), None) is not None:
+                        # try and correctly type settings based on setter
+                        device_object = getattr(self.instrument_view.instrument, device_type)[device_name]
+                        descriptor = getattr(type(device_object), setting)
+                        fset = getattr(descriptor, '_fset', getattr(descriptor, 'fset'))  # account for property and deliminated
+                        input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
+
+                        array = getattr(self.channel_plan, label_maker(f'{device_name}_{setting}'))[channel]
+                        if input_type != inspect._empty:
+                            tile_dict[device_name][setting] = input_type(array[row, column])
+                        else:
+                            tile_dict[device_name][setting] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
             array = getattr(self.channel_plan, name)[channel]

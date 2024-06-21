@@ -15,6 +15,7 @@ import datetime
 from time import sleep
 import logging
 import inflection
+import inspect
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -497,7 +498,13 @@ class InstrumentView:
             dictionary = getattr(device, name_lst[0])
             for k in name_lst[1:]:
                 dictionary = dictionary[k]
-            setattr(device, name_lst[0], value)
+            descriptor = getattr(type(device), name_lst[0])
+            fset = getattr(descriptor, '_fset', getattr(descriptor, 'fset'))    # account for property and deliminated
+            input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
+            if input_type != inspect._empty:
+                setattr(device, name_lst[0], input_type(value))
+            else:
+                setattr(device, name_lst[0], value)
             self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
             # Update ui with new device values that might have changed
             # WARNING: Infinite recursion might occur if device property not set correctly
