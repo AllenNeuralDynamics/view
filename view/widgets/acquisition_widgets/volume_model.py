@@ -35,6 +35,7 @@ class VolumeModel(GLViewWidget):
 
     def __init__(self,
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
+                 coordinate_transform: list[str] = [1, 1, 1],
                  fov_dimensions: list[float] = [1.0, 1.0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  view_color: str = 'yellow'):
@@ -48,6 +49,7 @@ class VolumeModel(GLViewWidget):
         super().__init__(rotationMethod='quaternion')
 
         self.coordinate_plane = coordinate_plane
+        self.coordinate_transform = coordinate_transform
         self.fov_dimensions = fov_dimensions
         self.fov_position = fov_position
         self.grid_plane = (self.coordinate_plane[0], self.coordinate_plane[1])  # plane currently being viewed
@@ -63,9 +65,9 @@ class VolumeModel(GLViewWidget):
         self.fov_view = GLBoxItem()
         self.fov_view.setColor(QColor(view_color))
         self.fov_view.setSize(*self.fov_dimensions)
-        self.fov_view.setTransform(QMatrix4x4(1, 0, 0, self.fov_position[0],
-                                              0, 1, 0, self.fov_position[1],
-                                              0, 0, 1, self.fov_position[2],
+        self.fov_view.setTransform(QMatrix4x4(1*self.coordinate_transform[0], 0, 0, self.fov_position[0],
+                                              0, 1*self.coordinate_transform[1], 0, self.fov_position[1],
+                                              0, 0, 1*self.coordinate_transform[2], self.fov_position[2],
                                               0, 0, 0, 1))
         self.addItem(self.fov_view)
 
@@ -84,9 +86,9 @@ class VolumeModel(GLViewWidget):
             x = self.fov_position[0] if self.coordinate_plane[0] in self.grid_plane else 0
             y = self.fov_position[1] if self.coordinate_plane[1] in self.grid_plane else 0
             z = self.fov_position[2] if self.coordinate_plane[2] in self.grid_plane else 0
-            self.fov_view.setTransform(QMatrix4x4(1, 0, 0, x,
-                                                  0, 1, 0, y,
-                                                  0, 0, 1, z,
+            self.fov_view.setTransform(QMatrix4x4(1*self.coordinate_transform[0], 0, 0, x,
+                                                  0, 1*self.coordinate_transform[1], 0, y,
+                                                  0, 0, 1*self.coordinate_transform[2], z,
                                                   0, 0, 0, 1))
 
         else:
@@ -111,9 +113,9 @@ class VolumeModel(GLViewWidget):
                     z_size = self.scan_volumes[row, column] if self.coordinate_plane[2] in self.grid_plane else 0
                     box = GLBoxItem()
                     box.setSize(fov_x, fov_y, z_size)
-                    box.setTransform(QMatrix4x4(1, 0, 0, x,
-                                                0, 1, 0, y,
-                                                0, 0, 1, z,
+                    box.setTransform(QMatrix4x4(1*self.coordinate_transform[0], 0, 0, x,
+                                                0, 1*self.coordinate_transform[1], 0, y,
+                                                0, 0, 1*self.coordinate_transform[2], z,
                                                 0, 0, 0, 1))
                     box.setColor('white')
                     box.setVisible(self.tile_visibility[row, column])

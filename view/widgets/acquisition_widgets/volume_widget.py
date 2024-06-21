@@ -21,6 +21,7 @@ class VolumeWidget(QWidget):
                  settings: dict,
                  limits=[[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]],
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
+                 coordinate_transform: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  view_color: str = 'yellow',
@@ -44,7 +45,7 @@ class VolumeWidget(QWidget):
         self.layout = QGridLayout()
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
-        self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
+        self.volume_model = VolumeModel(coordinate_plane, coordinate_transform, fov_dimensions, fov_position, view_color)
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()

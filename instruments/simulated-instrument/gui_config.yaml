@@ -90,6 +90,7 @@ operation_widgets:
     init:
       fov_dimensions: [0.686592, 0.686592]
       coordinate_plane: ['x', 'y', 'z']
+      coordinate_transform: [-1, 1, 1]
       unit: 'mm'
       channels:
         '488':
