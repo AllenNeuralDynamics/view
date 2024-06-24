@@ -182,12 +182,7 @@ class VolumeWidget(QWidget):
         :param value: latest tile plan value"""
 
         self.scan_plan_widget.scan_plan_construction(value)
-        grid_coords = self.volume_model.grid_coords
-        view_plane = self.volume_model.view_plane
-        polarity = self.volume_model.polarity
-        path = [[(grid_coords[t.row][t.col][i] + .5 * fov) * pol if x in view_plane else 0. for i, fov, pol, x in
-                 zip([0, 1, 2], self.fov_dimensions, polarity, self.coordinate_plane)] for t in value]
-        self.volume_model.path.setData(pos=path)  # update path
+        self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
 
         # update scanning coords of table
         for tile in value:
@@ -285,13 +280,8 @@ class VolumeWidget(QWidget):
         setattr(self.volume_model, 'view_plane', view_plane)
 
         if view_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
-            grid_coords = self.volume_model.grid_coords
-            view_plane = self.volume_model.view_plane
-            polarity = self.volume_model.polarity
             value = self.tile_plan_widget.value()
-            path = [[(grid_coords[t.row][t.col][i] + .5 * fov) * pol if x in view_plane else 0. for i, fov, pol, x in
-                     zip([0, 1, 2], self.fov_dimensions, polarity, self.coordinate_plane)] for t in value]
-            self.volume_model.path.setData(pos=path)  # update path
+            self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
             if not self.volume_model.path.visible() and self.path_show.isChecked():
                 self.volume_model.toggle_path_visibility(True)
         else:  # hide path if not in tiling view plane
