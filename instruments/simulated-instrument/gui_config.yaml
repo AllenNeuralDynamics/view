@@ -89,8 +89,7 @@ operation_widgets:
   volume_widget:
     init:
       fov_dimensions: [0.686592, 0.686592]
-      coordinate_plane: ['x', 'y', 'z']
-      coordinate_transform: [-1, 1, 1]
+      coordinate_plane: ['-x', 'y', 'z']
       unit: 'mm'
       channels:
         '488':

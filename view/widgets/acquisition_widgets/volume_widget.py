@@ -21,7 +21,6 @@ class VolumeWidget(QWidget):
                  settings: dict,
                  limits=[[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]],
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
-                 coordinate_transform: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  view_color: str = 'yellow',
@@ -30,7 +29,6 @@ class VolumeWidget(QWidget):
         """
         :param channels: dictionary defining channels for instrument
         :param settings: allowed setting for devices
-        :param tile_specs: list of parameters defining tiles
         :param limits: list of limits ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param coordinate_plane: list describing instrument coordinate plane ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param fov_dimensions: list of fov_dims which correspond to tiling dimensions
@@ -41,11 +39,12 @@ class VolumeWidget(QWidget):
         super().__init__()
 
         self.instrument_view = instrument_view
+        self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.unit = unit
         self.layout = QGridLayout()
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
-        self.volume_model = VolumeModel(coordinate_plane, coordinate_transform, fov_dimensions, fov_position, view_color)
+        self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()
@@ -56,11 +55,11 @@ class VolumeWidget(QWidget):
 
         checkboxes.addWidget(QLabel('Plane View: '))
         view_plane = QButtonGroup(self)
-        for view in [f'({coordinate_plane[0]}, {coordinate_plane[2]})',
-                     f'({coordinate_plane[2]}, {coordinate_plane[1]})',
-                     f'({coordinate_plane[0]}, {coordinate_plane[1]})']:
+        for view in [f'({self.coordinate_plane[0]}, {self.coordinate_plane[2]})',
+                     f'({self.coordinate_plane[2]}, {self.coordinate_plane[1]})',
+                     f'({self.coordinate_plane[0]}, {self.coordinate_plane[1]})']:
             button = QRadioButton(view)
-            button.clicked.connect(lambda clicked, b=button: self.grid_plane_change(b))
+            button.clicked.connect(lambda clicked, b=button: self.view_plane_change(b))
             view_plane.addButton(button)
             button.setChecked(True)
             checkboxes.addWidget(button)
@@ -68,7 +67,7 @@ class VolumeWidget(QWidget):
         self.layout.addWidget(extended_model, 0, 1, 3, 2)
 
         # create tile plan widgets
-        self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, coordinate_plane, unit)
+        self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, self.coordinate_plane, unit)
         self.fovStop = self.tile_plan_widget.fovStop  # expose for ease of access
         self.tile_starts = self.tile_plan_widget.grid_position_widgets  # expose for ease of access
         self.anchor_widgets = self.tile_plan_widget.anchor_widgets  # expose for ease of access
@@ -84,8 +83,8 @@ class VolumeWidget(QWidget):
         self.channel_plan.apply_to_all = True
 
         # setup table
-        self.columns = ['row, column', *[f'{x} [{unit}]' for x in coordinate_plane],
-                        f'{coordinate_plane[2]} max [{unit}]']
+        self.columns = ['row, column', *[f'{x} [{unit}]' for x in self.coordinate_plane],
+                        f'{self.coordinate_plane[2]} max [{unit}]']
         self.table = QTableWidget()
         self.table.setColumnCount(len(self.columns))
         self.table.setHorizontalHeaderLabels(self.columns)
@@ -136,7 +135,6 @@ class VolumeWidget(QWidget):
         self.scan_plan_widget.tileAdded.connect(self.tile_added)
 
         self.limits = limits
-        self.coordinate_plane = coordinate_plane
         self.fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
         self.fov_position = fov_position
 
@@ -184,10 +182,12 @@ class VolumeWidget(QWidget):
         :param value: latest tile plan value"""
 
         self.scan_plan_widget.scan_plan_construction(value)
-        self.volume_model.path.setData(pos=
-                                       [[self.volume_model.grid_coords[t.row][t.col][i] + .5 * self.fov_dimensions[i]
-                                         if self.coordinate_plane[i] in self.volume_model.grid_plane else 0. for i in
-                                         range(3)] for t in value])  # update path
+        grid_coords = self.volume_model.grid_coords
+        view_plane = self.volume_model.view_plane
+        polarity = self.volume_model.polarity
+        path = [[grid_coords[t.row][t.col][i] + .5 * fov * pol if x in view_plane else 0. for i, fov, pol, x in
+                 zip([0, 1, 2], self.fov_dimensions, polarity, self.coordinate_plane)] for t in value]
+        self.volume_model.path.setData(pos=path)  # update path
 
         # update scanning coords of table
         for tile in value:
@@ -261,7 +261,7 @@ class VolumeWidget(QWidget):
         if not self.scan_plan_widget.apply_to_all or (row, column) == (0, 0):
             disable.remove(f'{self.coordinate_plane[2]} max [{self.unit}]')
             if self.anchor_widgets[2].isChecked():
-                disable.remove(self.coordinate_plane[2])
+                disable.remove(f'{self.coordinate_plane[2]} [{self.unit}]')
         flags = QTableWidgetItem().flags()
         flags &= ~Qt.ItemIsEditable
         for var in disable:
@@ -277,21 +277,24 @@ class VolumeWidget(QWidget):
         z = self.scan_plan_widget.z_plan_widgets[row, column]
         z.valueChanged.connect(lambda value: self.change_table(value, row, column))
 
-    def grid_plane_change(self, button):
-        """Update grid plane and remap path
+    def view_plane_change(self, button):
+        """Update view plane and remap path
         :param button: button that was clicked"""
 
-        grid_plane = tuple(x for x in button.text() if x.isalpha())
-        setattr(self.volume_model, 'grid_plane', grid_plane)
+        view_plane = tuple(x for x in button.text() if x.isalpha())
+        setattr(self.volume_model, 'view_plane', view_plane)
 
-        if grid_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
-            self.volume_model.path.setData(pos=[[
-                self.volume_model.grid_coords[t.row][t.col][i] + .5 * self.fov_dimensions[i]
-                if self.coordinate_plane[i] in self.volume_model.grid_plane else 0. for i in range(3)]
-                for t in self.tile_plan_widget.value()])  # update path
+        if view_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
+            grid_coords = self.volume_model.grid_coords
+            view_plane = self.volume_model.view_plane
+            polarity = self.volume_model.polarity
+            value = self.tile_plan_widget.value()
+            path = [[grid_coords[t.row][t.col][i] + .5 * fov * pol if x in view_plane else 0. for i, fov, pol, x in
+                     zip([0, 1, 2], self.fov_dimensions, polarity, self.coordinate_plane)] for t in value]
+            self.volume_model.path.setData(pos=path)  # update path
             if not self.volume_model.path.visible() and self.path_show.isChecked():
                 self.volume_model.toggle_path_visibility(True)
-        else:  # hide path if not in tiling grid plane
+        else:  # hide path if not in tiling view plane
             self.volume_model.toggle_path_visibility(False)
 
     def change_table(self, value, row, column):

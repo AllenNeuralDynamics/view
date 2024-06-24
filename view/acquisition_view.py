@@ -237,7 +237,7 @@ class AcquisitionView:
 
         specs = self.config['operation_widgets'].get('volume_widget', {})
         kwds = specs.get('init', {})
-        coordinate_plane = kwds.get('coordinate_plane', ['x', 'y', 'z'])
+        coordinate_plane = [x.replace('-', '') for x in kwds.get('coordinate_plane', ['x', 'y', 'z'])] # remove polarity
 
         # Populate limits
         limits = {}
