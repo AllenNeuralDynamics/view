@@ -185,7 +185,7 @@ class VolumeWidget(QWidget):
         grid_coords = self.volume_model.grid_coords
         view_plane = self.volume_model.view_plane
         polarity = self.volume_model.polarity
-        path = [[grid_coords[t.row][t.col][i] + .5 * fov * pol if x in view_plane else 0. for i, fov, pol, x in
+        path = [[(grid_coords[t.row][t.col][i] + .5 * fov) * pol if x in view_plane else 0. for i, fov, pol, x in
                  zip([0, 1, 2], self.fov_dimensions, polarity, self.coordinate_plane)] for t in value]
         self.volume_model.path.setData(pos=path)  # update path
 
@@ -289,7 +289,7 @@ class VolumeWidget(QWidget):
             view_plane = self.volume_model.view_plane
             polarity = self.volume_model.polarity
             value = self.tile_plan_widget.value()
-            path = [[grid_coords[t.row][t.col][i] + .5 * fov * pol if x in view_plane else 0. for i, fov, pol, x in
+            path = [[(grid_coords[t.row][t.col][i] + .5 * fov) * pol if x in view_plane else 0. for i, fov, pol, x in
                      zip([0, 1, 2], self.fov_dimensions, polarity, self.coordinate_plane)] for t in value]
             self.volume_model.path.setData(pos=path)  # update path
             if not self.volume_model.path.visible() and self.path_show.isChecked():
