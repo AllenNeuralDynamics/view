@@ -91,6 +91,10 @@ operation_widgets:
       fov_dimensions: [0.686592, 0.686592]
       coordinate_plane: ['-x', 'y', 'z']
       unit: 'mm'
+      settings:
+        cameras: [binning]
+        lasers: [power_setpoint_mw]
+        filter_wheels: [filter]
       channels:
         '488':
           filters: [ BP488 ]
@@ -104,7 +108,3 @@ operation_widgets:
           filters: [ LP638 ]
           lasers: [ 639nm ]
           cameras: [ vnp-604mx ]
-      settings:
-        cameras: [binning]
-        lasers: [power_setpoint_mw]
-        filter_wheels: [filter]

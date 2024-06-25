@@ -314,7 +314,6 @@ class VolumeWidget(QWidget):
         max_item = self.table.item(item.row(), self.table.columnCount() - 1)
         min_value = min_item.data(Qt.EditRole)
         max_value = max_item.data(Qt.EditRole)
-
         if min_value > max_value:
             self.undercover_update_item(min_value, max_item)
 
@@ -355,7 +354,9 @@ class VolumeWidget(QWidget):
         """If apply all is checked and tile 0,0 start is updated, update tile_start widget in the scan dimension"""
 
         if self.scan_plan_widget.apply_to_all:
+            self.tile_starts[2].blockSignals(True)  # block so it doesn't trigger update of start
             self.tile_starts[2].setValue(value)
+            self.tile_starts[2].blockSignals(False)
 
     def disable_scan_start_widgets(self, disable):
         """Disable all scan start widgets if tile_plan_widget.grid_position_widgets[2] is checked"""

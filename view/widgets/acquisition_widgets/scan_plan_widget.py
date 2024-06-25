@@ -6,7 +6,7 @@ import useq
 import enum
 import numpy as np
 from superqt.utils import signals_blocked
-
+import inspect
 
 class Mode(enum.Enum):
     """Recognized ZPlanWidget modes."""
@@ -266,6 +266,7 @@ class ZPlanWidget(ZPlanWidgetMMCore):
 
         # Add start box
         self.start.valueChanged.connect(self._on_change)
+        self.start.setSingleStep(.1)
         self.start.setRange(z_limits[0], z_limits[1])
         self._grid_layout.addWidget(QLabel("Start:"), 4, 0, Qt.AlignmentFlag.AlignRight)
         self._grid_layout.addWidget(self.start, 4, 1)
