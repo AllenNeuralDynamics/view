@@ -17,5 +17,6 @@ dependencies = [
     'pyclesperanto >= 0.8.2',
     'lxml_html_clean >= 0.1.1',
     #'infelction >= 0.5.1',
-    'pymmcore-widgets >= 0.7.1'
+    'pymmcore-widgets >= 0.7.1',
+    'pint >= 4.9.0'
 ]

@@ -56,8 +56,7 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         for i, axis, box, anchor in zip(range(0, 3), coordinate_plane, self.grid_position_widgets, self.anchor_widgets):
             box.setValue(fov_position[i])
             limit = limits[i]
-            dec = len(str(limit[0])[str(limit[0]).index('.') + 1:]) if '.' in str(limit[0]) else 0
-            box.setDecimals(dec)
+            box.setDecimals(6)
             box.setRange(*limit)
             box.setSuffix(f" {unit}")
             box.valueChanged.connect(lambda: setattr(self, 'grid_position', [self.grid_position_widgets[0].value(),

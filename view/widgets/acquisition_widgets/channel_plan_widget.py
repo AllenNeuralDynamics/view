@@ -7,7 +7,8 @@ import numpy as np
 from qtpy.QtCore import Signal, Qt
 from inflection import singularize
 from math import isnan
-
+import pint
+import inspect
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
 
@@ -24,7 +25,11 @@ class ChannelPlanWidget(QTabWidget):
         self.possible_channels = channels
         self.channels = []
         self.settings = settings
-        self.unit = unit
+
+        # setup units for step size and step calculation
+        unit_registry = pint.UnitRegistry()
+        self.unit = getattr(unit_registry, unit)   # TODO: How to check if unit is in pint?
+        self.micron = unit_registry.um
 
         self.steps = {}  # dictionary of number of steps for each tile in each channel
         self.step_size = {}  # dictionary of step size for each tile in each channel
@@ -75,36 +80,43 @@ class ChannelPlanWidget(QTabWidget):
             table.cellChanged.connect(self.cell_edited)
 
             columns = ['step size [um]', 'steps', 'prefix']
-            delegate_type = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
+            delegates = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
+            self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
             for device_type, device_names in self.possible_channels[channel].items():
                 for device_name in device_names:
                     device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
                     device_object = getattr(instrument_view.instrument, device_type)[device_name]
                     for setting in self.settings.get(device_type, []):
                         # select delegate to use based on type
+                        column_name = label_maker(f'{device_name}_{setting}')
                         with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
                             # value = getattr(device_object, setting)
                             descriptor = getattr(type(device_object), setting)
-                            if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or getattr(descriptor, 'fset', False) is None:
-                                print('no setter', setting)
+                            if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or \
+                                    getattr(descriptor, 'fset', False) is None:
+                                self.column_data_types[column_name] = None
                                 continue
-                        column_name = label_maker(f'{device_name}_{setting}')
+                        # try and correctly type settings based on setter
+                        fset = getattr(descriptor, '_fset',  getattr(descriptor, 'fset'))
+                        input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
+                        self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
+
                         setattr(self, column_name, {})
                         columns.append(column_name)
                         if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
                             minimum = getattr(descriptor, 'minimum', float('-inf'))
                             maximum = getattr(descriptor, 'maximum', float('inf'))
                             step = getattr(descriptor, 'step', .001)
-                            delegate_type.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
+                            delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
                         elif type(getattr(device_widget, f'{setting}_widget')) == QComboBox:
                             widget = getattr(device_widget, f'{setting}_widget')
                             items = [widget.itemText(i) for i in range(widget.count())]
-                            delegate_type.append(QComboItemDelegate(items=items))
+                            delegates.append(QComboItemDelegate(items=items))
                         else:  # TODO: How to handle dictionary values
-                            delegate_type.append(QTextItemDelegate())
+                            delegates.append(QTextItemDelegate())
             columns.append('row, column')
 
-            for i, delegate in enumerate(delegate_type):
+            for i, delegate in enumerate(delegates):
                 # table does not take ownership of the delegates, so they are removed from memory as they
                 # are local variables causing a Segmentation fault. Need to be attributes
                 setattr(self, f'{columns[i]}_{channel}_delegate', delegate)
@@ -272,39 +284,21 @@ class ChannelPlanWidget(QTabWidget):
         menu.addAction(action)
         self.add_tool.setMenu(menu)
 
-    def cell_edited(self, row, column):
+    def cell_edited(self, row, column, channel=None):
         """Update table based on cell edit"""
 
-        channel = self.tabText(self.currentIndex())
+        channel = self.tabText(self.currentIndex()) if channel is None else channel
         table = getattr(self, f'{channel}_table')
 
         table.blockSignals(True)  # block signals so updating cells doesn't trigger cell edit again
         tile_index = [int(x) for x in table.item(row, table.columnCount() - 1).text() if x.isdigit()]
 
         if column in [0, 1]:
-            volume = self.tile_volumes[*tile_index]
-            index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
-            if column == 0:  # step_size changed so round to fit in volume
-                steps = volume / float(table.item(row, 0).data(Qt.EditRole))
-                if steps != 0 and not isnan(steps):
-                    step_size = round(volume / steps, 4)
-                    steps = round(steps)
-                else:
-                    steps = 0
-                    step_size = 0
-                self.steps[channel][*index] = steps
-            else:  # step number changed
-                step_size = volume / float(table.item(row, 1).data(Qt.EditRole))
-                if step_size != 0 and not isnan(step_size):
-                    steps = round(volume / step_size)
-                    step_size = round(step_size, 4)
-                else:
-                    steps = 0
-                    step_size = 0
-                self.step_size[channel][*index] = step_size
+            step_size, steps = self.update_steps(tile_index, row, channel) if column == 0 else \
+                self.update_step_size(tile_index, row, channel)
+            table.item(row, 0).setData(Qt.EditRole,step_size)
+            table.item(row, 1).setData(Qt.EditRole,steps)
 
-            table.item(row, 0).setData(Qt.EditRole,float(step_size))
-            table.item(row, 1).setData(Qt.EditRole,int(steps))
         # FIXME: I think this is would be considered unexpected behavior
         array = getattr(self, table.horizontalHeaderItem(column).text(), self.step_size)[channel]
         value = table.item(row, column).data(Qt.EditRole)
@@ -322,6 +316,37 @@ class ChannelPlanWidget(QTabWidget):
 
         table.blockSignals(False)
 
+    def update_steps(self, tile_index, row,  channel):
+        """Update number of steps based on volume"""
+
+        volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
+        index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
+        steps = volume_um / (float(getattr(self, f'{channel}_table').item(row, 0).data(Qt.EditRole))*self.micron)
+        if steps != 0 and not isnan(steps) and steps not in [float('inf'), float('-inf')]:
+            step_size = float(round(volume_um / steps, 4)/self.micron)  # make dimensionless again for simplicity in code
+            steps = int(round(steps))
+        else:
+            steps = 0
+            step_size = 0
+        self.steps[channel][*index] = steps
+
+        return step_size, steps
+
+    def update_step_size(self, tile_index, row,  channel):
+        """Update step size based on volume"""
+
+        volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
+        index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
+        # make dimensionless again for simplicity in code
+        step_size = (volume_um / float(getattr(self, f'{channel}_table').item(row, 1).data(Qt.EditRole)))/self.micron
+        if step_size != 0 and not isnan(step_size) and step_size not in [float('inf'), float('-inf')]:
+            steps = int(round(volume_um / (step_size*self.micron)))
+            step_size = float(round(step_size, 4))
+        else:
+            steps = 0
+            step_size = 0
+        self.step_size[channel][*index] = step_size
+        return step_size, steps
 
 class ChannelPlanTabBar(QTabBar):
     """TabBar that will keep add channel tab at end"""

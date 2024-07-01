@@ -15,6 +15,7 @@ import datetime
 from time import sleep
 import logging
 import inflection
+import inspect
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -81,14 +82,14 @@ class InstrumentView:
         # Set app events
         app = QApplication.instance()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
-        app.focusChanged.connect(self.toggle_grab_stage_positions)
+        #app.focusChanged.connect(self.toggle_grab_stage_positions)
 
     def setup_daqs(self):
         """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
 
         for daq_name, daq in self.instrument.daqs.items():
             if daq_name in self.config.get('livestream_tasks', {}).keys():
-                daq.tasks = self.config['livestream_tasks'][daq_name]['tasks']
+                daq.tasks = self.config['instrument_view']['livestream_tasks'][daq_name]['tasks']
 
                 # Make sure if there is a livestreaming task, there is a corresponding data acquisition task:
                 if not self.instrument.config.get('data_acquisition_tasks', {}).get(daq_name, False):
@@ -214,16 +215,17 @@ class InstrumentView:
         with self.daq_locks[daq_name]:  # lock device
 
             # update livestream_task
-            self.config['livestream_tasks'][daq_name]['tasks'] = daq_widget.tasks  # is this right?
+            self.config['instrument_view']['livestream_tasks'][daq_name]['tasks'] = daq_widget.tasks
 
             # update data_acquisition_tasks if value correlates
             key = path[-1]
             try:
-                dictionary = pathGet(self.instrument.config['data_acquisition_tasks'][daq_name], path[:-1])
+                dictionary = pathGet(self.config['acquisition_view']['data_acquisition_tasks'][daq_name], path[:-1])
                 if key not in dictionary.keys():
                     raise KeyError
                 dictionary[key] = value
-                self.log.debug(f"Data acquisition tasks parameters updated to {self.instrument.config['data_acquisition_tasks'][daq_name]}")
+                self.log.debug(f"Data acquisition tasks parameters updated to "
+                               f"{self.config['acquisition_view']['data_acquisition_tasks'][daq_name]}")
 
             except KeyError:
                 self.log.warning(f"Path {attr_name} can't be mapped into data acquisition tasks so changes will not "
@@ -449,7 +451,7 @@ class InstrumentView:
         device_type = device_specs['type']
         device = getattr(self.instrument, inflection.pluralize(device_type))[device_name]
 
-        specs = self.config['device_widgets'].get(device_name, {})
+        specs = self.config['instrument_view']['device_widgets'].get(device_name, {})
         if specs != {} and specs.get('type', '') == device_type:
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
             gui = gui_class(device, **specs.get('init', {}))  # device gets passed into widget
@@ -497,7 +499,13 @@ class InstrumentView:
             dictionary = getattr(device, name_lst[0])
             for k in name_lst[1:]:
                 dictionary = dictionary[k]
-            setattr(device, name_lst[0], value)
+            descriptor = getattr(type(device), name_lst[0])
+            fset = getattr(descriptor, '_fset', getattr(descriptor, 'fset'))    # account for property and deliminated
+            input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
+            if input_type != inspect._empty:
+                setattr(device, name_lst[0], input_type(value))
+            else:
+                setattr(device, name_lst[0], value)
             self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
             # Update ui with new device values that might have changed
             # WARNING: Infinite recursion might occur if device property not set correctly
@@ -524,17 +532,17 @@ class InstrumentView:
                 if getattr(widget, 'property_widgets', False) == {}:
                     undocked_widget.setVisible(False)
 
-    def toggle_grab_stage_positions(self):
-        """When focus on view has changed, resume or pause grabbing stage positions"""
-        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
-        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
-        try:
-            if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
-                self.grab_stage_positions_worker.resume()
-            elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
-                self.grab_stage_positions_worker.pause()
-        except RuntimeError:  # Pass error when window has been closed
-            pass
+    # def toggle_grab_stage_positions(self):
+    #     """When focus on view has changed, resume or pause grabbing stage positions"""
+    #     # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
+    #     # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
+    #     try:
+    #         if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
+    #             self.grab_stage_positions_worker.resume()
+    #         elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
+    #             self.grab_stage_positions_worker.pause()
+    #     except RuntimeError:  # Pass error when window has been closed
+    #         pass
 
     def setDisabled(self, disable):
         """Enable/disable viewer"""
