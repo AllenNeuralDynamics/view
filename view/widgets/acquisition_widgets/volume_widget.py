@@ -464,14 +464,10 @@ class VolumeWidget(QWidget):
             for device_name in devices:
                 tile_dict[device_name] = {}
                 for setting in self.channel_plan.settings.get(device_type, []):
-                    if getattr(self.channel_plan, label_maker(f'{device_name}_{setting}'), None) is not None:
-                        # try and correctly type settings based on setter
-                        device_object = getattr(self.instrument_view.instrument, device_type)[device_name]
-                        descriptor = getattr(type(device_object), setting)
-                        fset = getattr(descriptor, '_fset', getattr(descriptor, 'fset'))  # account for property and deliminated
-                        input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
-
-                        array = getattr(self.channel_plan, label_maker(f'{device_name}_{setting}'))[channel]
+                    column_name = label_maker(f'{device_name}_{setting}')
+                    if getattr(self.channel_plan, column_name, None) is not None:
+                        array = getattr(self.channel_plan, column_name)[channel]
+                        input_type = self.channel_plan.column_data_types[column_name]
                         if input_type != inspect._empty:
                             tile_dict[device_name][setting] = input_type(array[row, column])
                         else:

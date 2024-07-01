@@ -134,8 +134,8 @@ class AcquisitionView:
 
         # write correct daq values if different from livestream
         for daq_name, daq in self.instrument.daqs.items():
-            if daq_name in self.instrument.config.get('data_acquisition_tasks', {}).keys():
-                daq.tasks = self.instrument.config['data_acquisition_tasks'][daq_name]['tasks']
+            if daq_name in self.config['acquisition_view'].get('data_acquisition_tasks', {}).keys():
+                daq.tasks = self.instrument.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
                 # Tasks should be added and written in acquisition?
 
         # disable acquisition view. Can't disable whole thing so stop button can be functional
@@ -235,7 +235,7 @@ class AcquisitionView:
     def create_volume_widget(self):
         """Create widget to visualize acquisition grid"""
 
-        specs = self.config['operation_widgets'].get('volume_widget', {})
+        specs = self.config['acquisition_view']['operation_widgets'].get('volume_widget', {})
         kwds = specs.get('init', {})
         coordinate_plane = [x.replace('-', '') for x in kwds.get('coordinate_plane', ['x', 'y', 'z'])] # remove polarity
 
@@ -253,6 +253,7 @@ class AcquisitionView:
         if len([i for i in limits.keys() if i in coordinate_plane]) != 3:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
         kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
+        kwds['channels'] = self.instrument.config['instrument']['channels']
 
         volume_widget = VolumeWidget(self.instrument_view, **kwds)
         volume_widget.fovMoved.connect(self.move_stage)
@@ -335,7 +336,7 @@ class AcquisitionView:
         operation_type = operation_specs['type']
         operation = getattr(self.acquisition, inflection.pluralize(operation_type))[device_name][operation_name]
 
-        specs = self.config['operation_widgets'].get(device_name, {}).get(operation_name, {})
+        specs = self.config['acquisition_view']['operation_widgets'].get(device_name, {}).get(operation_name, {})
         if specs != {} and specs.get('type', '') == operation_type:
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
             gui = gui_class(operation, **specs.get('init', {}))  # device gets passed into widget

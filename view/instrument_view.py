@@ -89,7 +89,7 @@ class InstrumentView:
 
         for daq_name, daq in self.instrument.daqs.items():
             if daq_name in self.config.get('livestream_tasks', {}).keys():
-                daq.tasks = self.config['livestream_tasks'][daq_name]['tasks']
+                daq.tasks = self.config['instrument_view']['livestream_tasks'][daq_name]['tasks']
 
                 # Make sure if there is a livestreaming task, there is a corresponding data acquisition task:
                 if not self.instrument.config.get('data_acquisition_tasks', {}).get(daq_name, False):
@@ -215,16 +215,17 @@ class InstrumentView:
         with self.daq_locks[daq_name]:  # lock device
 
             # update livestream_task
-            self.config['livestream_tasks'][daq_name]['tasks'] = daq_widget.tasks  # is this right?
+            self.config['instrument_view']['livestream_tasks'][daq_name]['tasks'] = daq_widget.tasks
 
             # update data_acquisition_tasks if value correlates
             key = path[-1]
             try:
-                dictionary = pathGet(self.instrument.config['data_acquisition_tasks'][daq_name], path[:-1])
+                dictionary = pathGet(self.config['acquisition_view']['data_acquisition_tasks'][daq_name], path[:-1])
                 if key not in dictionary.keys():
                     raise KeyError
                 dictionary[key] = value
-                self.log.debug(f"Data acquisition tasks parameters updated to {self.instrument.config['data_acquisition_tasks'][daq_name]}")
+                self.log.debug(f"Data acquisition tasks parameters updated to "
+                               f"{self.config['acquisition_view']['data_acquisition_tasks'][daq_name]}")
 
             except KeyError:
                 self.log.warning(f"Path {attr_name} can't be mapped into data acquisition tasks so changes will not "
@@ -450,7 +451,7 @@ class InstrumentView:
         device_type = device_specs['type']
         device = getattr(self.instrument, inflection.pluralize(device_type))[device_name]
 
-        specs = self.config['device_widgets'].get(device_name, {})
+        specs = self.config['instrument_view']['device_widgets'].get(device_name, {})
         if specs != {} and specs.get('type', '') == device_type:
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
             gui = gui_class(device, **specs.get('init', {}))  # device gets passed into widget

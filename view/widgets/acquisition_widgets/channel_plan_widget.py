@@ -8,7 +8,7 @@ from qtpy.QtCore import Signal, Qt
 from inflection import singularize
 from math import isnan
 import pint
-
+import inspect
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
 
@@ -80,35 +80,43 @@ class ChannelPlanWidget(QTabWidget):
             table.cellChanged.connect(self.cell_edited)
 
             columns = ['step size [um]', 'steps', 'prefix']
-            delegate_type = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
+            delegates = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
+            self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
             for device_type, device_names in self.possible_channels[channel].items():
                 for device_name in device_names:
                     device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
                     device_object = getattr(instrument_view.instrument, device_type)[device_name]
                     for setting in self.settings.get(device_type, []):
                         # select delegate to use based on type
+                        column_name = label_maker(f'{device_name}_{setting}')
                         with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
                             # value = getattr(device_object, setting)
                             descriptor = getattr(type(device_object), setting)
-                            if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or getattr(descriptor, 'fset', False) is None:
+                            if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or \
+                                    getattr(descriptor, 'fset', False) is None:
+                                self.column_data_types[column_name] = None
                                 continue
-                        column_name = label_maker(f'{device_name}_{setting}')
+                        # try and correctly type settings based on setter
+                        fset = getattr(descriptor, '_fset',  getattr(descriptor, 'fset'))
+                        input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
+                        self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
+
                         setattr(self, column_name, {})
                         columns.append(column_name)
                         if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
                             minimum = getattr(descriptor, 'minimum', float('-inf'))
                             maximum = getattr(descriptor, 'maximum', float('inf'))
                             step = getattr(descriptor, 'step', .001)
-                            delegate_type.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
+                            delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
                         elif type(getattr(device_widget, f'{setting}_widget')) == QComboBox:
                             widget = getattr(device_widget, f'{setting}_widget')
                             items = [widget.itemText(i) for i in range(widget.count())]
-                            delegate_type.append(QComboItemDelegate(items=items))
+                            delegates.append(QComboItemDelegate(items=items))
                         else:  # TODO: How to handle dictionary values
-                            delegate_type.append(QTextItemDelegate())
+                            delegates.append(QTextItemDelegate())
             columns.append('row, column')
 
-            for i, delegate in enumerate(delegate_type):
+            for i, delegate in enumerate(delegates):
                 # table does not take ownership of the delegates, so they are removed from memory as they
                 # are local variables causing a Segmentation fault. Need to be attributes
                 setattr(self, f'{columns[i]}_{channel}_delegate', delegate)
