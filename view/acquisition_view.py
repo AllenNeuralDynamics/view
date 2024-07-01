@@ -8,7 +8,7 @@ from qtpy.QtCore import Slot
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QVBoxLayout, QCheckBox, QHBoxLayout, QButtonGroup, QRadioButton, QPushButton
+    QLabel, QPushButton, QSplitter, QFrame, QHBoxLayout
 from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
 
@@ -62,6 +62,12 @@ class AcquisitionView:
         self.main_layout.addWidget(self.start_button, 0, 0, 1, 2)
         self.main_layout.addWidget(self.stop_button, 0, 2, 1, 2)
 
+        # add volume widget
+        self.main_layout.addWidget(self.volume_widget, 1, 0, 5, 3)
+
+        # splitter for operation widgets
+        splitter = QSplitter(Qt.Vertical)
+
         # create scroll wheel for metadata widget
         scroll = QScrollArea()
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -71,10 +77,7 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        self.main_layout.addWidget(dock, 1, 3)
-
-        # add volume widget
-        self.main_layout.addWidget(self.volume_widget, 1, 0, 5, 3)
+        splitter.addWidget(dock)
 
         # create dock widget for operations
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
@@ -87,7 +90,9 @@ class AcquisitionView:
                 scroll.setFixedWidth(self.metadata_widget.size().width())
                 dock = QDockWidget(stack.windowTitle())
                 dock.setWidget(scroll)
-                self.main_layout.addWidget(dock, i + 2, 3)
+                splitter.addWidget(dock)
+
+        self.main_layout.addWidget(splitter, 1,  3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()

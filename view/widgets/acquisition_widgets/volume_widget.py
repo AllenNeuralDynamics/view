@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame, QStyle, QPushButton, QVBoxLayout
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -64,18 +64,29 @@ class VolumeWidget(QWidget):
             button.setChecked(True)
             checkboxes.addWidget(button)
         extended_model = create_widget('V', self.volume_model, checkboxes)
-        self.layout.addWidget(extended_model, 0, 1, 3, 2)
 
         # create tile plan widgets
         self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, self.coordinate_plane, unit)
         self.fovStop = self.tile_plan_widget.fovStop  # expose for ease of access
         self.tile_starts = self.tile_plan_widget.grid_position_widgets  # expose for ease of access
         self.anchor_widgets = self.tile_plan_widget.anchor_widgets  # expose for ease of access
-        self.layout.addWidget(self.tile_plan_widget, 0, 0)
 
         # create scan widgets
         self.scan_plan_widget = ScanPlanWidget(limits[2], unit)
-        self.layout.addWidget(self.scan_plan_widget, 1, 0)
+
+        # create widget containing volume model, scan plan, and tile plan
+        top_widget = QWidget()
+        layout = QGridLayout()
+        layout.addWidget(self.tile_plan_widget, 0, 0)
+        layout.addWidget(extended_model, 0, 2, 3, 2)
+        layout.addWidget(self.scan_plan_widget, 1, 0)
+        layout.addWidget(self.scan_plan_widget.group_box, 2, 0)
+        top_widget.setLayout(layout)
+
+        # create splitter for model and table
+        splitter = QSplitter(Qt.Vertical)
+        splitter.setHandleWidth(20)
+        splitter.addWidget(top_widget)
 
         # create channel plan widget
         self.channel_plan = ChannelPlanWidget(instrument_view, channels, settings, unit)
@@ -110,8 +121,9 @@ class VolumeWidget(QWidget):
         table.addWidget(extended_table)
         table.addWidget(self.channel_plan)
         table.setHandleWidth(20)
+        splitter.addWidget(table)
 
-        # format splitter handle
+        # format table handle. Must do after all widgets are added
         handle = table.handle(1)
         layout = QHBoxLayout(handle)
         line = QFrame(handle)
@@ -120,7 +132,16 @@ class VolumeWidget(QWidget):
         line.setFrameShape(QFrame.VLine)
         layout.addWidget(line)
 
-        self.layout.addWidget(table, 3, 0, 1, 3)
+        # format splitter handle. Must do after all widgets are added
+        handle = splitter.handle(1)
+        layout = QHBoxLayout(handle)
+        line = QFrame(handle)
+        line.setStyleSheet('QFrame {border: 1px dotted grey;}')
+        line.setFixedWidth(50)
+        line.setFrameShape(QFrame.HLine)
+        layout.addWidget(line)
+
+        self.layout.addWidget(splitter, 0, 0, 1, 3)
 
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
@@ -140,7 +161,6 @@ class VolumeWidget(QWidget):
 
         # initialize first tile and add to layout
         self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
-        self.layout.addWidget(self.scan_plan_widget.group_box, 2, 0)
         self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         self.setLayout(self.layout)
