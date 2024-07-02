@@ -15,10 +15,6 @@ ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
 INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
 GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 
-# ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
-# INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
-# GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
-
 class SimulatedInstrumentView(InstrumentView):
     """View for ExASPIM Instrument"""
 
@@ -98,5 +94,5 @@ if __name__ == "__main__":
     acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
     instrument_view = SimulatedInstrumentView(instrument, GUI_YAML)
-    acquisition_view = AcquisitionView(acquisition, instrument_view, GUI_YAML)
+    acquisition_view = AcquisitionView(acquisition, instrument_view)
     sys.exit(app.exec_())

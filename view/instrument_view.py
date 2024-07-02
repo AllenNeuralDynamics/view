@@ -92,7 +92,7 @@ class InstrumentView:
                 daq.tasks = self.config['instrument_view']['livestream_tasks'][daq_name]['tasks']
 
                 # Make sure if there is a livestreaming task, there is a corresponding data acquisition task:
-                if not self.instrument.config.get('data_acquisition_tasks', {}).get(daq_name, False):
+                if not self.config['acquisition_view'].get('data_acquisition_tasks', {}).get(daq_name, False):
                     self.log.error(f'Daq {daq_name} has a livestreaming task but no corresponding data acquisition '
                                    f'task in instrument yaml.')
                     raise ValueError
@@ -500,7 +500,7 @@ class InstrumentView:
             for k in name_lst[1:]:
                 dictionary = dictionary[k]
             descriptor = getattr(type(device), name_lst[0])
-            fset = getattr(descriptor, '_fset', getattr(descriptor, 'fset'))    # account for property and deliminated
+            fset = getattr(descriptor, 'fset')    # account for property and deliminated
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
             if input_type != inspect._empty:
                 setattr(device, name_lst[0], input_type(value))

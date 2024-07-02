@@ -42,7 +42,9 @@ class BaseDeviceWidget(QMainWindow):
         widgets = {}
         for name, value in properties.items():
             setattr(self, name, value)  # Add device properties as widget properties
-            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]))}
+            attr = getattr(self.device_object, name, None)
+            unit = getattr(attr, 'unit', '') if getattr(attr, 'unit', '') is not None else ''
+            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]+f'_[{unit}]'))}
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name
 
@@ -60,7 +62,7 @@ class BaseDeviceWidget(QMainWindow):
                 for k, v in input_specs.items():
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
-                    label = QLabel(label_maker(k))
+                    label = QLabel(label_maker(k+f'_[{unit}]'))
                     if hasattr(v, 'keys') and widget_type != 'combo':  # values are complex and should be another widget
                         box = create_widget('V', **self.create_property_widgets(
                             {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # unique key for attribute
@@ -70,7 +72,7 @@ class BaseDeviceWidget(QMainWindow):
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
 
-            if attr := getattr(self.device_object, name, False):  # if name is attribute of device
+            if attr is not None:  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring
                 if getattr(attr, 'fset', None) is None:  # Constant, unchangeable attribute
                     widgets[name].setDisabled(True)
@@ -220,9 +222,9 @@ def label_maker(string):
     """
 
     possible_units = ['mm', 'um', 'px', 'mW', 'W', 'ms', 'C', 'V', 'us']
-
     label = string.split('_')
     label = [words.capitalize() for words in label]
+
     for i, word in enumerate(label):
         for unit in possible_units:
             if unit.lower() == word.lower():    # TODO: Consider using regular expression here for better results?

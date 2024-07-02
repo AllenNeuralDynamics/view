@@ -15,7 +15,7 @@ from napari.qt.threading import thread_worker, create_worker
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
 
-    def __init__(self, acquisition, instrument_view, config_path: Path, log_level='INFO'):
+    def __init__(self, acquisition, instrument_view, log_level='INFO'):
         """
         :param acquisition: voxel acquisition object
         :param config_path: path to config specifying UI setup
@@ -38,8 +38,7 @@ class AcquisitionView:
 
         self.acquisition = acquisition
         self.instrument = self.acquisition.instrument
-        self.config = YAML(typ='safe', pure=True).load(
-            config_path)  # TODO: maybe bulldozing comments but easier
+        self.config = instrument_view.config
 
         for device_name, operation_dictionary in self.acquisition.config['acquisition']['operations'].items():
             for operation_name, operation_specs in operation_dictionary.items():
@@ -121,8 +120,6 @@ class AcquisitionView:
 
     def start_acquisition(self):
         """Start acquisition"""
-
-        #TODO: Warn if no channel selected?
 
         # stop stage threads
         self.grab_fov_positions_worker.quit()
@@ -240,11 +237,16 @@ class AcquisitionView:
     def create_volume_widget(self):
         """Create widget to visualize acquisition grid"""
 
-        specs = self.config['acquisition_view']['operation_widgets'].get('volume_widget', {})
-        kwds = specs.get('init', {})
-        coordinate_plane = [x.replace('-', '') for x in kwds.get('coordinate_plane', ['x', 'y', 'z'])] # remove polarity
+        kwds = {
+            'fov_dimensions': self.config['acquisition_view']['fov_dimensions'],
+            'coordinate_plane': self.config['acquisition_view'].get('coordinate_plane', ['x', 'y', 'z']),
+            'unit': self.config['acquisition_view'].get('unit', 'mm'),
+            'settings': self.config['acquisition_view'].get('settings', {})
+
+        }
 
         # Populate limits
+        coordinate_plane = [x.replace('-', '') for x in kwds['coordinate_plane']]  # remove polarity
         limits = {}
         # add tiling stages
         for name, stage in self.instrument.tiling_stages.items():
