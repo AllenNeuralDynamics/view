@@ -92,12 +92,11 @@ class ChannelPlanWidget(QTabWidget):
                         with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
                             # value = getattr(device_object, setting)
                             descriptor = getattr(type(device_object), setting)
-                            if not isinstance(descriptor, property) or getattr(descriptor, '_fset', False) is None or \
-                                    getattr(descriptor, 'fset', False) is None:
+                            if not isinstance(descriptor, property) or getattr(descriptor, 'fset', None) is None:
                                 self.column_data_types[column_name] = None
                                 continue
                         # try and correctly type settings based on setter
-                        fset = getattr(descriptor, '_fset',  getattr(descriptor, 'fset'))
+                        fset = getattr(descriptor, 'fset')
                         input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
                         self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
 
