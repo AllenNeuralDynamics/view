@@ -144,12 +144,12 @@ class ScanPlanWidget(QWidget):
     def scan_plan_construction(self, value: useq.GridFromEdges | useq.GridRowsColumns | useq.GridWidthHeight):
         """Create new z_plan widget for each new tile """
 
-        if self.z_plan_widgets.shape[0] != value.rows or self.z_plan_widgets.shape[1] != value.columns:
+        rows = value.rows
+        cols = value.columns
+        if self.z_plan_widgets.shape[0] != rows or self.z_plan_widgets.shape[1] != cols:
             old_row = self.z_plan_widgets.shape[0]
             old_col = self.z_plan_widgets.shape[1]
 
-            rows = value.rows
-            cols = value.columns
             # close old row and column widget
             if rows - old_row < 0:
                 for i in range(rows, old_row):

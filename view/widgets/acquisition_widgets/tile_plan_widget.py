@@ -1,9 +1,11 @@
 from pymmcore_widgets import GridPlanWidget as GridPlanWidgetMMCore
 from qtpy.QtWidgets import QSizePolicy, QWidget, QCheckBox, QDoubleSpinBox, \
-    QPushButton, QLabel,  QGridLayout
-from qtpy.QtCore import Signal
+    QPushButton, QLabel, QGridLayout, QHBoxLayout
+from qtpy.QtCore import Signal, Qt
 from typing import cast
 import useq
+from view.widgets.base_device_widget import create_widget
+
 
 class TilePlanWidget(GridPlanWidgetMMCore):
     """Widget to plan out grid. Pymmcore already has a great one"""
@@ -15,13 +17,27 @@ class TilePlanWidget(GridPlanWidgetMMCore):
                  limits=[[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
-                 coordinate_plane : list[str] = ['x', 'y', 'z'],
+                 coordinate_plane: list[str] = ['x', 'y', 'z'],
                  unit: str = 'um'):
         """:param limits: list of limits ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
            :param unit: unit of all size values"""
 
+        self.reverse = QCheckBox('Reverse')  # initialize reverse checkbox since value is referenced in parent init
+
         super().__init__()
-        # TODO: should these be properties? or should we assume they stay constant?
+
+        # ability to reverse path order
+        self.reverse.stateChanged.connect(self._on_change)
+        layout = self.order.parent().layout().children()[-1].children()[0]
+        # hide previous heading
+        for i in range(layout.count()):
+            widget = layout.itemAt(i).widget()
+            if type(widget) == QLabel:
+                if widget.text() == 'Order:':
+                    widget.setVisible(False)
+        widget = create_widget('H', QLabel("Order:"), self.order, self.reverse)
+        widget.layout().setAlignment(Qt.AlignLeft)
+        layout.addRow(widget)
 
         # sort limits
         limits = [[min(limit), max(limit)] for limit in limits]
@@ -129,7 +145,6 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         if self._mode != "bounds":
             for tile in self.value():
                 coords[tile.row][tile.col] = [tile.x + self._grid_position[0], tile.y + self._grid_position[1]]
-
         else:
             for tile in self.value():
                 coords[tile.row][tile.col] = [tile.x, tile.y]
@@ -137,24 +152,25 @@ class TilePlanWidget(GridPlanWidgetMMCore):
 
     def value(self):
         """Overwriting value so Area mode doesn't multiply width and height by 1000"""
-        # FIXME: I don't like overwriting this but I don't know what else to do
+
         over = self.overlap.value()
         _order = cast("OrderMode", self.order.currentEnum())
         common = {
+            "reverse": self.reverse.isChecked(),
             "overlap": (over, over),
             "mode": _order.value,
             "fov_width": self._fov_width,
             "fov_height": self._fov_height,
         }
         if self._mode.value == 'number':
-            return useq.GridRowsColumns(
+            return GridRowsColumns(
                 rows=self.rows.value(),
                 columns=self.columns.value(),
                 relative_to=cast("RelativeTo", self.relative_to.currentEnum()).value,
                 **common,
             )
         elif self._mode.value == 'bounds':
-            return useq.GridFromEdges(
+            return GridFromEdges(
                 top=self.top.value(),
                 left=self.left.value(),
                 bottom=self.bottom.value(),
@@ -162,7 +178,7 @@ class TilePlanWidget(GridPlanWidgetMMCore):
                 **common,
             )
         elif self._mode.value == 'area':
-            return useq.GridWidthHeight(
+            return GridWidthHeight(
                 width=self.area_width.value(),
                 height=self.area_height.value(),
                 relative_to=cast("RelativeTo", self.relative_to.currentEnum()).value,
@@ -174,3 +190,47 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         """overwrite to emit a clicked signal"""
         self.clicked.emit()
         super().mousePressEvent(a0)
+
+
+class GridFromEdges(useq.GridFromEdges):
+    """Add row and column attributes and allow reversible order"""
+    reverse = property()  # initialize property
+
+    def __init__(self, reverse=False, *args, **kwargs):
+        # rewrite property since pydantic doesn't allow to add attr
+        setattr(type(self), 'reverse', property(fget=lambda x: reverse))
+        super().__init__(*args, **kwargs)
+
+    @property
+    def rows(self):
+        return self._nrows(self.fov_height)
+
+    @property
+    def columns(self):
+        return self._ncolumns(self.fov_width)
+
+
+class GridWidthHeight(useq.GridWidthHeight):
+    """Add row and column attributes and allow reversible order"""
+    reverse = property()
+
+    def __init__(self, reverse=False, *args, **kwargs):
+        setattr(type(self), 'reverse', property(fget=lambda x: reverse))
+        super().__init__(*args, **kwargs)
+
+    @property
+    def rows(self):
+        return self._nrows(self.fov_height)
+
+    @property
+    def columns(self):
+        return self._ncolumns(self.fov_width)
+
+
+class GridRowsColumns(useq.GridRowsColumns):
+    """ Allow reversible order"""
+    reverse = property()
+
+    def __init__(self, reverse=False, *args, **kwargs):
+        setattr(type(self), 'reverse', property(fget=lambda x: reverse))
+        super().__init__(*args, **kwargs)
