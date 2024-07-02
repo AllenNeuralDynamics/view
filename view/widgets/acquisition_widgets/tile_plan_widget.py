@@ -1,11 +1,11 @@
 from pymmcore_widgets import GridPlanWidget as GridPlanWidgetMMCore
 from qtpy.QtWidgets import QSizePolicy, QWidget, QCheckBox, QDoubleSpinBox, \
-    QPushButton, QLabel, QGridLayout, QHBoxLayout
+    QPushButton, QLabel, QGridLayout
 from qtpy.QtCore import Signal, Qt
 from typing import cast
 import useq
 from view.widgets.base_device_widget import create_widget
-
+from typing import Iterator
 
 class TilePlanWidget(GridPlanWidgetMMCore):
     """Widget to plan out grid. Pymmcore already has a great one"""
@@ -25,7 +25,6 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         self.reverse = QCheckBox('Reverse')  # initialize reverse checkbox since value is referenced in parent init
 
         super().__init__()
-
         # ability to reverse path order
         self.reverse.stateChanged.connect(self._on_change)
         layout = self.order.parent().layout().children()[-1].children()[0]
@@ -209,6 +208,17 @@ class GridFromEdges(useq.GridFromEdges):
     def columns(self):
         return self._ncolumns(self.fov_width)
 
+    def iter_grid_positions(self, *args, **kwargs):
+        """Rewrite to reverse order"""
+
+        if not self.reverse:
+            for tile in super().iter_grid_positions(*args, **kwargs):
+                yield tile
+        else:
+            for tile in reversed(list(super().iter_grid_positions(*args, **kwargs))):
+                yield tile
+
+
 
 class GridWidthHeight(useq.GridWidthHeight):
     """Add row and column attributes and allow reversible order"""
@@ -226,6 +236,16 @@ class GridWidthHeight(useq.GridWidthHeight):
     def columns(self):
         return self._ncolumns(self.fov_width)
 
+    def iter_grid_positions(self, *args, **kwargs):
+        """Rewrite to reverse order"""
+
+        if not self.reverse:
+            for tile in super().iter_grid_positions(*args, **kwargs):
+                yield tile
+        else:
+            for tile in reversed(list(super().iter_grid_positions(*args, **kwargs))):
+                yield tile
+
 
 class GridRowsColumns(useq.GridRowsColumns):
     """ Allow reversible order"""
@@ -234,3 +254,14 @@ class GridRowsColumns(useq.GridRowsColumns):
     def __init__(self, reverse=False, *args, **kwargs):
         setattr(type(self), 'reverse', property(fget=lambda x: reverse))
         super().__init__(*args, **kwargs)
+
+    def iter_grid_positions(self, *args, **kwargs):
+        """Rewrite to reverse order"""
+
+        if not self.reverse:
+            for tile in super().iter_grid_positions(*args, **kwargs):
+                yield tile
+        else:
+            for tile in reversed(list(super().iter_grid_positions(*args, **kwargs))):
+                yield tile
+
