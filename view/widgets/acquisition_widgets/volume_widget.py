@@ -215,8 +215,6 @@ class VolumeWidget(QWidget):
     def update_model(self):
         """When scan changes, update model"""
 
-        # print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in self.tile_plan_widget.tile_positions]))
-        # print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in self.scan_plan_widget.scan_starts]))
         # When scan changes, update model
         setattr(self.volume_model, '_scan_volumes', self.scan_plan_widget.scan_volumes)
         setattr(self.volume_model, '_tile_visibility', self.scan_plan_widget.tile_visibility)
@@ -243,6 +241,10 @@ class VolumeWidget(QWidget):
         if not self.anchor_widgets[2].isChecked():  # disable start widget for any new widgets
             self.disable_scan_start_widgets(True)
         self.table.resizeColumnsToContents()
+
+        # if mode changed from bounds, make sure tile anchor is disabled if apply all is checked
+        if self.tile_plan_widget._mode.value != 'bounds':
+            self.anchor_widgets[2].setDisabled(not self.scan_plan_widget.apply_all.isChecked())
 
     def channel_added(self, channel):
         """Update new channel with tiles"""

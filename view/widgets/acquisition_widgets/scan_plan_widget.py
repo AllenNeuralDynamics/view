@@ -171,12 +171,11 @@ class ScanPlanWidget(QWidget):
                     setattr(self, name, np.concatenate((array, add_on), axis=0))
                 elif rows < old_row:  # remove row
                     setattr(self, name, np.delete(array, [old_row - x for x in range(1, (old_row - rows)+1)], axis=0))
+                array = getattr(self, name)  # update in case rows changed
                 if cols > old_col:  # add column
                     add_on = [[v] * (cols - old_col) for _ in range(array.shape[0])]
-                    array = getattr(self, name)  # update in case rows changed
                     setattr(self, name, np.concatenate((array, add_on), axis=1))
                 elif cols < old_col:  # remove col
-                    array = getattr(self, name)  # update in case rows changed
                     setattr(self, name, np.delete(array, [old_col - x for x in range(1, (old_col - cols) + 1)], axis=1))
 
             # update new rows and columns with widgets

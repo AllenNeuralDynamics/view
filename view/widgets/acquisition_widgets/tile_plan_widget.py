@@ -1,11 +1,11 @@
 from pymmcore_widgets import GridPlanWidget as GridPlanWidgetMMCore
 from qtpy.QtWidgets import QSizePolicy, QWidget, QCheckBox, QDoubleSpinBox, \
-    QPushButton, QLabel, QGridLayout
+    QPushButton, QLabel, QGridLayout, QRadioButton
 from qtpy.QtCore import Signal, Qt
 from typing import cast
 import useq
 from view.widgets.base_device_widget import create_widget
-from typing import Iterator
+from enum import Enum
 
 class TilePlanWidget(GridPlanWidgetMMCore):
     """Widget to plan out grid. Pymmcore already has a great one"""
@@ -23,6 +23,7 @@ class TilePlanWidget(GridPlanWidgetMMCore):
            :param unit: unit of all size values"""
 
         self.reverse = QCheckBox('Reverse')  # initialize reverse checkbox since value is referenced in parent init
+        self.anchor_widgets = [QCheckBox(), QCheckBox(), QCheckBox()]
 
         super().__init__()
         # ability to reverse path order
@@ -66,7 +67,6 @@ class TilePlanWidget(GridPlanWidgetMMCore):
 
         layout.addWidget(QLabel('Anchor Grid:'), 2, 0)
 
-        self.anchor_widgets = [QCheckBox(), QCheckBox(), QCheckBox()]
         self.grid_position_widgets = [QDoubleSpinBox(), QDoubleSpinBox(), QDoubleSpinBox()]
         for i, axis, box, anchor in zip(range(0, 3), coordinate_plane, self.grid_position_widgets, self.anchor_widgets):
             box.setValue(fov_position[i])
@@ -141,13 +141,22 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         """Returns 2d list of tile positions based on widget values"""
 
         coords = [[None] * self.value().columns for _ in range(self.value().rows)]
-        if self._mode != "bounds":
+        if self._mode.value != "bounds":
             for tile in self.value():
                 coords[tile.row][tile.col] = [tile.x + self._grid_position[0], tile.y + self._grid_position[1]]
         else:
             for tile in self.value():
                 coords[tile.row][tile.col] = [tile.x, tile.y]
         return coords
+
+    def setMode(self, *args, **kwargs):
+        """Overwriting to disable anchors when bounds mode selected"""
+        self.blockSignals(True)
+        super().setMode(args[0])
+        for widget in self.anchor_widgets:
+            widget.setDisabled(True if self._mode.value == 'bounds' else False)
+        self.blockSignals(False)
+        self._on_change()
 
     def value(self):
         """Overwriting value so Area mode doesn't multiply width and height by 1000"""

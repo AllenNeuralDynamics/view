@@ -134,7 +134,6 @@ class VolumeModel(GLViewWidget):
     def set_path_pos(self, coord_order: list):
         """Set the pos of path in correct order
         coord_order: ordered list of coords for path"""
-
         path = [[(coord[i] + .5 * fov) * pol if x in self.view_plane else 0. for i, fov, pol, x in
                  zip([0, 1, 2], self.fov_dimensions, self.polarity, self.coordinate_plane)] for coord in coord_order]
         self.path.setData(pos=path)  # update path
