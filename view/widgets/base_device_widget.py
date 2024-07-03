@@ -43,8 +43,8 @@ class BaseDeviceWidget(QMainWindow):
         for name, value in properties.items():
             setattr(self, name, value)  # Add device properties as widget properties
             attr = getattr(self.device_object, name, None)
-            unit = getattr(attr, 'unit', '') if getattr(attr, 'unit', '') is not None else ''
-            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]+f'_[{unit}]'))}
+            unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
+            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]+f'_{unit}'))}
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name
 
@@ -62,7 +62,7 @@ class BaseDeviceWidget(QMainWindow):
                 for k, v in input_specs.items():
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
-                    label = QLabel(label_maker(k+f'_[{unit}]'))
+                    label = QLabel(label_maker(k+f'_{unit}'))
                     if hasattr(v, 'keys') and widget_type != 'combo':  # values are complex and should be another widget
                         box = create_widget('V', **self.create_property_widgets(
                             {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # unique key for attribute
