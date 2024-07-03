@@ -48,15 +48,19 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         self.area_height.setRange(0.01, limits[1][-1] - limits[1][0])
         self.area_height.setSuffix(f" {unit}")
 
-        # customize bound widgets
+        # customize bound widgets and set to current fov_pos
         self.left.setRange(limits[0][0], limits[0][-1])
         self.left.setSuffix(f" {unit}")
+        self.left.setValue(fov_position[0])
         self.right.setRange(limits[0][0], limits[0][-1])
         self.right.setSuffix(f" {unit}")
+        self.right.setValue(fov_position[0])
         self.top.setRange(limits[1][0], limits[1][-1])
         self.top.setSuffix(f" {unit}")
+        self.top.setValue(fov_position[1])
         self.bottom.setRange(limits[1][0], limits[1][-1])
         self.bottom.setSuffix(f" {unit}")
+        self.bottom.setValue(fov_position[1])
 
         self.setMinimumHeight(360)
         self.setMinimumWidth(400)
@@ -211,11 +215,13 @@ class GridFromEdges(useq.GridFromEdges):
 
     @property
     def rows(self):
-        return self._nrows(self.fov_height)
+        dx, _ = self._step_size(self.fov_width, self.fov_height)
+        return self._nrows(dx)
 
     @property
     def columns(self):
-        return self._ncolumns(self.fov_width)
+        _, dy = self._step_size(self.fov_width, self.fov_height)
+        return self._ncolumns(dy)
 
     def iter_grid_positions(self, *args, **kwargs):
         """Rewrite to reverse order"""
@@ -239,11 +245,13 @@ class GridWidthHeight(useq.GridWidthHeight):
 
     @property
     def rows(self):
-        return self._nrows(self.fov_height)
+        dx, _ = self._step_size(self.fov_width, self.fov_height)
+        return self._nrows(dx)
 
     @property
     def columns(self):
-        return self._ncolumns(self.fov_width)
+        _, dy = self._step_size(self.fov_width, self.fov_height)
+        return self._ncolumns(dy)
 
     def iter_grid_positions(self, *args, **kwargs):
         """Rewrite to reverse order"""
