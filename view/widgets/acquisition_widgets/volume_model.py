@@ -1,7 +1,7 @@
-from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem
+from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion
+from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion, QFont
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
@@ -60,6 +60,14 @@ class VolumeModel(GLViewWidget):
 
         self.path = GLLinePlotItem(color=QColor('lime'))    # data set externally since tiles are assumed out of order
         self.addItem(self.path)
+
+        # add indicators of start and end and hide since no tiles yet
+        self.start = GLTextItem(text='Start', font=QFont('Helvetica', 7))
+        self.start.setVisible(False)
+        self.end = GLTextItem(text='End', font=QFont('Helvetica', 7))
+        self.end.setVisible(False)
+        self.addItem(self.start)
+        self.addItem(self.end)
 
         self.fov_view = GLBoxItem()
         self.fov_view.setColor(QColor(view_color))
@@ -128,8 +136,13 @@ class VolumeModel(GLViewWidget):
 
         if visible:
             self.path.setVisible(True)
+            if len(self.grid_BoxItems) > 1:
+                self.start.setVisible(True)
+                self.end.setVisible(True)
         else:
             self.path.setVisible(False)
+            self.start.setVisible(False)
+            self.end.setVisible(False)
 
     def set_path_pos(self, coord_order: list):
         """Set the pos of path in correct order
@@ -137,6 +150,16 @@ class VolumeModel(GLViewWidget):
         path = [[((coord[i]*pol) + (.5 * fov)) if x in self.view_plane else 0. for i, fov, pol, x in
                  zip([0, 1, 2], self.fov_dimensions, self.polarity, self.coordinate_plane)] for coord in coord_order]
         self.path.setData(pos=path)  # update path
+
+        if len(coord_order) > 1 and self.path.visible():
+            self.start.setData(pos=path[0])
+            self.end.setData(pos=path[-1])
+            self.start.setVisible(True)
+            self.end.setVisible(True)
+
+        else:
+            self.start.setVisible(False)
+            self.end.setVisible(False)
 
     def _update_opts(self):
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""
