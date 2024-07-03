@@ -5,7 +5,6 @@ from qtpy.QtCore import Signal, Qt
 from typing import cast
 import useq
 from view.widgets.base_device_widget import create_widget
-from enum import Enum
 
 class TilePlanWidget(GridPlanWidgetMMCore):
     """Widget to plan out grid. Pymmcore already has a great one"""
@@ -26,6 +25,10 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         self.anchor_widgets = [QCheckBox(), QCheckBox(), QCheckBox()]
 
         super().__init__()
+        # remove polarity from coordinate plane to reduce complexity
+        self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
+        polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
+
         # ability to reverse path order
         self.reverse.stateChanged.connect(self._on_change)
         layout = self.order.parent().layout().children()[-1].children()[0]
@@ -61,6 +64,22 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         self.bottom.setRange(limits[1][0], limits[1][-1])
         self.bottom.setSuffix(f" {unit}")
         self.bottom.setValue(fov_position[1])
+
+        # since coordinate frame could be inverted, remove left/right/top/bottom references with coordinate_frame axes
+        for i in range( self.lrtb_wdg.layout().count()):
+            widget = self.lrtb_wdg.layout().itemAt(i).widget()
+            if type(widget) == QLabel:
+                if widget.text() == 'Left:':
+                    widget.setText('Left:' if polarity[0] == 1 else 'Right:' )
+                elif widget.text() == 'Right:':
+                    widget.setText('Right:' if polarity[0] == 1 else 'Left:')
+                elif widget.text() == 'Top:':
+                    widget.setText('Top:' if polarity[1] == 1 else 'Bottom:')
+                elif widget.text() == 'Bottom:':
+                    widget.setText('Bottom:' if polarity[1] == 1 else 'Top:')
+        # since coordinate frame could be inverted, update relative to drop down enums
+        new_text = f"{'top' if polarity[1] == 1 else 'bottom'} {'left' if polarity[0] == 1 else 'right'}"
+        self.relative_to.setItemText(1, new_text)
 
         self.setMinimumHeight(360)
         self.setMinimumWidth(400)

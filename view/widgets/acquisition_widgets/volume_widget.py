@@ -65,8 +65,8 @@ class VolumeWidget(QWidget):
             checkboxes.addWidget(button)
         extended_model = create_widget('V', self.volume_model, checkboxes)
 
-        # create tile plan widgets
-        self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, self.coordinate_plane, unit)
+        # create tile plan widgets, feed in coordinate plan with polarity
+        self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, coordinate_plane, unit)
         self.fovStop = self.tile_plan_widget.fovStop  # expose for ease of access
         self.tile_starts = self.tile_plan_widget.grid_position_widgets  # expose for ease of access
         self.anchor_widgets = self.tile_plan_widget.anchor_widgets  # expose for ease of access
