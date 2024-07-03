@@ -5,6 +5,7 @@ from qtpy.QtCore import Signal, Qt
 from typing import cast
 import useq
 from view.widgets.base_device_widget import create_widget
+from enum import Enum
 
 class TilePlanWidget(GridPlanWidgetMMCore):
     """Widget to plan out grid. Pymmcore already has a great one"""
@@ -21,8 +22,10 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         """:param limits: list of limits ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
            :param unit: unit of all size values"""
 
-        self.reverse = QCheckBox('Reverse')  # initialize reverse checkbox since value is referenced in parent init
+        # dummy initialize since value is referenced in parent init
+        self.reverse = QCheckBox('Reverse')
         self.anchor_widgets = [QCheckBox(), QCheckBox(), QCheckBox()]
+        self.RelativeTo = {'center': 'center', 'top_left': 'top_left'}
 
         super().__init__()
         # remove polarity from coordinate plane to reduce complexity
@@ -77,9 +80,12 @@ class TilePlanWidget(GridPlanWidgetMMCore):
                     widget.setText('Top:' if polarity[1] == 1 else 'Bottom:')
                 elif widget.text() == 'Bottom:':
                     widget.setText('Bottom:' if polarity[1] == 1 else 'Top:')
+
         # since coordinate frame could be inverted, update relative to drop down enums
-        new_text = f"{'top' if polarity[1] == 1 else 'bottom'} {'left' if polarity[0] == 1 else 'right'}"
-        self.relative_to.setItemText(1, new_text)
+        new_enum = f"{'top' if polarity[1] == 1 else 'bottom'} {'left' if polarity[0] == 1 else 'right'}"
+        self.RelativeTo = {'center': 'center', new_enum: 'top_left'}
+        self.relative_to.setItemText(1, new_enum)
+
 
         self.setMinimumHeight(360)
         self.setMinimumWidth(400)
@@ -197,7 +203,7 @@ class TilePlanWidget(GridPlanWidgetMMCore):
             return GridRowsColumns(
                 rows=self.rows.value(),
                 columns=self.columns.value(),
-                relative_to=cast("RelativeTo", self.relative_to.currentEnum()).value,
+                relative_to=self.RelativeTo[self.relative_to.currentText()],
                 **common,
             )
         elif self._mode.value == 'bounds':
@@ -212,7 +218,7 @@ class TilePlanWidget(GridPlanWidgetMMCore):
             return GridWidthHeight(
                 width=self.area_width.value(),
                 height=self.area_height.value(),
-                relative_to=cast("RelativeTo", self.relative_to.currentEnum()).value,
+                relative_to=self.RelativeTo[self.relative_to.currentText()],
                 **common,
             )
         raise NotImplementedError
