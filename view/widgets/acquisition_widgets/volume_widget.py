@@ -243,7 +243,7 @@ class VolumeWidget(QWidget):
         self.table.resizeColumnsToContents()
 
         # if mode changed from bounds, make sure tile anchor is disabled if apply all is checked
-        if self.tile_plan_widget._mode.value != 'bounds':
+        if self.tile_plan_widget.mode().value != 'bounds':
             self.anchor_widgets[2].setDisabled(not self.scan_plan_widget.apply_all.isChecked())
 
     def channel_added(self, channel):

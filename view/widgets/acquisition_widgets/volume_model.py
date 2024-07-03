@@ -64,9 +64,9 @@ class VolumeModel(GLViewWidget):
         self.fov_view = GLBoxItem()
         self.fov_view.setColor(QColor(view_color))
         self.fov_view.setSize(*self.fov_dimensions)
-        self.fov_view.setTransform(QMatrix4x4(self.polarity[0], 0, 0, self.fov_position[0],
-                                              0, self.polarity[1], 0, self.fov_position[1],
-                                              0, 0, self.polarity[2], self.fov_position[2],
+        self.fov_view.setTransform(QMatrix4x4(1, 0, 0, self.fov_position[0]*self.polarity[0],
+                                              0, 1, 0, self.fov_position[1]*self.polarity[1],
+                                              0, 0, 1, self.fov_position[2]*self.polarity[2],
                                               0, 0, 0, 1))
         self.addItem(self.fov_view)
 
@@ -85,10 +85,10 @@ class VolumeModel(GLViewWidget):
             x = self.fov_position[0] if self.coordinate_plane[0] in self.view_plane else 0
             y = self.fov_position[1] if self.coordinate_plane[1] in self.view_plane else 0
             z = self.fov_position[2] if self.coordinate_plane[2] in self.view_plane else 0
-            self.fov_view.setTransform(QMatrix4x4(self.polarity[0], 0, 0, x,
-                                                  0, self.polarity[1], 0, y,
-                                                  0, 0, self.polarity[2], z,
-                                                  0, 0, 0, 1))
+            self.fov_view.setTransform(QMatrix4x4(1, 0, 0, x*self.polarity[0],
+                                                0, 1, 0, y*self.polarity[1],
+                                                0, 0, 1, z*self.polarity[2],
+                                                0, 0, 0, 1))
 
         else:
             # ignore plane that is not being viewed. TODO: IS this what we want?
@@ -112,9 +112,9 @@ class VolumeModel(GLViewWidget):
                     z_size = self.scan_volumes[row, column] if self.coordinate_plane[2] in self.view_plane else 0
                     box = GLBoxItem()
                     box.setSize(fov_x, fov_y, z_size)
-                    box.setTransform(QMatrix4x4(self.polarity[0], 0, 0, x,
-                                                0, self.polarity[1], 0, y,
-                                                0, 0, self.polarity[2], z,
+                    box.setTransform(QMatrix4x4(1, 0, 0, x*self.polarity[0],
+                                                0, 1, 0, y*self.polarity[1],
+                                                0, 0, 1, z*self.polarity[2],
                                                 0, 0, 0, 1))
                     box.setColor('white')
                     box.setVisible(self.tile_visibility[row, column])
@@ -134,7 +134,7 @@ class VolumeModel(GLViewWidget):
     def set_path_pos(self, coord_order: list):
         """Set the pos of path in correct order
         coord_order: ordered list of coords for path"""
-        path = [[(coord[i] + .5 * fov) * pol if x in self.view_plane else 0. for i, fov, pol, x in
+        path = [[((coord[i]*pol) + (.5 * fov)) if x in self.view_plane else 0. for i, fov, pol, x in
                  zip([0, 1, 2], self.fov_dimensions, self.polarity, self.coordinate_plane)] for coord in coord_order]
         self.path.setData(pos=path)  # update path
 
@@ -142,7 +142,7 @@ class VolumeModel(GLViewWidget):
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""
 
         view_plane = self.view_plane
-        view_polarity = [self.polarity[self.coordinate_plane.index(view_plane[0])],
+        view_pol = [self.polarity[self.coordinate_plane.index(view_plane[0])],
                      self.polarity[self.coordinate_plane.index(view_plane[1])]]
         coords = self.grid_coords.reshape([-1, 3]) # flatten array
         # set rotation
@@ -153,9 +153,9 @@ class VolumeModel(GLViewWidget):
                 view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]) else QQuaternion(-.7, .7, 0, 0)
             # take into account end of tile and account for difference in size if z included in view
             dimensions = self.scan_volumes.flatten() # flatten array
-            coords = np.concatenate((coords, [[x*self.polarity[0],
-                                               y*self.polarity[1],
-                                              (z + sz)*self.polarity[0]] for (x,y,z), sz in zip(coords, dimensions)]))
+            coords = np.concatenate((coords, [[x,
+                                               y,
+                                              (z + sz)] for (x,y,z), sz in zip(coords, dimensions)]))
 
 
         extrema = {'x_min': min([x for x, y, z in coords]), 'x_max': max([x for x, y, z in coords]),
@@ -177,23 +177,22 @@ class VolumeModel(GLViewWidget):
         x = view_plane[0]
         if extrema[f'{x}_min'] <= pos[x] <= extrema[f'{x}_max'] or \
                 abs(furthest_tile[x] - pos[x]) < abs(extrema[f'{x}_max'] - extrema[f'{x}_min']):
-            center[x] = ((extrema[f'{x}_min'] + extrema[f'{x}_max']) / 2) + (fov[x] / 2) * view_polarity[0]
+            center[x] = (((extrema[f'{x}_min'] + extrema[f'{x}_max']) / 2) + (fov[x] / 2 * view_pol[0])) * view_pol[0]
             horz_dist = ((extrema[f'{x}_max'] - extrema[f'{x}_min']) + (fov[x] * 2)) / 2 * tan(radians(self.opts['fov']))
         else:
-            center[x] = ((pos[x] + furthest_tile[x]) / 2) + (fov[x] / 2) * view_polarity[0]
+            center[x] = (((pos[x] + furthest_tile[x]) / 2) + (fov[x] / 2 * view_pol[0])) * view_pol[0]
             horz_dist = (abs(pos[x] - furthest_tile[x]) + (fov[x] * 2)) / 2 * tan(radians(self.opts['fov']))
-
         # Vertical sizing, if fov_position is within grid or farthest distance is between grid tiles
         y = view_plane[1]
         if extrema[f'{y}_min'] <= pos[y] <= extrema[f'{y}_max'] or \
                 abs(furthest_tile[y] - pos[y]) < abs(extrema[f'{y}_max'] - extrema[f'{y}_min']):
-            center[y] = ((extrema[f'{y}_min'] + extrema[f'{y}_max']) / 2) + (fov[y] / 2) * view_polarity[1]
+            center[y] = (((extrema[f'{y}_min'] + extrema[f'{y}_max']) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             # View doesn't scale when changing vertical size so take into account the dif between the height and width
             vert_dist = ((extrema[f'{y}_max'] - extrema[f'{y}_min']) + (fov[y] * 2)) / 2 \
                         * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
 
         else:
-            center[y] = ((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2) * view_polarity[1]
+            center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 \
                         * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
 
