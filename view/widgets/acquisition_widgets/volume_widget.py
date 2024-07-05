@@ -205,12 +205,16 @@ class VolumeWidget(QWidget):
         self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
 
         # update scanning coords of table
+        count = 0
         for tile in value:
             table_row = self.table.findItems(str([tile.row, tile.col]), Qt.MatchExactly)[0].row()
             scan_dim_0 = self.table.item(table_row, 1)
             scan_dim_1 = self.table.item(table_row, 2)
             self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][0]), scan_dim_0)
             self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][1]), scan_dim_1)
+            count += 1
+            if count > 100:
+                break
 
     def update_model(self):
         """When scan changes, update model"""
@@ -229,8 +233,12 @@ class VolumeWidget(QWidget):
             # clear table and add back tiles in the correct order if
             self.table.clearContents()
             self.table.setRowCount(0)
+            count = 0
             for tile in self.tile_plan_widget.value():
                 self.add_tile_to_table(tile.row, tile.col)
+                count += 1
+                if count > 100:
+                    break
 
         # update channel plan
         self.channel_plan.tile_volumes = self.scan_plan_widget.scan_volumes
@@ -290,7 +298,8 @@ class VolumeWidget(QWidget):
 
         # connect z widget signals to trigger update
         z = self.scan_plan_widget.z_plan_widgets[row, column]
-        z.valueChanged.connect(lambda value: self.change_table(value, row, column))
+        if len(self.table.findItems(str([row, column]), Qt.MatchExactly)) > 0:
+            z.valueChanged.connect(lambda value: self.change_table(value, row, column))
 
     def view_plane_change(self, button):
         """Update view plane and remap path

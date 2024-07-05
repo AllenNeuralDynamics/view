@@ -6,7 +6,6 @@ import useq
 import enum
 import numpy as np
 from superqt.utils import signals_blocked
-import inspect
 
 class Mode(enum.Enum):
     """Recognized ZPlanWidget modes."""
@@ -180,15 +179,17 @@ class ScanPlanWidget(QWidget):
                     setattr(self, name, np.delete(array, [old_col - x for x in range(1, (old_col - cols) + 1)], axis=1))
 
             # update new rows and columns with widgets
+
             if rows - old_row > 0:
                 for i in range(old_row, rows):
                     for j in range(cols):  # take care of any new column values
-                        self.create_z_plan_widget(i, j)
+                        if i*j <= 100:  # limit z plan widgets to 100
+                            self.create_z_plan_widget(i, j)
             if cols - old_col > 0:
                 for i in range(old_row):  # if new rows, already taken care of in previous loop
                     for j in range(old_col, cols):
-                        self.create_z_plan_widget(i, j)
-
+                        if i*j <= 100:  # limit z plan widgets to 100
+                            self.create_z_plan_widget(i, j)
         self.scanChanged.emit()
 
     def create_z_plan_widget(self, row, column):
