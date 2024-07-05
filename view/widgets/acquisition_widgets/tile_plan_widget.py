@@ -185,7 +185,7 @@ class TilePlanWidget(GridPlanWidgetMMCore):
         """Overwriting to disable anchors when bounds mode selected"""
         self.blockSignals(True)
         super().setMode(args[0])
-        for widget in self.anchor_widgets:
+        for widget in self.anchor_widgets[:2]:
             widget.setDisabled(True if self._mode.value == 'bounds' else False)
         self.blockSignals(False)
         self._on_change()
