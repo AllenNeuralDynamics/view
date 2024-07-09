@@ -75,8 +75,8 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        # self.main_layout.addWidget(dock, 1, 3)
-        splitter.addWidget(dock)
+        self.main_layout.addWidget(dock, 1, 3)
+        #splitter.addWidget(dock)
 
         # create dock widget for operations
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
@@ -91,8 +91,8 @@ class AcquisitionView:
                 dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
                 splitter.addWidget(dock)
-                # self.main_layout.addWidget(dock, i + 2, 3)
-        self.main_layout.addWidget(splitter, 1,  3)
+                self.main_layout.addWidget(dock, i + 2, 3)
+        # self.main_layout.addWidget(splitter, 1,  3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()
