@@ -9,7 +9,7 @@ from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScroll
     QLabel, QPushButton, QSplitter, QStyle
 from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
-from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
+from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -65,6 +65,7 @@ class AcquisitionView:
 
         # splitter for operation widgets
         splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)
 
         # create scroll wheel for metadata widget
         scroll = QScrollArea()
@@ -75,8 +76,7 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        self.main_layout.addWidget(dock, 1, 3)
-        #splitter.addWidget(dock)
+        splitter.addWidget(dock)
 
         # create dock widget for operations
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
@@ -90,9 +90,9 @@ class AcquisitionView:
                 dock = QDockWidget(stack.windowTitle())
                 dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
+                dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
-                self.main_layout.addWidget(dock, i + 2, 3)
-        # self.main_layout.addWidget(splitter, 1,  3)
+        self.main_layout.addWidget(splitter, 1,  3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()

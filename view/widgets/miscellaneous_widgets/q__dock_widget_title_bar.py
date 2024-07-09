@@ -1,8 +1,7 @@
 from qtpy.QtWidgets import QFrame, QPushButton, QStyle, QDockWidget, QLabel, QHBoxLayout
-from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from qtpy.QtCore import Qt
 from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot
-from qtpy.QtGui import QPalette
+
 
 class QDockWidgetTitleBar(QFrame):
     """Widget to act as a QDockWidget title bar. Will allow user to collapse, expand, pop out, and close widget"""
@@ -12,6 +11,9 @@ class QDockWidgetTitleBar(QFrame):
     def __init__(self, dock:QDockWidget):
 
         super().__init__()
+
+        self._timeline = None
+        self.current_height = 25
 
         self.setAutoFillBackground(True)
         self.initial_pos = None
@@ -71,29 +73,33 @@ class QDockWidgetTitleBar(QFrame):
 
     def minimize(self):
         """Minimize widget"""
+
         self.dock.setMinimumHeight(25)
-        current_height = self.dock.widget().height()
-        self._timeline = TimeLine(loopCount=1, interval=1, step_size=-1)
-        self._timeline.setFrameRange(current_height, 0)
+        self.current_height = self.dock.widget().height()   # save to expand to later
+        self._timeline = TimeLine(loopCount=1, interval=1, step_size=-5)
+        self._timeline.setFrameRange(self.current_height, 0)
         self._timeline.frameChanged.connect(self.set_widget_size)
         self._timeline.start()
 
     def maximize(self):
         """Minimize widget"""
 
-        self._timeline = TimeLine(loopCount=1, interval=1, step_size=1)
-        self._timeline.setFrameRange(0, self.dock.widget().sizeHint().height())
-        self._timeline.frameChanged.connect(self.set_widget_size)
-        self._timeline.start()
+        if self.dock.height() == 25: # already maximized
+            self._timeline = TimeLine(loopCount=1, interval=1, step_size=5)
+            self._timeline.timerEnded.connect(lambda: self.dock.setMaximumHeight(2500))
+            self._timeline.setFrameRange(self.dock.widget().height(), self.current_height)
+            self._timeline.frameChanged.connect(self.set_widget_size)
+            self._timeline.start()
 
     def set_widget_size(self, i):
         """Change size of widget based on qtimer"""
 
-        self.dock.setMinimumHeight(25)
+
         self.dock.widget().resize(self.dock.widget().width(), int(i))
         self.dock.resize(self.dock.width(), int(i))
         if i > self.dock.minimumHeight():
             self.dock.setFixedHeight(int(i))  # prevent container widget from resizing back
+        self.dock.setMinimumHeight(25)
         self.resized.emit()
 
     def mousePressEvent(self, event):
@@ -139,6 +145,7 @@ class TimeLine(QObject):
         if self._loopCount > 0:
             if self._loop_counter >= self.loopCount():
                 self._timer.stop()
+                self.timerEnded.emit()
 
     def setLoopCount(self, loopCount):
         self._loopCount = loopCount
@@ -167,6 +174,5 @@ class TimeLine(QObject):
         self._timer.start()
 
     def stop(self):
-        print('stopping')
         self._timer.stop()
         self.timerEnded.emit()
