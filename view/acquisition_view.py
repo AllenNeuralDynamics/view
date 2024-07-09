@@ -1,6 +1,4 @@
-from pathlib import Path
 import logging
-from ruamel.yaml import YAML
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
@@ -8,9 +6,10 @@ from qtpy.QtCore import Slot
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QFrame, QHBoxLayout
+    QLabel, QPushButton, QSplitter, QStyle
 from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
+from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -76,6 +75,7 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        # self.main_layout.addWidget(dock, 1, 3)
         splitter.addWidget(dock)
 
         # create dock widget for operations
@@ -88,9 +88,10 @@ class AcquisitionView:
                 scroll.setWidget(stack)
                 scroll.setFixedWidth(self.metadata_widget.size().width())
                 dock = QDockWidget(stack.windowTitle())
+                dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
                 splitter.addWidget(dock)
-
+                # self.main_layout.addWidget(dock, i + 2, 3)
         self.main_layout.addWidget(splitter, 1,  3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
@@ -99,6 +100,10 @@ class AcquisitionView:
         # Set app events
         app = QApplication.instance()
         app.focusChanged.connect(self.toggle_grab_fov_positions)
+
+    def minimize_widget(self):
+        """Minimize operation widget"""
+        pass
 
     def create_start_button(self):
         """Create button to start acquisition"""
