@@ -13,7 +13,7 @@ class QDockWidgetTitleBar(QFrame):
         super().__init__()
 
         self._timeline = None
-        self.current_height = 25
+        self.current_height = None
 
         self.setAutoFillBackground(True)
         self.initial_pos = None
@@ -75,7 +75,7 @@ class QDockWidgetTitleBar(QFrame):
         """Minimize widget"""
 
         self.dock.setMinimumHeight(25)
-        self.current_height = self.dock.widget().height()   # save to expand to later
+        self.current_height = self.dock.widget().height()
         self._timeline = TimeLine(loopCount=1, interval=1, step_size=-5)
         self._timeline.setFrameRange(self.current_height, 0)
         self._timeline.frameChanged.connect(self.set_widget_size)
@@ -84,8 +84,9 @@ class QDockWidgetTitleBar(QFrame):
     def maximize(self):
         """Minimize widget"""
 
-        if self.dock.height() == 25: # already maximized
+        if self.current_height is not None:
             self._timeline = TimeLine(loopCount=1, interval=1, step_size=5)
+            self._timeline.timerEnded.connect(lambda: self.dock.setMinimumHeight(25))
             self._timeline.timerEnded.connect(lambda: self.dock.setMaximumHeight(2500))
             self._timeline.setFrameRange(self.dock.widget().height(), self.current_height)
             self._timeline.frameChanged.connect(self.set_widget_size)

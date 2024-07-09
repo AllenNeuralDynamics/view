@@ -76,6 +76,9 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
+        dock.setWidget(scroll)
+        dock.setMinimumHeight(25)
         splitter.addWidget(dock)
 
         # create dock widget for operations
