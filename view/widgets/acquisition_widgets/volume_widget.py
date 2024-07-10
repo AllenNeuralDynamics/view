@@ -474,24 +474,34 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).value() for j, k in
+            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
                          enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
 
         # load channel plan values
-        for device_type, devices in self.channel_plan.possible_channels[channel].items():
-            for device_name in devices:
-                tile_dict[device_name] = {}
-                for setting in self.channel_plan.settings.get(device_type, []):
-                    column_name = label_maker(f'{device_name}_{setting}')
-                    if getattr(self.channel_plan, column_name, None) is not None:
-                        array = getattr(self.channel_plan, column_name)[channel]
-                        input_type = self.channel_plan.column_data_types[column_name]
-                        if input_type != inspect._empty:
-                            tile_dict[device_name][setting] = input_type(array[row, column])
-                        else:
-                            tile_dict[device_name][setting] = array[row, column]
+        for device_type, settings in self.channel_plan.settings.items():
+            if device_type in self.channel_plan.possible_channels[channel].keys():
+                for device_name in self.channel_plan.possible_channels[channel][device_type]:
+                    tile_dict[device_name] = {}
+                    for setting in settings:
+                        column_name = label_maker(f'{device_name}_{setting}')
+                        if getattr(self.channel_plan, column_name, None) is not None:
+                            array = getattr(self.channel_plan, column_name)[channel]
+                            input_type = self.channel_plan.column_data_types[column_name]
+                            if input_type is not None:
+                                tile_dict[device_name][setting] = input_type(array[row, column])
+                            else:
+                                tile_dict[device_name][setting] = array[row, column]
+            else:
+                column_name = label_maker(f'{device_type}')
+                if getattr(self.channel_plan, column_name, None) is not None:
+                    array = getattr(self.channel_plan, column_name)[channel]
+                    input_type = self.channel_plan.column_data_types[column_name]
+                    if input_type is not None:
+                        tile_dict[device_type] = input_type(array[row, column])
+                    else:
+                        tile_dict[device_type] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
             array = getattr(self.channel_plan, name)[channel]

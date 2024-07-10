@@ -116,23 +116,19 @@ class ChannelPlanWidget(QTabWidget):
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
                     columns.append(column_name)
-                    self.column_data_types[column_name] = settings['type']
-                    if settings['type'] == 'float':
+                    if settings['delegate'] == 'spin':
                         minimum = settings.get('minimum', None)
                         maximum = settings.get('maximum', None)
-                        step = settings.get('step', .1)
+                        step = settings.get('step', .1 if settings['type'] == 'float' else 1 )
                         delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                    elif settings['type'] == 'int':
-                        minimum = settings.get('minimum', None)
-                        maximum = settings.get('maximum', None)
-                        step = settings.get('step', 1)
-                        delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                    elif settings['type'] == 'list':
+                        self.column_data_types[column_name] = float if settings['type'] == 'float' else int
+                    elif settings['delegate'] == 'combo':
                         items = settings['items']
                         delegates.append(QComboItemDelegate(items=items))
+                        self.column_data_types[column_name] = type(items[0])  # what if list contains multiple types?
                     else:
                         delegates.append(QTextItemDelegate())
-
+                        self.column_data_types[column_name] = str
 
             columns.append('row, column')
 
