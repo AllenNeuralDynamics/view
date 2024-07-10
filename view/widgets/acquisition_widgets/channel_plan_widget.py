@@ -25,7 +25,6 @@ class ChannelPlanWidget(QTabWidget):
         self.possible_channels = channels
         self.channels = []
         self.settings = settings
-        self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
 
         # setup units for step size and step calculation
         unit_registry = pint.UnitRegistry()
@@ -82,58 +81,38 @@ class ChannelPlanWidget(QTabWidget):
 
             columns = ['step size [um]', 'steps', 'prefix']
             delegates = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
-            for device_type, settings in self.settings.items():
-                if device_type in self.possible_channels[channel].keys():
-                    for device_name in self.possible_channels[channel][device_type]:
-                        device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
-                        device_object = getattr(instrument_view.instrument, device_type)[device_name]
-                        for setting in settings:
-                            # select delegate to use based on type
-                            column_name = label_maker(f'{device_name}_{setting}')
-                            with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
-                                descriptor = getattr(type(device_object), setting)
-                                if not isinstance(descriptor, property) or getattr(descriptor, 'fset', None) is None:
-                                    self.column_data_types[column_name] = None
-                                    continue
-                            # try and correctly type settings based on setter
-                            fset = getattr(descriptor, 'fset')
-                            input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
-                            self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
-                            setattr(self, column_name, {})
-                            columns.append(column_name)
-                            if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
-                                minimum = getattr(descriptor, 'minimum', float('-inf'))
-                                maximum = getattr(descriptor, 'maximum', float('inf'))
-                                step = getattr(descriptor, 'step', .1)
-                                delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                            elif type(getattr(device_widget, f'{setting}_widget')) == QComboBox:
-                                widget = getattr(device_widget, f'{setting}_widget')
-                                items = [widget.itemText(i) for i in range(widget.count())]
-                                delegates.append(QComboItemDelegate(items=items))
-                            else:  # TODO: How to handle dictionary values
-                                delegates.append(QTextItemDelegate())
-                elif type(settings) == dict:     # TODO: how to validate the GUI yaml?
-                    column_name = label_maker(device_type)
-                    setattr(self, column_name, {})
-                    columns.append(column_name)
-                    self.column_data_types[column_name] = settings['type']
-                    if settings['type'] == 'float':
-                        minimum = settings.get('minimum', None)
-                        maximum = settings.get('maximum', None)
-                        step = settings.get('step', .1)
-                        delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                    elif settings['type'] == 'int':
-                        minimum = settings.get('minimum', None)
-                        maximum = settings.get('maximum', None)
-                        step = settings.get('step', 1)
-                        delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                    elif settings['type'] == 'list':
-                        items = settings['items']
-                        delegates.append(QComboItemDelegate(items=items))
-                    else:
-                        delegates.append(QTextItemDelegate())
+            self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
+            for device_type, device_names in self.possible_channels[channel].items():
+                for device_name in device_names:
+                    device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
+                    device_object = getattr(instrument_view.instrument, device_type)[device_name]
+                    for setting in self.settings.get(device_type, []):
+                        # select delegate to use based on type
+                        column_name = label_maker(f'{device_name}_{setting}')
+                        with getattr(instrument_view, f'{singularize(device_type)}_locks')[device_name]:  # lock device
+                            # value = getattr(device_object, setting)
+                            descriptor = getattr(type(device_object), setting)
+                            if not isinstance(descriptor, property) or getattr(descriptor, 'fset', None) is None:
+                                self.column_data_types[column_name] = None
+                                continue
+                        # try and correctly type settings based on setter
+                        fset = getattr(descriptor, 'fset')
+                        input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
+                        self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
 
-
+                        setattr(self, column_name, {})
+                        columns.append(column_name)
+                        if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
+                            minimum = getattr(descriptor, 'minimum', float('-inf'))
+                            maximum = getattr(descriptor, 'maximum', float('inf'))
+                            step = getattr(descriptor, 'step', .001)
+                            delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
+                        elif type(getattr(device_widget, f'{setting}_widget')) == QComboBox:
+                            widget = getattr(device_widget, f'{setting}_widget')
+                            items = [widget.itemText(i) for i in range(widget.count())]
+                            delegates.append(QComboItemDelegate(items=items))
+                        else:  # TODO: How to handle dictionary values
+                            delegates.append(QTextItemDelegate())
             columns.append('row, column')
 
             for i, delegate in enumerate(delegates):
@@ -208,17 +187,19 @@ class ChannelPlanWidget(QTabWidget):
         table = getattr(self, f'{channel}_table')
         table.cellChanged.connect(self.cell_edited)
 
-        for i in range(3, table.columnCount()-1):  # skip steps, step_size, prefix, row/col
-            column_name = table.horizontalHeaderItem(i).text()
-            delegate = getattr(self, f'{column_name}_{channel}_delegate', None)
-            if delegate is not None:  # Skip if setting did not have setter
-                if type(delegate) == QSpinItemDelegate:
-                    getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
-                elif type(delegate) == QComboItemDelegate:
-                    getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape, dtype='<U5')
-                    getattr(self, f'{column_name}')[channel][:, :] = delegate.items[0]
-                else:
-                    getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
+        for device_type, devices in self.possible_channels[channel].items():
+            for device in devices:
+                for setting in self.settings.get(device_type, []):
+                    column_name = label_maker(f'{device}_{setting}')
+                    delegate = getattr(self, f'{column_name}_{channel}_delegate', None)
+                    if delegate is not None:    # Skip if setting did not have setter
+                        if type(delegate) == QSpinItemDelegate:
+                            getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
+                        elif type(delegate) == QComboItemDelegate:
+                            getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
+                            getattr(self, f'{column_name}')[channel][:, :] = delegate.items[0]
+                        else:
+                            getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
