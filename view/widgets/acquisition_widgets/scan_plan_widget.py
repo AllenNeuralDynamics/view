@@ -144,16 +144,16 @@ class ScanPlanWidget(QWidget):
     def scan_plan_construction(self, value: useq.GridFromEdges | useq.GridRowsColumns | useq.GridWidthHeight):
         """Create new z_plan widget for each new tile """
 
-        if self.z_plan_widgets.shape[0] != value.rows or self.z_plan_widgets.shape[1] != value.columns:
+        rows = value.rows
+        cols = value.columns
+        if self.z_plan_widgets.shape[0] != rows or self.z_plan_widgets.shape[1] != cols:
             old_row = self.z_plan_widgets.shape[0]
             old_col = self.z_plan_widgets.shape[1]
 
-            rows = value.rows
-            cols = value.columns
             # close old row and column widget
             if rows - old_row < 0:
                 for i in range(rows, old_row):
-                    for j in range(old_col):
+                    for j in range(cols):
                         self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
                         self.z_plan_widgets[i, j].close()
 
@@ -162,17 +162,16 @@ class ScanPlanWidget(QWidget):
                     for i in range(old_row):
                         self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
                         self.z_plan_widgets[i, j].close()
-
             # resize array to new size
             for array, name in zip([self.z_plan_widgets, self.tile_visibility, self.scan_starts, self.scan_volumes],
                                    ['z_plan_widgets', '_tile_visibility', '_scan_starts', '_scan_volumes']):
-
                 v = array[0, 0] if array.shape != (0, 1) else 0  # initialize array with value from first tile
                 if rows > old_row:  # add row
                     add_on = [[v] * array.shape[1]] * (rows - old_row)
                     setattr(self, name, np.concatenate((array, add_on), axis=0))
                 elif rows < old_row:  # remove row
-                    setattr(self, name, np.delete(array, [old_row - x for x in range(1, (old_row - rows) + 1)], axis=0))
+                    setattr(self, name, np.delete(array, [old_row - x for x in range(1, (old_row - rows)+1)], axis=0))
+                array = getattr(self, name)  # update in case rows changed
                 if cols > old_col:  # add column
                     add_on = [[v] * (cols - old_col) for _ in range(array.shape[0])]
                     setattr(self, name, np.concatenate((array, add_on), axis=1))

@@ -1,6 +1,4 @@
-from pathlib import Path
 import logging
-from ruamel.yaml import YAML
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
@@ -8,9 +6,10 @@ from qtpy.QtCore import Slot
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QFrame, QHBoxLayout
+    QLabel, QPushButton, QSplitter
 from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
+from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -66,6 +65,7 @@ class AcquisitionView:
 
         # splitter for operation widgets
         splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)
 
         # create scroll wheel for metadata widget
         scroll = QScrollArea()
@@ -76,6 +76,9 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
+        dock.setWidget(scroll)
+        dock.setMinimumHeight(25)
         splitter.addWidget(dock)
 
         # create dock widget for operations
@@ -88,9 +91,10 @@ class AcquisitionView:
                 scroll.setWidget(stack)
                 scroll.setFixedWidth(self.metadata_widget.size().width())
                 dock = QDockWidget(stack.windowTitle())
+                dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
+                dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
-
         self.main_layout.addWidget(splitter, 1,  3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
