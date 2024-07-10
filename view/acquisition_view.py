@@ -1,6 +1,4 @@
-from pathlib import Path
 import logging
-from ruamel.yaml import YAML
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
@@ -8,7 +6,7 @@ from qtpy.QtCore import Slot
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QFrame, QHBoxLayout
+    QLabel, QPushButton, QSplitter
 from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
 
