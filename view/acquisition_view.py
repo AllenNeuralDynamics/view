@@ -11,7 +11,7 @@ from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 
-class AcquisitionView:
+class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
 
     def __init__(self, acquisition, instrument_view, log_level='INFO'):
@@ -21,6 +21,9 @@ class AcquisitionView:
         :param instrument_view: view object relating to instrument. Needed to lock stage
         :param log_level:
         """
+
+        super().__init__()
+
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
@@ -53,7 +56,6 @@ class AcquisitionView:
         self.setup_fov_position()
 
         # Set up main window
-        self.main_window = QWidget()
         self.main_layout = QGridLayout()
 
         # Add start and stop button
@@ -73,7 +75,7 @@ class AcquisitionView:
         scroll.setWidget(self.metadata_widget)
         scroll.setWindowTitle('Metadata')
         scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        dock = QDockWidget(scroll.windowTitle(), self.main_window)
+        dock = QDockWidget(scroll.windowTitle(), self)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
@@ -96,9 +98,9 @@ class AcquisitionView:
                 dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
         self.main_layout.addWidget(splitter, 1,  3)
-        self.main_window.setLayout(self.main_layout)
-        self.main_window.setWindowTitle('Acquisition View')
-        self.main_window.show()
+        self.setLayout(self.main_layout)
+        self.setWindowTitle('Acquisition View')
+        self.show()
 
         # Set app events
         app = QApplication.instance()
@@ -269,6 +271,7 @@ class AcquisitionView:
         volume_widget = VolumeWidget(self.instrument_view, **kwds)
         volume_widget.fovMoved.connect(self.move_stage)
         volume_widget.fovStop.connect(self.stop_stage)
+        self.instrument_view.snapshotTaken.connect(volume_widget.handle_snapshot)  # connect snapshot signal
 
         return volume_widget
 
@@ -331,9 +334,9 @@ class AcquisitionView:
         # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
         # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
         try:
-            if self.main_window.isActiveWindow() and self.grab_fov_positions_worker.is_paused:
+            if self.isActiveWindow() and self.grab_fov_positions_worker.is_paused:
                 self.grab_fov_positions_worker.resume()
-            elif not self.main_window.isActiveWindow() and self.grab_fov_positions_worker.is_running:
+            elif not self.isActiveWindow() and self.grab_fov_positions_worker.is_running:
                 self.grab_fov_positions_worker.pause()
         except RuntimeError:  # Pass error when window has been closed
             pass

@@ -1,10 +1,11 @@
-from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem
+from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem, GLImageItem
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
 from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion, QFont
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
+from pyqtgraph import makeRGBA
 
 # TODO: Use this else where to. Consider moving it so we don't have to copy paste?
 class SignalChangeVar:
@@ -160,6 +161,23 @@ class VolumeModel(GLViewWidget):
         else:
             self.start.setVisible(False)
             self.end.setVisible(False)
+
+    def add_fov_image(self, image: np.array, coords: list):
+        """add image to model assuming image has same fov dimensions and orientation
+        :param image: numpy array of image to display in model
+        :param coords: list of coordinates corresponding to the coordinate plane of model"""
+
+        image_rgba = makeRGBA(image, levels=[0, 256])[0]
+        image_rgba[:, :, 3] = 200
+
+        gl_image = GLImageItem(image_rgba,
+                               glOptions='translucent')
+        gl_image.scale(self.fov_dimensions[0]/image.shape[0],
+                       self.fov_dimensions[1]/image.shape[1], 0, local=False)  # Scale Image
+        #gl_image.rotate(90, 1, 0, 0)
+        gl_image.translate(*coords)
+        self.addItem(gl_image)
+
 
     def _update_opts(self):
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""

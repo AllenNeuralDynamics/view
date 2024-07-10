@@ -1,11 +1,11 @@
 from ruamel.yaml import YAML
-from qtpy.QtCore import Slot
+from qtpy.QtCore import Slot, Signal
 from pathlib import Path
 import importlib
-from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
+from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
     scan_for_properties, disable_button
 from threading import Lock
-from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
+from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, \
     QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
@@ -16,11 +16,16 @@ from time import sleep
 import logging
 import inflection
 import inspect
+import numpy as np
 
-class InstrumentView:
+class InstrumentView(QWidget):
     """"Class to act as a general instrument view model to voxel instrument"""
 
+    snapshotTaken = Signal((np.ndarray))
+
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
+
+        super().__init__()
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
@@ -283,6 +288,8 @@ class InstrumentView:
 
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
         self.grab_frames_worker.yielded.connect(self.update_layer)
+        if frames == 1:   # snapshot so emit snapshotTaken signal
+            self.grab_frames_worker.yielded.connect(lambda args: self.snapshotTaken.emit(args[0]))
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
 
