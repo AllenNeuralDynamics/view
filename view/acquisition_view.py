@@ -6,7 +6,7 @@ from qtpy.QtCore import Slot
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QStyle
+    QLabel, QPushButton, QSplitter
 from qtpy.QtCore import Qt
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
@@ -103,10 +103,6 @@ class AcquisitionView:
         # Set app events
         app = QApplication.instance()
         app.focusChanged.connect(self.toggle_grab_fov_positions)
-
-    def minimize_widget(self):
-        """Minimize operation widget"""
-        pass
 
     def create_start_button(self):
         """Create button to start acquisition"""
