@@ -125,7 +125,8 @@ class ChannelPlanWidget(QTabWidget):
                     elif settings['delegate'] == 'combo':
                         items = settings['items']
                         delegates.append(QComboItemDelegate(items=items))
-                        self.column_data_types[column_name] = type(items[0])  # what if list contains multiple types?
+                        type_mapping = {'int':int, 'float':float, 'str': str}
+                        self.column_data_types[column_name] = type_mapping[settings['type']]
                     else:
                         delegates.append(QTextItemDelegate())
                         self.column_data_types[column_name] = str

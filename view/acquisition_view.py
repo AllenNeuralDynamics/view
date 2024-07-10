@@ -134,35 +134,35 @@ class AcquisitionView:
 
         # add tiles to acquisition config
         self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
-        print(self.acquisition.config['acquisition']['tiles'])
-        # if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
-        #     self.instrument_view.dismantle_live()
-        #
-        # # write correct daq values if different from livestream
-        # for daq_name, daq in self.instrument.daqs.items():
-        #     if daq_name in self.config['acquisition_view'].get('data_acquisition_tasks', {}).keys():
-        #         daq.tasks = self.instrument.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
-        #         # Tasks should be added and written in acquisition?
-        #
-        # # disable acquisition view. Can't disable whole thing so stop button can be functional
-        # self.start_button.setEnabled(False)
-        # self.volume_widget.setEnabled(False)
-        # self.metadata_widget.setEnabled(False)
-        # for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
-        #     if hasattr(self, f'{operation}_widgets'):
-        #         device_widgets = {f'{inflection.pluralize(operation)} {device_name}': create_widget('V', **widgets)
-        #                           for device_name, widgets in getattr(self, f'{operation}_widgets').items()}
-        #         for widget in device_widgets.values():
-        #             widget.setDisabled(True)
-        # self.stop_button.setEnabled(True)
-        #
-        # # disable instrument view
-        # self.instrument_view.setDisabled(True)
-        #
-        # # Start acquisition
-        # self.acquisition_thread = create_worker(self.acquisition.run)
-        # self.acquisition_thread.start()
-        # self.acquisition_thread.finished.connect(self.acquisition_ended)
+
+        if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
+            self.instrument_view.dismantle_live()
+
+        # write correct daq values if different from livestream
+        for daq_name, daq in self.instrument.daqs.items():
+            if daq_name in self.config['acquisition_view'].get('data_acquisition_tasks', {}).keys():
+                daq.tasks = self.instrument.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
+                # Tasks should be added and written in acquisition?
+
+        # disable acquisition view. Can't disable whole thing so stop button can be functional
+        self.start_button.setEnabled(False)
+        self.volume_widget.setEnabled(False)
+        self.metadata_widget.setEnabled(False)
+        for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
+            if hasattr(self, f'{operation}_widgets'):
+                device_widgets = {f'{inflection.pluralize(operation)} {device_name}': create_widget('V', **widgets)
+                                  for device_name, widgets in getattr(self, f'{operation}_widgets').items()}
+                for widget in device_widgets.values():
+                    widget.setDisabled(True)
+        self.stop_button.setEnabled(True)
+
+        # disable instrument view
+        self.instrument_view.setDisabled(True)
+
+        # Start acquisition
+        self.acquisition_thread = create_worker(self.acquisition.run)
+        self.acquisition_thread.start()
+        self.acquisition_thread.finished.connect(self.acquisition_ended)
 
 
     def acquisition_ended(self):
