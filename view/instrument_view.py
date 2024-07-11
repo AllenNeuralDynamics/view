@@ -93,7 +93,7 @@ class InstrumentView(QWidget):
         """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
 
         for daq_name, daq in self.instrument.daqs.items():
-            if daq_name in self.config.get('livestream_tasks', {}).keys():
+            if daq_name in self.config['instrument_view'].get('livestream_tasks', {}).keys():
                 daq.tasks = self.config['instrument_view']['livestream_tasks'][daq_name]['tasks']
 
                 # Make sure if there is a livestreaming task, there is a corresponding data acquisition task:

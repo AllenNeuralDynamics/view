@@ -62,6 +62,9 @@ class VolumeModel(GLViewWidget):
         self.path = GLLinePlotItem(color=QColor('lime'))    # data set externally since tiles are assumed out of order
         self.addItem(self.path)
 
+        # initialize list of fov_images
+        self.fov_images = []
+
         # add indicators of start and end and hide since no tiles yet
         self.start = GLTextItem(text='Start', font=QFont('Helvetica', 7))
         self.start.setVisible(False)
@@ -168,16 +171,27 @@ class VolumeModel(GLViewWidget):
         :param coords: list of coordinates corresponding to the coordinate plane of model"""
 
         image_rgba = makeRGBA(image, levels=[0, 256])[0]
+
         image_rgba[:, :, 3] = 200
 
         gl_image = GLImageItem(image_rgba,
                                glOptions='translucent')
-        gl_image.scale(self.fov_dimensions[0]/image.shape[0],
-                       self.fov_dimensions[1]/image.shape[1], 0, local=False)  # Scale Image
-        #gl_image.rotate(90, 1, 0, 0)
-        gl_image.translate(*coords)
+        x, y, z = coords
+        gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
+                                         0, self.fov_dimensions[1]/image.shape[1], 0, y * self.polarity[1],
+                                         0, 0, 1, 0,    # 0 since tiling plane will display scan plan at 0
+                                         0, 0, 0, 1))
         self.addItem(gl_image)
+        self.fov_images.append(gl_image)
+        if self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
+            gl_image.setVisible(False)
 
+    def toggle_fov_image_visibility(self, visible: bool):
+        """Function to hide all fov_images
+        :param visible: boolean for if fov_images should be visible"""
+
+        for image in self.fov_images:
+            image.setVisible(visible)
 
     def _update_opts(self):
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""

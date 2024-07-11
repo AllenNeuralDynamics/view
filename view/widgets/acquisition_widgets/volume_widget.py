@@ -305,8 +305,10 @@ class VolumeWidget(QWidget):
             self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
             if not self.volume_model.path.visible() and self.path_show.isChecked():
                 self.volume_model.toggle_path_visibility(True)
+            self.volume_model.toggle_fov_image_visibility(True)
         else:  # hide path if not in tiling view plane
             self.volume_model.toggle_path_visibility(False)
+            self.volume_model.toggle_fov_image_visibility(False)
 
     def change_table(self, value, row, column):
         """If z widget is changed, update table"""
