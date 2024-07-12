@@ -228,10 +228,10 @@ class AcquisitionView:
         """Create custom widget for metadata in config"""
 
         # TODO: metadata label
-        acquisition_properties = dict(self.acquisition.config['acquisition']['metadata'])
-        metadata_widget = BaseDeviceWidget(acquisition_properties, acquisition_properties)
-        metadata_widget.ValueChangedInside[str].connect(lambda name: self.acquisition.config['acquisition']['metadata'].
-                                                        __setitem__(name, getattr(metadata_widget, name)))
+        metadata_properties = scan_for_properties(self.acquisition.metadata)
+        metadata_widget = BaseDeviceWidget(type(self.acquisition.metadata), metadata_properties)
+        # metadata_widget.ValueChangedInside[str].connect(lambda name: self.acquisition.config['acquisition']['metadata'].
+        #                                                 __setitem__(name, getattr(metadata_widget, name)))
         for name, widget in metadata_widget.property_widgets.items():
             widget.setToolTip('')  # reset tooltips
         metadata_widget.setWindowTitle(f'Metadata')

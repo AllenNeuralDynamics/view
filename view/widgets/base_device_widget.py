@@ -15,18 +15,18 @@ class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
     ValueChangedInside = Signal((str,))
 
-    def __init__(self, device_object, properties: dict):
+    def __init__(self, device_type, properties: dict):
         """Base widget for devices like camera, laser, stage, ect. Widget will scan properties of
         device object and create editable inputs for each if not in device_widgets class of device. If no device_widgets
         class is provided, then all properties are exposed
-        :param device_object: class or dictionary of device object
+        :param device_type: type of class or dictionary of device object
         :param properties: dictionary contain properties displayed in widget as keys and initial values as values"""
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         super().__init__()
-        self.device_object = device_object
-        self.device_driver = importlib.import_module(self.device_object.__module__) if type(self.device_object) != dict \
+        self.device_type = device_type
+        self.device_driver = importlib.import_module(self.device_type.__module__) if type(self.device_type) != dict \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
         self.create_property_widgets(properties, 'property')
 
@@ -42,7 +42,7 @@ class BaseDeviceWidget(QMainWindow):
         widgets = {}
         for name, value in properties.items():
             setattr(self, name, value)  # Add device properties as widget properties
-            attr = getattr(self.device_object, name, None)
+            attr = getattr(self.device_type, name, None)
             unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
             input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]+f'_{unit}'))}
             arg_type = type(value)
