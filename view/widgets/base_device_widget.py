@@ -1,6 +1,6 @@
 from qtpy.QtCore import Signal, Slot, QTimer
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow, QGridLayout, QFrame
+from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow
 from inspect import currentframe
 import importlib
 import enum
@@ -9,7 +9,6 @@ import re
 import logging
 import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
-#TODO deal with lists somehow. Some way to add maybe if setter?
 
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
@@ -56,18 +55,25 @@ class BaseDeviceWidget(QMainWindow):
                 input_specs = value
                 widget_type = 'text'
             boxes = {}
+
             if not hasattr(value, 'keys') or type(arg_type) == enum.EnumMeta:
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
+
             elif hasattr(value, 'keys'):
                 for k, v in input_specs.items():
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
                     label = QLabel(label_maker(k+f'_{unit}'))
-                    if hasattr(v, 'keys') and widget_type != 'combo':  # values are complex and should be another widget
+
+                    # if value has an item that is a dictionary but the widget type is not a combo box,
+                    # unique widgets should be made for this dictionary
+                    if hasattr(v, 'keys') and widget_type != 'combo':
                         box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # unique key for attribute
+                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
+
                     else:
                         box = self.create_attribute_widget(f"{name}.{k}", widget_type, v)
+
                     boxes[k] = create_widget('V', label, box)
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
@@ -179,6 +185,7 @@ class BaseDeviceWidget(QMainWindow):
 
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""
+
         self.__dict__[name] = value
         if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)
