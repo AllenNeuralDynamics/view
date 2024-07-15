@@ -475,7 +475,7 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
+            f'position_{self.unit}': {k[0]: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
                          enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
