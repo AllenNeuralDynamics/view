@@ -21,6 +21,7 @@ class MetadataWidget(BaseDeviceWidget):
                     ['date_format' if hasattr(self, 'date_format') else None] + \
                     ['delimiter' if hasattr(self, 'delimiter') else None]:
             if name is not None:
+                print(name)
                 prop = getattr(type(metadata_class), name)
                 prop_setter = getattr(prop, 'fset')
                 filter_getter = getattr(prop, 'fget')

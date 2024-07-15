@@ -44,7 +44,7 @@ if __name__ == "__main__":
     metadata_widget = MetadataWidget(metadata_class)
 
     metadata_widget.show()
-
+    print(metadata_widget.size())
     metadata_widget.ValueChangedInside[str].connect(
         lambda value, dev=metadata_class, widget=metadata_widget,: widget_property_changed(value, dev, widget))
     sys.exit(app.exec_())
