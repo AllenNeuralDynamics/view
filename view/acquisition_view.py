@@ -3,12 +3,12 @@ import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
 from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
-from qtpy.QtCore import Slot
+from qtpy.QtCore import Slot, Qt
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
     QLabel, QPushButton, QSplitter
-from qtpy.QtCore import Qt
+from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 
@@ -360,7 +360,11 @@ class AcquisitionView:
                 lambda value, op=operation, widget=gui:
                 self.operation_property_changed(value, op, widget))
         # Add label to gui
-        labeled = create_widget('V', QLabel(operation_name), gui)
+        font = QFont()
+        font.setBold(True)
+        label = QLabel(operation_name)
+        label.setFont(font)
+        labeled = create_widget('V', label, gui)
 
         # add ui to widget dictionary
         if not hasattr(self, f'{operation_type}_widgets'):

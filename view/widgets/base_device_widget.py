@@ -256,7 +256,7 @@ def scan_for_properties(device):
     for attr_name in dir(device):
         try:
             attr = getattr(type(device), attr_name, None)
-            if isinstance(attr, property) and getattr(device, attr_name, None) is not None:
+            if isinstance(attr, property): #and getattr(device, attr_name, None) is not None:
                 prop_dict[attr_name] = getattr(device, attr_name)
         except ValueError:  # Some attributes in processes raise ValueError if not started
             pass
