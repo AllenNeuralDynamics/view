@@ -17,16 +17,22 @@ class MetadataWidget(BaseDeviceWidget):
                                   QWidget()).hide()  # hide until BaseClassWidget can handle lists
 
         # wrap property setters that are in acquisition_name_format so acquisition name update when changed
-        for name in getattr(self, 'acquisition_name_format', []):
-            prop = getattr(type(metadata_class), name)
-            prop_setter = getattr(prop, 'fset')
-            filter_getter = getattr(prop, 'fget')
-            setattr(type(metadata_class),name, property(filter_getter, self.name_property_change_wrapper(prop_setter)))
+        for name in getattr(self, 'acquisition_name_format', []) + \
+                    ['date_format' if hasattr(self, 'date_format') else None] + \
+                    ['delimiter' if hasattr(self, 'delimiter') else None]:
+            if name is not None:
+                prop = getattr(type(metadata_class), name)
+                prop_setter = getattr(prop, 'fset')
+                filter_getter = getattr(prop, 'fget')
+                setattr(type(metadata_class), name,
+                        property(filter_getter, self.name_property_change_wrapper(prop_setter)))
 
     def name_property_change_wrapper(self, func):
         """Wrapper function that emits a signal when property setters that are in acquisition_name_format is called"""
+
         def wrapper(object, value):
             func(object, value)
             self.acquisition_name = self.metadata_class.acquisition_name
             self.update_property_widget('acquisition_name')
+
         return wrapper
