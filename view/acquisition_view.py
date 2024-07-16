@@ -28,12 +28,6 @@ class AcquisitionView:
 
         self.instrument_view = instrument_view
 
-        # Locks
-        self.tiling_stage_locks = self.instrument_view.tiling_stage_locks
-        self.scanning_stage_locks = self.instrument_view.scanning_stage_locks
-        # self.focusing_stage_locks = self.instrument_view.focusing_stage_locks  #TODO: update acquisiiton widgets to include focusing stage
-        self.daq_locks = self.instrument_view.daq_locks
-
         # Eventual threads
         self.grab_fov_positions_worker = None
 
@@ -103,8 +97,8 @@ class AcquisitionView:
         self.main_window.show()
 
         # Set app events
-        app = QApplication.instance()
-        app.focusChanged.connect(self.toggle_grab_fov_positions)
+        # app = QApplication.instance()
+        # app.focusChanged.connect(self.toggle_grab_fov_positions)
 
     def create_start_button(self):
         """Create button to start acquisition"""
@@ -253,12 +247,10 @@ class AcquisitionView:
         # add tiling stages
         for name, stage in self.instrument.tiling_stages.items():
             if stage.instrument_axis in coordinate_plane:
-                with self.tiling_stage_locks[name]:
-                    limits.update({f'{stage.instrument_axis}': stage.limits_mm})
+                limits.update({f'{stage.instrument_axis}': stage.limits_mm})
         # last axis should be scanning axis
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-        with self.scanning_stage_locks[scan_name]:
-            limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
+        limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
         if len([i for i in limits.keys() if i in coordinate_plane]) != 3:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
         kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
@@ -276,11 +268,9 @@ class AcquisitionView:
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
         for axis, position in zip(self.volume_widget.coordinate_plane[:2], fov_position[:2]):
-            with self.tiling_stage_locks[stage_names[axis]]:
-                self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
+            self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-        with self.scanning_stage_locks[scan_name]:
-            scan_stage.move_absolute_mm(fov_position[2], wait=False)
+        scan_stage.move_absolute_mm(fov_position[2], wait=False)
 
     def stop_stage(self):
         """Slot for stop stage"""
@@ -310,17 +300,16 @@ class AcquisitionView:
             sleep(.1)
             fov_pos = [None] * 3
             for name, stage in self.instrument.tiling_stages.items():
-                with self.tiling_stage_locks[name]:
-                    if stage.instrument_axis in self.volume_widget.coordinate_plane:
-                        fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
-                        position = stage.position_mm
-                        # FIXME: Sometimes tigerbox yields empty stage position so return None if this happens?
-                        fov_pos[fov_index] = position if position is not None \
-                            else self.volume_widget.fov_position[fov_index]
+                if stage.instrument_axis in self.volume_widget.coordinate_plane:
+                    fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
+                    position = stage.position_mm
+                    # FIXME: Sometimes tigerbox yields empty stage position so return None if this happens?
+                    fov_pos[fov_index] = position if position is not None \
+                        else self.volume_widget.fov_position[fov_index]
                 (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-                with self.scanning_stage_locks[scan_name]:
-                    position = scan_stage.position_mm
-                    fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
+
+                position = scan_stage.position_mm
+                fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
 
             yield fov_pos  # don't yield while locked
 
