@@ -9,6 +9,7 @@ import re
 import logging
 import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+import inspect
 
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
@@ -256,8 +257,8 @@ def scan_for_properties(device):
     for attr_name in dir(device):
         try:
             attr = getattr(type(device), attr_name, None)
-            if isinstance(attr, property): #and getattr(device, attr_name, None) is not None:
-                prop_dict[attr_name] = getattr(device, attr_name)
+            if isinstance(attr, property) or isinstance(inspect.unwrap(attr), property):
+                prop_dict[attr_name] = getattr(device, attr_name, None)
         except ValueError:  # Some attributes in processes raise ValueError if not started
             pass
 

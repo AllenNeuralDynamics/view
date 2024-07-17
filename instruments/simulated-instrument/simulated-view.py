@@ -2,8 +2,8 @@ from qtpy.QtWidgets import QApplication, QMessageBox, QPushButton, QFileDialog
 import sys
 from view.instrument_view import InstrumentView
 from view.acquisition_view import AcquisitionView
-from voxel.instruments.microscopes.exaspim import ExASPIM
-from voxel.acquisition.exaspim import ExASPIMAcquisition
+from exaspim_control.exa_spim_instrument import ExASPIM
+from exaspim_control.exa_spim_acquisition import ExASPIMAcquisition
 from pathlib import Path
 import os
 import yaml

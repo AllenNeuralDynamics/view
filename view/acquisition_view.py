@@ -40,7 +40,8 @@ class AcquisitionView:
                 self.create_operation_widgets(device_name, operation_name, operation_specs)
 
         # setup additional widgets
-        self.metadata_widget = self.create_metadata_widget()
+        self.metadata_widget = QWidget()
+        #self.metadata_widget = self.create_metadata_widget()
         self.volume_widget = self.create_volume_widget()
         self.start_button = self.create_start_button()
         self.stop_button = self.create_stop_button()
