@@ -1,7 +1,6 @@
-from pyqtgraph.opengl import GLLinePlotItem
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion, QFont
+from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
@@ -49,7 +48,7 @@ class VolumeModel(GLOrthoViewWidget):
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
                  tile_color: str = 'cyan',
-                 tile_opacity: float = .075,
+                 tile_opacity: float = .1,
                  tile_line_width: int = 1):
 
         """
