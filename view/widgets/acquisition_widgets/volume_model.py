@@ -52,10 +52,24 @@ class VolumeModel(GLOrthoViewWidget):
                  tile_opacity: float = .075,
                  tile_line_width: int = 1):
 
-        """GLViewWidget to display proposed grid of acquisition
+        """
+        GLViewWidget to display proposed grid of acquisition
+
         :param coordinate_plane: coordinate plane displayed on widget.
         :param fov_dimensions: dimensions of field of view in coordinate plane
-        :param fov_position: position of fov"""
+        :param fov_position: position of fov
+        :param fov_line_width: width of fov outline
+        :param fov_line_width: width of fov outline
+        :param fov_opacity: opacity of fov face where 1 is fully opaque
+        :param path_line_width: width of path line
+        :param path_arrow_size: size of arrow at the end of path
+        :param path_arrow_aspect_ratio: aspect ratio of arrow
+        :param path_start_color: start color of path
+        :param path_end_color: end color of path
+        :param tile_color: color of tiles
+        :param tile_opacity: opacity of tile faces where 1 is fully opaque
+        :param tile_line_width: width of tiles
+        """
 
         super().__init__(rotationMethod='quaternion')
 
