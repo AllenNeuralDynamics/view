@@ -12,6 +12,7 @@ import useq
 from view.widgets.base_device_widget import label_maker
 import inspect
 
+
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
 
@@ -241,7 +242,6 @@ class VolumeWidget(QWidget):
         if not self.anchor_widgets[2].isChecked():  # disable start widget for any new widgets
             self.disable_scan_start_widgets(True)
         self.table.resizeColumnsToContents()
-
 
     def channel_added(self, channel):
         """Update new channel with tiles"""

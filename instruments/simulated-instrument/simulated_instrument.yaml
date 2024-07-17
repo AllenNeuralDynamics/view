@@ -94,7 +94,7 @@ instrument:
         speed_mm_s: 1.0
       type: tiling_stage
     PCIe-6738:
-      driver: voxel.devices.daq.ni
+      driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
       settings:
