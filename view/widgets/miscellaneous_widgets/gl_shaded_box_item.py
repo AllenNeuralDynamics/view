@@ -43,7 +43,6 @@ class GLShadedBoxItem(GLBarGraphItem):
                 if verts is None:
                     return
 
-                #alpha_scale = [self.side_opacity_scale,self.side_opacity_scale,self.top_opacity_scale,self.top_opacity_scale,1,1]
                 alpha_scale = [self.side_opacity_scale, self.side_opacity_scale, self.top_opacity_scale,
                                self.top_opacity_scale, 1, 1]
                 for i, alpha in zip(range(2, 12, 2),alpha_scale):
