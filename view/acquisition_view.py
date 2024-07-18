@@ -26,6 +26,11 @@ class AcquisitionView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
+        # Set app events
+        app = QApplication.instance()
+        #app.setAttribute(Qt.AA_ShareOpenGLContexts)
+        # app.focusChanged.connect(self.toggle_grab_fov_positions)
+
         self.instrument_view = instrument_view
 
         # Locks
@@ -101,10 +106,6 @@ class AcquisitionView:
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()
-
-        # Set app events
-        app = QApplication.instance()
-        app.focusChanged.connect(self.toggle_grab_fov_positions)
 
     def create_start_button(self):
         """Create button to start acquisition"""
