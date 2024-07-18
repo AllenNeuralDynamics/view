@@ -41,14 +41,14 @@ class VolumeModel(GLOrthoViewWidget):
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  fov_color: str = 'yellow',
                  fov_line_width: int = 1,
-                 fov_opacity: float = .15,
+                 fov_opacity: float = .75,
                  path_line_width: int = 1,
                  path_arrow_size: float = .04,
                  path_arrow_aspect_ratio: int = 4,
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
                  tile_color: str = 'cyan',
-                 tile_opacity: float = .1,
+                 tile_opacity: float = .75,
                  tile_line_width: int = 1):
 
         """
@@ -88,7 +88,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.tile_visibility = np.array([[True]])  # 2d list detailing visibility of tiles
         # tile aesthetic properties
         self.tile_color = tile_color
-        self.tile_opacity = round(tile_opacity*255)
+        self.tile_opacity = tile_opacity
         self.tile_line_width = tile_line_width
 
         # position data set externally since tiles are assumed out of order
@@ -109,8 +109,8 @@ class VolumeModel(GLOrthoViewWidget):
                                               0, 0, 0, 1))
         self.addItem(self.fov_view)
 
-        face_color = QColor(fov_color)
-        face_color.setAlpha(round(fov_opacity*255))
+        face_color = list(QColor(fov_color).getRgbF())
+        face_color[-1] = fov_opacity
         self.fov_view_face = GLShadedBoxItem(pos=np.array([[self.fov_position]]),
                                              size=np.array(self.fov_dimensions),
                                              color=face_color, glOptions='additive')
@@ -174,12 +174,14 @@ class VolumeModel(GLOrthoViewWidget):
                     self.addItem(tile)
                     self.grid_tile_items.append(tile)
 
-                    box_color = QColor(self.tile_color)
-                    box_color.setAlpha(self.tile_opacity)
+                    box_color = list(QColor(self.tile_color).getRgbF())
+                    box_color[-1] = self.tile_opacity
                     box = GLShadedBoxItem(pos=np.array([[coord]]),
                                           size=np.array(size),
                                           color=box_color,
-                                          glOptions='additive')
+                                          glOptions='additive',
+                                          side_opacity_scale=self.tile_opacity/total_columns,
+                                          top_opacity_scale=self.tile_opacity/total_rows)
                     self.addItem(box)
                     self.grid_box_items.append(box)
 

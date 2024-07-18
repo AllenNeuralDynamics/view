@@ -84,8 +84,8 @@ class GLPathItem(GLLinePlotItem):
             # create gradient rgba for each position
             for tile in range(0, num_tiles):
                 # fill in (rgb)a first with linear weighted average
-                start = [x/255 for x in QColor(self.path_start_color).getRgb()]
-                end = [x/255 for x in QColor(self.path_end_color).getRgb()]
+                start = QColor(self.path_start_color).getRgbF()
+                end = QColor(self.path_end_color).getRgbF()
                 path_gradient[tile, :] = \
                     (num_tiles - tile) / num_tiles * np.array(start) + \
                     (tile / num_tiles) * np.array(end)
