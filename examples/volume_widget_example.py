@@ -7,6 +7,7 @@ import os
 from voxel.devices.lasers.simulated import SimulatedLaser
 from view.widgets.device_widgets.laser_widget import LaserWidget
 from threading import Lock
+from qtpy.QtCore import Qt
 
 RESOURCES_DIR = (
         Path(os.path.dirname(os.path.realpath(__file__))) / "resources"
@@ -23,6 +24,7 @@ class MockInstrument:
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.AA_ShareOpenGLContexts)
     channels = {
         '488': {
             'filters': ['BP488'],

@@ -9,6 +9,7 @@ import os
 import yaml
 from voxel.processes.gpu.gputools.downsample_2d import DownSample2D
 import inflection
+from qtpy.QtCore import Qt
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
 ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
@@ -87,7 +88,7 @@ class SimulatedInstrumentView(InstrumentView):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
+    app.setAttribute(Qt.AA_DontCheckOpenGLContextThreadAffinity)
     # instrument
     instrument = Instrument(INSTRUMENT_YAML)
     # acquisition

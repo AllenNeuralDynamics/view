@@ -26,7 +26,7 @@ class AcquisitionView:
 
         # Set app events
         app = QApplication.instance()
-        app.setAttribute(Qt.AA_DontCheckOpenGLContextThreadAffinity)
+        #app.setAttribute(Qt.AA_ShareOpenGLContexts)
         # app.focusChanged.connect(self.toggle_grab_fov_positions)
 
         self.instrument_view = instrument_view

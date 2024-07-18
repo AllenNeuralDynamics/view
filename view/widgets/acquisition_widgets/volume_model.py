@@ -8,7 +8,7 @@ from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewW
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
-
+from pyqtgraph.opengl import GLBarGraphItem, GLMeshItem, GLSurfacePlotItem
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):
@@ -41,14 +41,14 @@ class VolumeModel(GLOrthoViewWidget):
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  fov_color: str = 'yellow',
                  fov_line_width: int = 1,
-                 fov_opacity: float = .75,
+                 fov_opacity: float = .15,
                  path_line_width: int = 1,
                  path_arrow_size: float = .04,
                  path_arrow_aspect_ratio: int = 4,
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
                  tile_color: str = 'cyan',
-                 tile_opacity: float = .75,
+                 tile_opacity: float = .075,
                  tile_line_width: int = 1):
 
         """
@@ -71,7 +71,7 @@ class VolumeModel(GLOrthoViewWidget):
         """
 
         super().__init__(rotationMethod='quaternion')
-
+        self.makeCurrent()
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
         self.fov_dimensions = fov_dimensions
@@ -109,11 +109,11 @@ class VolumeModel(GLOrthoViewWidget):
                                               0, 0, 0, 1))
         self.addItem(self.fov_view)
 
-        face_color = list(QColor(fov_color).getRgbF())
-        face_color[-1] = fov_opacity
         self.fov_view_face = GLShadedBoxItem(pos=np.array([[self.fov_position]]),
                                              size=np.array(self.fov_dimensions),
-                                             color=face_color, glOptions='additive')
+                                             color=fov_color,
+                                             opacity=fov_opacity,
+                                             glOptions='additive')
         self.addItem(self.fov_view_face)
 
         self.valueChanged[str].connect(self.update_model)
@@ -174,14 +174,21 @@ class VolumeModel(GLOrthoViewWidget):
                     self.addItem(tile)
                     self.grid_tile_items.append(tile)
 
-                    box_color = list(QColor(self.tile_color).getRgbF())
-                    box_color[-1] = self.tile_opacity
+                    # scale opacity for viewing
+                    if self.view_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
+                        opacity = self.tile_opacity
+                    elif self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
+                        opacity = self.tile_opacity/total_columns
+                    else:
+                        opacity = self.tile_opacity / total_rows
+
+
                     box = GLShadedBoxItem(pos=np.array([[coord]]),
                                           size=np.array(size),
-                                          color=box_color,
+                                          color=self.tile_color,
+                                          opacity=opacity,
                                           glOptions='additive',
-                                          side_opacity_scale=self.tile_opacity/total_columns,
-                                          top_opacity_scale=self.tile_opacity/total_rows)
+                                          )
                     self.addItem(box)
                     self.grid_box_items.append(box)
 
