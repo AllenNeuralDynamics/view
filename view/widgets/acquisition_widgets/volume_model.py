@@ -182,7 +182,6 @@ class VolumeModel(GLOrthoViewWidget):
                     else:
                         opacity = self.tile_opacity / total_rows
 
-
                     box = GLShadedBoxItem(pos=np.array([[coord]]),
                                           size=np.array(size),
                                           color=self.tile_color,

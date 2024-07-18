@@ -4,7 +4,7 @@ from qtpy.QtGui import QColor
 
 
 class GLShadedBoxItem(GLMeshItem):
-    """Subclass of GLBarGraphItem that allows gloptions to be passed in"""
+    """Subclass of GLMeshItem creates a rectangular mesh item"""
 
     def __init__(self, pos=None, size=None, color =None, opacity= 1, glOptions=None, parentItem=None):
         """
