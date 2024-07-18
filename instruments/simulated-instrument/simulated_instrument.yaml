@@ -4,14 +4,17 @@ instrument:
       filters: [BP488]
       lasers: [488nm]
       cameras: [vnp-604mx]
+      focusing_stages: [n stage axis]
     '561':
       filters: [BP561]
       lasers: [561nm]
       cameras: [vnp-604mx]
+      focusing_stages: [n stage axis]
     '639':
       filters: [LP638]
       lasers: [639nm]
       cameras: [vnp-604mx]
+      focusing_stages: [n stage axis]
   devices:
     639nm:
       color: red

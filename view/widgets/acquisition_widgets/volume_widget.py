@@ -43,6 +43,7 @@ class VolumeWidget(QWidget):
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.unit = unit
         self.layout = QGridLayout()
+        fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
         self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
