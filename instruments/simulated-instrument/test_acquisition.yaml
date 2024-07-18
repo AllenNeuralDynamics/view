@@ -41,21 +41,12 @@ acquisition:
         driver: voxel.transfers.rsync
         module: FileTransfer
         init:
-          external_directory: ./external_test
-          local_directory: ./local_test
+          external_path: ./external_test
+          local_path: ./local_test
       max_projection:
         type: process
         driver: voxel.processes.cpu.max_projection
         module: MaxProjection
-        init:
-          path: ./local_test
-        settings:
-          data_type: uint16
-          projection_count_px: 32
-      mean_projection:
-        type: process
-        driver: voxel.processes.cpu.mean_projection
-        module: MeanProjection
         init:
           path: ./local_test
         settings:
@@ -85,21 +76,12 @@ acquisition:
           driver: voxel.transfers.rsync
           module: FileTransfer
           init:
-            external_directory: ./external_test
-            local_directory: ./local_test
+            external_path: ./external_test
+            local_path: ./local_test
         max_projection:
           type: process
           driver: voxel.processes.cpu.max_projection
           module: MaxProjection
-          init:
-            path: ./local_test
-          settings:
-            data_type: uint16
-            projection_count_px: 32
-        mean_projection:
-          type: process
-          driver: voxel.processes.cpu.mean_projection
-          module: MeanProjection
           init:
             path: ./local_test
           settings:

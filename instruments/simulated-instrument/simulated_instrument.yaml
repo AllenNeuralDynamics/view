@@ -96,6 +96,15 @@ instrument:
       settings:
         speed_mm_s: 1.0
       type: tiling_stage
+    n stage axis:
+      driver: voxel.devices.stage.simulated
+      init:
+        hardware_axis: n
+        instrument_axis: n
+      module: Stage
+      settings:
+        speed_mm_s: 1.0
+      type: focusing_stage
     PCIe-6738:
       driver: voxel.devices.daq.simulated
       init:
