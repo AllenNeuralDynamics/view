@@ -87,8 +87,8 @@ instrument_view:
                       "488": 2.5
                       "561": 2.5
 acquisition_view:
-  fov_dimensions: [ 2, 2 ]
-  coordinate_plane: [ '-x', 'y', 'z' ]
+  fov_dimensions: [ 1.0, 1.0, 0 ]
+  coordinate_plane: [ 'x', 'y', 'z' ]
   unit: 'mm'
   settings:
     cameras: [ binning ]

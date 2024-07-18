@@ -27,6 +27,7 @@ class GLShadedBoxItem(GLBarGraphItem):
         self.top_opacity_scale = top_opacity_scale
         self.side_opacity_scale = side_opacity_scale
 
+
     def paint(self):
         """Overwriting to make faces different opacity"""
 

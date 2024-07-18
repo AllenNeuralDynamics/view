@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame, QStyle, QPushButton, QVBoxLayout
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -45,7 +45,9 @@ class VolumeWidget(QWidget):
         self.layout = QGridLayout()
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
-        self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
+        self.volume_model = VolumeModel()#(coordinate_plane=coordinate_plane, fov_dimensions=fov_dimensions[:2] + [0],
+        #                                 fov_position=fov_position,
+        #                                 fov_color=view_color)
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()
@@ -175,6 +177,7 @@ class VolumeWidget(QWidget):
     def fov_position(self, value):
         """Update all relevant widgets with new fov_position value"""
         self._fov_position = value
+
         # update tile plan widget
         self.tile_plan_widget.fov_position = value
         # update scan plan

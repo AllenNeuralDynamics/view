@@ -37,7 +37,7 @@ class VolumeModel(GLOrthoViewWidget):
 
     def __init__(self,
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
-                 fov_dimensions: list[float] = [1.0, 1.0],
+                 fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  fov_color: str = 'yellow',
                  fov_line_width: int = 1,
@@ -298,9 +298,9 @@ class VolumeModel(GLOrthoViewWidget):
         plane = self.view_plane
         if event.button() == Qt.LeftButton:
             # Translate mouseclick x, y into view widget coordinate plane.
-            horz_dist = self.opts['distance'] / tan(radians(self.opts['fov']))
-            vert_dist = self.opts['distance'] / tan(radians(self.opts['fov'])) * (
-                    self.size().height() / self.size().width())
+            horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])))/1200
+            vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
+                    self.size().height() / self.size().width()))/1200
             horz_scale = ((event.x() * 2 * horz_dist) / self.size().width())
             vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
 
