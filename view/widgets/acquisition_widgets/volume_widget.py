@@ -24,8 +24,7 @@ class VolumeWidget(QWidget):
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
-                 view_color: str = 'yellow',
-                 unit: str = 'um',
+                 unit: str = 'mm',
                  ):
         """
         :param channels: dictionary defining channels for instrument
@@ -34,7 +33,6 @@ class VolumeWidget(QWidget):
         :param coordinate_plane: list describing instrument coordinate plane ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param fov_dimensions: list of fov_dims which correspond to tiling dimensions
         :param fov_position: list describing fov pos ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
-        :param view_color: color of fov in volume model
         :param unit: unit ALL values will be in
         """
         super().__init__()
@@ -46,7 +44,7 @@ class VolumeWidget(QWidget):
         fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
-        self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
+        self.volume_model = VolumeModel(unit, coordinate_plane, fov_dimensions, fov_position)
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()

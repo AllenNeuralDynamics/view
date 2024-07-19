@@ -36,6 +36,7 @@ class VolumeModel(GLOrthoViewWidget):
     fovMoved = Signal((list))
 
     def __init__(self,
+                 unit: str = 'mm',
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
@@ -54,6 +55,7 @@ class VolumeModel(GLOrthoViewWidget):
         """
         GLViewWidget to display proposed grid of acquisition
 
+        :param unit: unit of the volume model.
         :param coordinate_plane: coordinate plane displayed on widget.
         :param fov_dimensions: dimensions of field of view in coordinate plane
         :param fov_position: position of fov
@@ -72,6 +74,7 @@ class VolumeModel(GLOrthoViewWidget):
 
         super().__init__(rotationMethod='quaternion')
         self.makeCurrent()
+        self.unit = unit
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
         self.fov_dimensions = fov_dimensions
@@ -286,8 +289,8 @@ class VolumeModel(GLOrthoViewWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(f"Do you want to move the field of view from "
-                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} [mm] to "
-                       f"{[round(x, 2) for x in new_fov_pos]} [mm]?")
+                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} [{self.unit}] to "
+                       f"{[round(x, 2) for x in new_fov_pos]} [{self.unit}]?")
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
