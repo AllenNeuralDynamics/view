@@ -289,11 +289,10 @@ instrument:
       settings:
         exposure_time_ms: 40.0
         pixel_type: mono16
-        roi:
-          height_offest_px: 4744
-          height_px: 1152
-          width_offset_px: 6528
-          width_px: 1152
+        height_offest_px: 4744
+        height_px: 1152
+        width_offset_px: 6528
+        width_px: 1152
         trigger:
           mode: 'off'
           polarity: rising
@@ -307,11 +306,10 @@ instrument:
       settings:
         exposure_time_ms: 20.0
         pixel_type: mono16
-        roi:
-          height_offest_px: 4744
-          height_px: 1152
-          width_offset_px: 6528
-          width_px: 1152
+        height_offest_px: 4744
+        height_px: 1152
+        width_offset_px: 6528
+        width_px: 1152
         trigger:
           mode: 'off'
           polarity: rising

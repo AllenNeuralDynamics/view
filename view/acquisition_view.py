@@ -177,7 +177,6 @@ class AcquisitionView:
         self.instrument_view.setDisabled(False)
 
         # restart stage threads
-        self.instrument_view.setup_live_position()
         self.setup_fov_position()
 
         for worker in self.property_workers:
