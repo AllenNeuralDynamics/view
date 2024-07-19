@@ -4,7 +4,7 @@ from pathlib import Path
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
     scan_for_properties, disable_button
-from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, \
+from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QSlider, \
     QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
@@ -16,6 +16,7 @@ import logging
 import inflection
 import inspect
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -37,7 +38,7 @@ class InstrumentView:
 
         # Eventual threads
         self.grab_frames_worker = create_worker(lambda: None)  # dummy thread
-        self.grab_stage_positions_worker = None
+        self.property_workers = []  # list of property workers
 
         # Eventual attributes
         self.livestream_channel = None
@@ -65,7 +66,6 @@ class InstrumentView:
         self.setup_daq_widgets()
         self.setup_filter_wheel_widgets()
         self.setup_stage_widgets()
-        #self.setup_live_position()
 
         # add undocked widget so everything closes together
         self.add_undocked_widgets()
@@ -407,11 +407,12 @@ class InstrumentView:
                 lambda value, dev=device, widget=gui:
                 self.device_property_changed(value, dev, widget))
 
-        updating_props = specs.get('updating_properties', [])
-        for prop_name in updating_props:
-            worker = self.grab_property_value(device, prop_name, device_name)
-            worker.yielded.connect(self.update_property_value)
-            worker.start()
+            updating_props = specs.get('updating_properties', [])
+            for prop_name in updating_props:
+                worker = self.grab_property_value(device, prop_name, getattr(gui, f'{prop_name}_widget'))
+                worker.yielded.connect(self.update_property_value)
+                worker.start()
+                self.property_workers.append(worker)
 
         # add ui to widget dictionary
         if not hasattr(self, f'{device_type}_widgets'):
@@ -429,7 +430,7 @@ class InstrumentView:
         """Grab value of property and yield"""
 
         while True:  # best way to do this or have some sort of break?
-            sleep(.1)
+            sleep(.5)
             value = getattr(device, property_name)
             yield value, widget
 
@@ -441,7 +442,7 @@ class InstrumentView:
         try:
             if type(widget) in [QLineEdit, QScrollableLineEdit]:
                 widget.setText(str(value))
-            elif type(widget) in [QSpinBox, QDoubleSpinBox]:
+            elif type(widget) in [QSpinBox, QDoubleSpinBox, QSlider, QScrollableFloatSlider]:
                 widget.setValue(value)
             elif type(widget) == QComboBox:
                 index = widget.findText(value)
@@ -518,7 +519,8 @@ class InstrumentView:
     def close(self):
         """Close instruments and end threads"""
 
-        #self.grab_stage_positions_worker.quit()
+        for worker in self.property_workers:
+            worker.quit()
         self.grab_frames_worker.quit()
         for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
             device_type = device_specs['type']
@@ -527,3 +529,4 @@ class InstrumentView:
                 device.close()
             except AttributeError:
                 self.log.debug(f'{device_name} does not have close function')
+        self.instrument.close()
