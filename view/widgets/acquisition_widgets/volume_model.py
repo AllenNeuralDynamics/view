@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion
+from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
@@ -8,7 +8,8 @@ from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewW
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
-from pyqtgraph.opengl import GLBarGraphItem, GLMeshItem, GLSurfacePlotItem
+
+
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):
@@ -40,16 +41,16 @@ class VolumeModel(GLOrthoViewWidget):
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  fov_color: str = 'yellow',
-                 fov_line_width: int = 1,
+                 fov_line_width: int = 2,
                  fov_opacity: float = .15,
-                 path_line_width: int = 1,
+                 path_line_width: int = 2,
                  path_arrow_size: float = .04,
                  path_arrow_aspect_ratio: int = 4,
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
                  tile_color: str = 'cyan',
                  tile_opacity: float = .075,
-                 tile_line_width: int = 1):
+                 tile_line_width: int = 2):
 
         """
         GLViewWidget to display proposed grid of acquisition

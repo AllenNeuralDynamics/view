@@ -3,6 +3,7 @@ from OpenGL.GL import *  # noqa
 import numpy as np
 from qtpy.QtGui import QColor
 
+
 class GLPathItem(GLLinePlotItem):
     """ Subclass of GLLinePlotItem that creates arrow at end of path"""
 
@@ -14,9 +15,12 @@ class GLPathItem(GLLinePlotItem):
         self.arrow_aspect_ratio = kwds.get('arrow_aspect_ratio', 4)
         self.path_start_color = kwds.get('path_start_color', 'magenta')
         self.path_end_color = kwds.get('path_end_color', 'green')
+        self.width = kwds.get('width', 1)
 
     def setData(self, **kwds):
         """Rewrite to draw arrow at end of path"""
+
+        kwds['width'] = self.width
 
         if 'pos' in kwds.keys():
             path = kwds['pos']
