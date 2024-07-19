@@ -4,14 +4,17 @@ instrument:
       filters: [BP488]
       lasers: [488nm]
       cameras: [vnp-604mx]
+      focusing_stages: [n stage axis]
     '561':
       filters: [BP561]
       lasers: [561nm]
       cameras: [vnp-604mx]
+      focusing_stages: [n stage axis]
     '639':
       filters: [LP638]
       lasers: [639nm]
       cameras: [vnp-604mx]
+      focusing_stages: [n stage axis]
   devices:
     639nm:
       color: red
@@ -93,8 +96,17 @@ instrument:
       settings:
         speed_mm_s: 1.0
       type: tiling_stage
+    n stage axis:
+      driver: voxel.devices.stage.simulated
+      init:
+        hardware_axis: n
+        instrument_axis: n
+      module: Stage
+      settings:
+        speed_mm_s: 1.0
+      type: focusing_stage
     PCIe-6738:
-      driver: voxel.devices.daq.ni
+      driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
       settings:

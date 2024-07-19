@@ -12,6 +12,7 @@ import useq
 from view.widgets.base_device_widget import label_maker
 import inspect
 
+
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
 
@@ -42,6 +43,7 @@ class VolumeWidget(QWidget):
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.unit = unit
         self.layout = QGridLayout()
+        fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
         self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
@@ -146,7 +148,8 @@ class VolumeWidget(QWidget):
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
         self.tile_starts[2].disconnect()  # disconnect to only trigger update graph once
-        self.tile_starts[2].valueChanged.connect(lambda value: self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value))
+        self.tile_starts[2].valueChanged.connect(
+            lambda value: self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value))
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
 
@@ -242,7 +245,6 @@ class VolumeWidget(QWidget):
             self.disable_scan_start_widgets(True)
         self.table.resizeColumnsToContents()
 
-
     def channel_added(self, channel):
         """Update new channel with tiles"""
 
@@ -318,7 +320,8 @@ class VolumeWidget(QWidget):
         self.undercover_update_item(float(value[-1]), tile_end)
 
         # If volume has changed, update channel table steps and step size accordingly
-        if (self.channel_plan.apply_to_all and [row, column] == [0, 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
+        if (self.channel_plan.apply_to_all and [row, column] == [0,
+                                                                 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
             for channel in self.channel_plan.channels:
                 self.channel_plan.cell_edited(item.row(), 0, channel)
 
@@ -360,13 +363,14 @@ class VolumeWidget(QWidget):
         self.table.blockSignals(False)
 
         # If volume has changed, update channel table steps and step size accordingly
-        if (self.channel_plan.apply_to_all and [row, column] == [0, 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
+        if (self.channel_plan.apply_to_all and [row, column] == [0,
+                                                                 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
             for channel in self.channel_plan.channels:
                 self.channel_plan.cell_edited(item.row(), 0, channel)
 
     def undercover_update_item(self, value, item):
         """Update table with latest z value"""
-        
+
         self.table.blockSignals(True)
         item.setData(Qt.EditRole, value)
         self.table.blockSignals(False)
