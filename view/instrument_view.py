@@ -2,11 +2,10 @@ from ruamel.yaml import YAML
 from qtpy.QtCore import Slot
 from pathlib import Path
 import importlib
-from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, label_maker, \
+from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
     scan_for_properties, disable_button
-from threading import Lock
-from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QHBoxLayout, \
-    QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy
+from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, \
+    QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils.theme import get_theme
@@ -16,6 +15,7 @@ from time import sleep
 import logging
 import inflection
 import inspect
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 
 class InstrumentView:
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -65,14 +65,15 @@ class InstrumentView:
         self.setup_daq_widgets()
         self.setup_filter_wheel_widgets()
         self.setup_stage_widgets()
-        self.setup_live_position()
+        #self.setup_live_position()
 
         # add undocked widget so everything closes together
         self.add_undocked_widgets()
+
         # Set app events
         app = QApplication.instance()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
-        #app.focusChanged.connect(self.toggle_grab_stage_positions)
+
 
     def setup_daqs(self):
         """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
@@ -347,36 +348,6 @@ class InstrumentView:
             if folder[0] != '':  # user pressed cancel
                 image.save(folder[0])
 
-    def setup_live_position(self):
-        """Set up live position thread"""
-
-        self.grab_stage_positions_worker = self.grab_stage_positions()
-        self.grab_stage_positions_worker.yielded.connect(self.update_stage_position)
-        self.grab_stage_positions_worker.start()
-
-    @thread_worker
-    def grab_stage_positions(self):
-        """Grab stage position from all stage objects and yeild positions"""
-
-        while True:  # best way to do this or have some sort of break?
-            sleep(.1)
-            for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
-                                **getattr(self.instrument, 'tiling_stages', {}),
-                                **getattr(self.instrument, 'focusing_stages', {})}.items():  # combine stage
-                position = stage.position_mm  # don't yield while locked
-                yield name, position
-
-    def update_stage_position(self, args):
-        """Update stage position in stage widget
-        :param args: tuple containing the name of stage and position of stage"""
-
-        (name, position) = args
-        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets, **self.focusing_stage_widgets}  # group stage widgets dicts to find name
-        try:
-            stages[name].position_mm_widget.setText(str(position))
-        except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
-            pass
-
     def setup_channel_widget(self):
         """Create widget to select which laser to livestream with"""
 
@@ -429,12 +400,18 @@ class InstrumentView:
             properties = scan_for_properties(device)
             gui = BaseDeviceWidget(type(device), properties)
 
-        # if gui is BaseDeviceWidget or inherits from it
+        # if gui is BaseDeviceWidget or inherits from it,
+        # hook up widgets to device_property_changed when user changes value
         if type(gui) == BaseDeviceWidget or BaseDeviceWidget in type(gui).__bases__:
-            # Hook up widgets to device_property_changed
             gui.ValueChangedInside[str].connect(
                 lambda value, dev=device, widget=gui:
                 self.device_property_changed(value, dev, widget))
+
+        updating_props = specs.get('updating_properties', [])
+        for prop_name in updating_props:
+            worker = self.grab_property_value(device, prop_name, device_name)
+            worker.yielded.connect(self.update_property_value)
+            worker.start()
 
         # add ui to widget dictionary
         if not hasattr(self, f'{device_type}_widgets'):
@@ -446,6 +423,32 @@ class InstrumentView:
             self.create_device_widgets(subdevice_name, subdevice_specs)
 
         gui.setWindowTitle(f'{device_type} {device_name}')
+
+    @thread_worker
+    def grab_property_value(self, device, property_name, widget):
+        """Grab value of property and yield"""
+
+        while True:  # best way to do this or have some sort of break?
+            sleep(.1)
+            value = getattr(device, property_name)
+            yield value, widget
+
+    def update_property_value(self, args):
+        """Update stage position in stage widget
+        :param args: tuple containing the name of stage and position of stage"""
+
+        (value, widget) = args
+        try:
+            if type(widget) in [QLineEdit, QScrollableLineEdit]:
+                widget.setText(str(value))
+            elif type(widget) in [QSpinBox, QDoubleSpinBox]:
+                widget.setValue(value)
+            elif type(widget) == QComboBox:
+                index = widget.findText(value)
+                widget.setCurrentIndex(index)
+
+        except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
+            pass
 
     @Slot(str)
     def device_property_changed(self, attr_name: str, device, widget):
@@ -462,6 +465,8 @@ class InstrumentView:
             dictionary = getattr(device, name_lst[0])
             for k in name_lst[1:]:
                 dictionary = dictionary[k]
+
+            # attempt to pass in correct value of correct type
             descriptor = getattr(type(device), name_lst[0])
             fset = getattr(descriptor, 'fset')    # account for property and deliminated
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
@@ -469,6 +474,7 @@ class InstrumentView:
                 setattr(device, name_lst[0], input_type(value))
             else:
                 setattr(device, name_lst[0], value)
+
             self.log.info(f'Device changed to {getattr(device, name_lst[0])}')
             # Update ui with new device values that might have changed
             # WARNING: Infinite recursion might occur if device property not set correctly
@@ -476,6 +482,7 @@ class InstrumentView:
                 if getattr(widget, k, False):
                     device_value = getattr(device, k)
                     setattr(widget, k, device_value)
+
         except (KeyError, TypeError):
             self.log.warning(f"{attr_name} can't be mapped into device properties")
             pass
@@ -495,18 +502,6 @@ class InstrumentView:
                 if getattr(widget, 'property_widgets', False) == {}:
                     undocked_widget.setVisible(False)
 
-    # def toggle_grab_stage_positions(self):
-    #     """When focus on view has changed, resume or pause grabbing stage positions"""
-    #     # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
-    #     # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
-    #     try:
-    #         if self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_paused:
-    #             self.grab_stage_positions_worker.resume()
-    #         elif not self.viewer.window._qt_window.isActiveWindow() and self.grab_stage_positions_worker.is_running:
-    #             self.grab_stage_positions_worker.pause()
-    #     except RuntimeError:  # Pass error when window has been closed
-    #         pass
-
     def setDisabled(self, disable):
         """Enable/disable viewer"""
 
@@ -523,7 +518,7 @@ class InstrumentView:
     def close(self):
         """Close instruments and end threads"""
 
-        self.grab_stage_positions_worker.quit()
+        #self.grab_stage_positions_worker.quit()
         self.grab_frames_worker.quit()
         for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
             device_type = device_specs['type']

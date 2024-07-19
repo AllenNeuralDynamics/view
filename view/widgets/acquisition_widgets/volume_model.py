@@ -8,7 +8,7 @@ from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewW
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
-from pyqtgraph.opengl import GLBarGraphItem, GLMeshItem, GLSurfacePlotItem
+
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):

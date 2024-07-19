@@ -18,6 +18,8 @@ instrument_view:
         module: StageWidget
         init:
           advanced_user: False
+        updating_properties:
+          - position_mm
       tigerbox:
         type: joystick
         driver: view.widgets.device_widgets.joystick_widget
