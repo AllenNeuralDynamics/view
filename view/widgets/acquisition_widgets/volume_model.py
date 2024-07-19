@@ -286,8 +286,8 @@ class VolumeModel(GLOrthoViewWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(f"Do you want to move the field of view from "
-                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} to "
-                       f"{[round(x, 2) for x in new_fov_pos]}?")
+                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} [mm] to "
+                       f"{[round(x, 2) for x in new_fov_pos]} [mm]?")
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
