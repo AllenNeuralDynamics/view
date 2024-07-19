@@ -108,4 +108,9 @@ acquisition_view:
       delegate: combo
       type: str
       items: [ 'this', 'is', 'an', 'example' ]
-  operation_widgets: { }
+  operation_widgets:
+    vp-151mx:
+      robocopy:
+        type: transfer
+        updating_properties:
+          - progress

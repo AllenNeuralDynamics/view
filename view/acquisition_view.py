@@ -318,7 +318,7 @@ class AcquisitionView:
         operation = getattr(self.acquisition, inflection.pluralize(operation_type))[device_name][operation_name]
 
         specs = self.config['acquisition_view']['operation_widgets'].get(device_name, {}).get(operation_name, {})
-        if specs != {} and specs.get('type', '') == operation_type:
+        if specs.get('type', '') == operation_type and 'driver' in specs.keys() and 'module' in specs.keys():
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
             gui = gui_class(operation, **specs.get('init', {}))  # device gets passed into widget
         else:
@@ -334,14 +334,15 @@ class AcquisitionView:
 
             updating_props = specs.get('updating_properties', [])
             for prop_name in updating_props:
-                descriptor = getattr(type(operation), operation_name)
+                descriptor = getattr(type(operation), prop_name)
                 unit = getattr(descriptor, 'unit', None)
                 # if operation is percentage, change property widget to QProgressbar
                 if unit in ['%', 'percent', 'percentage']:
                     widget = getattr(gui, f'{prop_name}_widget')
-                    gui.centralWidget().layout().removeWidget(widget)
+                    progress_bar = QProgressBar()
+                    widget.parentWidget().layout().replaceWidget(getattr(gui, f'{prop_name}_widget'), progress_bar)
                     widget.deleteLater()
-                    setattr(gui, f'{prop_name}_widget', QProgressBar())
+                    setattr(gui, f'{prop_name}_widget', progress_bar)
                 worker = self.grab_property_value(operation, prop_name, getattr(gui, f'{prop_name}_widget'))
                 worker.yielded.connect(self.update_property_value)
                 worker.start()

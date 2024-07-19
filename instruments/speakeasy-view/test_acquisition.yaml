@@ -25,6 +25,8 @@ acquisition:
         init:
           external_path: C:\Users\micah.woodard\Downloads\exaspim-test
           local_path: C:\Users\micah.woodard\Downloads
+        update_properties:
+          - progress
       imaris:
         type: writer
         driver: voxel.writers.imaris

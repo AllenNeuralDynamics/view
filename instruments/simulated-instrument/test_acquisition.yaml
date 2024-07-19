@@ -36,9 +36,9 @@ acquisition:
         settings:
           compression: none
           data_type: uint16
-      rsync:
+      robocopy:
         type: transfer
-        driver: voxel.transfers.rsync
+        driver: voxel.transfers.robocopy
         module: FileTransfer
         init:
           external_path: ./external_test
