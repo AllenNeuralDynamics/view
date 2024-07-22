@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QColor, QMatrix4x4, QVector3D, QQuaternion
+from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
@@ -36,24 +36,26 @@ class VolumeModel(GLOrthoViewWidget):
     fovMoved = Signal((list))
 
     def __init__(self,
+                 unit: str = 'mm',
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
                  fov_color: str = 'yellow',
-                 fov_line_width: int = 1,
+                 fov_line_width: int = 2,
                  fov_opacity: float = .15,
-                 path_line_width: int = 1,
+                 path_line_width: int = 2,
                  path_arrow_size: float = .04,
                  path_arrow_aspect_ratio: int = 4,
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
                  tile_color: str = 'cyan',
                  tile_opacity: float = .075,
-                 tile_line_width: int = 1):
+                 tile_line_width: int = 2):
 
         """
         GLViewWidget to display proposed grid of acquisition
 
+        :param unit: unit of the volume model.
         :param coordinate_plane: coordinate plane displayed on widget.
         :param fov_dimensions: dimensions of field of view in coordinate plane
         :param fov_position: position of fov
@@ -72,6 +74,7 @@ class VolumeModel(GLOrthoViewWidget):
 
         super().__init__(rotationMethod='quaternion')
         self.makeCurrent()
+        self.unit = unit
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
         self.fov_dimensions = fov_dimensions
@@ -286,8 +289,8 @@ class VolumeModel(GLOrthoViewWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(f"Do you want to move the field of view from "
-                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} to "
-                       f"{[round(x, 2) for x in new_fov_pos]}?")
+                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} [{self.unit}] to "
+                       f"{[round(x, 2) for x in new_fov_pos]} [{self.unit}]?")
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 

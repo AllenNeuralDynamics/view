@@ -16,6 +16,7 @@ ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
 INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
 GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 
+
 class SimulatedInstrumentView(InstrumentView):
     """View for ExASPIM Instrument"""
 
