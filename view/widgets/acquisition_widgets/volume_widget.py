@@ -12,6 +12,7 @@ import useq
 from view.widgets.base_device_widget import label_maker
 import inspect
 
+
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
 
@@ -23,8 +24,7 @@ class VolumeWidget(QWidget):
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
-                 view_color: str = 'yellow',
-                 unit: str = 'um',
+                 unit: str = 'mm',
                  ):
         """
         :param channels: dictionary defining channels for instrument
@@ -33,7 +33,6 @@ class VolumeWidget(QWidget):
         :param coordinate_plane: list describing instrument coordinate plane ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param fov_dimensions: list of fov_dims which correspond to tiling dimensions
         :param fov_position: list describing fov pos ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
-        :param view_color: color of fov in volume model
         :param unit: unit ALL values will be in
         """
         super().__init__()
@@ -42,9 +41,10 @@ class VolumeWidget(QWidget):
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.unit = unit
         self.layout = QGridLayout()
+        fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
-        self.volume_model = VolumeModel(coordinate_plane, fov_dimensions, fov_position, view_color)
+        self.volume_model = VolumeModel(unit, coordinate_plane, fov_dimensions, fov_position)
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()
@@ -65,8 +65,8 @@ class VolumeWidget(QWidget):
             checkboxes.addWidget(button)
         extended_model = create_widget('V', self.volume_model, checkboxes)
 
-        # create tile plan widgets
-        self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, self.coordinate_plane, unit)
+        # create tile plan widgets, feed in coordinate plan with polarity
+        self.tile_plan_widget = TilePlanWidget(limits, fov_dimensions, fov_position, coordinate_plane, unit)
         self.fovStop = self.tile_plan_widget.fovStop  # expose for ease of access
         self.tile_starts = self.tile_plan_widget.grid_position_widgets  # expose for ease of access
         self.anchor_widgets = self.tile_plan_widget.anchor_widgets  # expose for ease of access
@@ -146,9 +146,15 @@ class VolumeWidget(QWidget):
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
         self.tile_starts[2].disconnect()  # disconnect to only trigger update graph once
-        self.tile_starts[2].valueChanged.connect(lambda value: self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value))
+        self.tile_starts[2].valueChanged.connect(
+            lambda value: self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value))
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
+
+        # initialize first tile and add to layout
+        print('initializing')
+        self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
+        self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         # hook up scan_plan_widget signals to update grid and channel plan when tiles are changed
         self.scan_plan_widget.scanChanged.connect(self.update_model)
@@ -159,9 +165,10 @@ class VolumeWidget(QWidget):
         self.fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
         self.fov_position = fov_position
 
-        # initialize first tile and add to layout
-        self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
-        self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
+        # # initialize first tile and add to layout
+        # print('initializing')
+        # self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
+        # self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         self.setLayout(self.layout)
         self.show()
@@ -205,14 +212,12 @@ class VolumeWidget(QWidget):
         self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
 
         # update scanning coords of table
-        for widget in [self.scan_plan_widget.stacked_widget.widget(i) for i in range(self.scan_plan_widget.stacked_widget.count())]:
-            row = widget.row
-            column = widget.column
-            table_row = self.table.findItems(str([row, column]), Qt.MatchExactly)[0].row()
+        for tile in value:
+            table_row = self.table.findItems(str([tile.row, tile.col]), Qt.MatchExactly)[0].row()
             scan_dim_0 = self.table.item(table_row, 1)
             scan_dim_1 = self.table.item(table_row, 2)
-            self.undercover_update_item(float(self.tile_plan_widget.tile_positions[row][column][0]), scan_dim_0)
-            self.undercover_update_item(float(self.tile_plan_widget.tile_positions[row][column][1]), scan_dim_1)
+            self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][0]), scan_dim_0)
+            self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][1]), scan_dim_1)
 
     def update_model(self):
         """When scan changes, update model"""
@@ -231,12 +236,8 @@ class VolumeWidget(QWidget):
             # clear table and add back tiles in the correct order if
             self.table.clearContents()
             self.table.setRowCount(0)
-
-            for widget in [self.scan_plan_widget.stacked_widget.widget(i) for i in range(self.scan_plan_widget.stacked_widget.count())]:
-                row = widget.row
-                column = widget.column
-                self.add_tile_to_table(row, column)
-
+            for tile in self.tile_plan_widget.value():
+                self.add_tile_to_table(tile.row, tile.col)
 
         # update channel plan
         self.channel_plan.tile_volumes = self.scan_plan_widget.scan_volumes
@@ -295,9 +296,8 @@ class VolumeWidget(QWidget):
         multiple times"""
 
         # connect z widget signals to trigger update
-        if len(self.table.findItems(str([row, column]), Qt.MatchExactly)) > 0:
-            z = self.scan_plan_widget.z_plan_widgets[row, column]
-            z.valueChanged.connect(lambda value: self.change_table(value, row, column))
+        z = self.scan_plan_widget.z_plan_widgets[row, column]
+        z.valueChanged.connect(lambda value: self.change_table(value, row, column))
 
     def view_plane_change(self, button):
         """Update view plane and remap path
@@ -324,7 +324,8 @@ class VolumeWidget(QWidget):
         self.undercover_update_item(float(value[-1]), tile_end)
 
         # If volume has changed, update channel table steps and step size accordingly
-        if (self.channel_plan.apply_to_all and [row, column] == [0, 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
+        if (self.channel_plan.apply_to_all and [row, column] == [0,
+                                                                 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
             for channel in self.channel_plan.channels:
                 self.channel_plan.cell_edited(item.row(), 0, channel)
 
@@ -366,13 +367,14 @@ class VolumeWidget(QWidget):
         self.table.blockSignals(False)
 
         # If volume has changed, update channel table steps and step size accordingly
-        if (self.channel_plan.apply_to_all and [row, column] == [0, 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
+        if (self.channel_plan.apply_to_all and [row, column] == [0,
+                                                                 0]) or not self.channel_plan.apply_to_all:  # only update once if apply_all
             for channel in self.channel_plan.channels:
                 self.channel_plan.cell_edited(item.row(), 0, channel)
 
     def undercover_update_item(self, value, item):
         """Update table with latest z value"""
-        
+
         self.table.blockSignals(True)
         item.setData(Qt.EditRole, value)
         self.table.blockSignals(False)
@@ -481,24 +483,34 @@ class VolumeWidget(QWidget):
 
         tile_dict = {
             'channel': channel,
-            'position': {k: self.table.item(table_row, j + 1).value() for j, k in
+            f'position_{self.unit}': {k[0]: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
                          enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
 
         # load channel plan values
-        for device_type, devices in self.channel_plan.possible_channels[channel].items():
-            for device_name in devices:
-                tile_dict[device_name] = {}
-                for setting in self.channel_plan.settings.get(device_type, []):
-                    column_name = label_maker(f'{device_name}_{setting}')
-                    if getattr(self.channel_plan, column_name, None) is not None:
-                        array = getattr(self.channel_plan, column_name)[channel]
-                        input_type = self.channel_plan.column_data_types[column_name]
-                        if input_type != inspect._empty:
-                            tile_dict[device_name][setting] = input_type(array[row, column])
-                        else:
-                            tile_dict[device_name][setting] = array[row, column]
+        for device_type, settings in self.channel_plan.settings.items():
+            if device_type in self.channel_plan.possible_channels[channel].keys():
+                for device_name in self.channel_plan.possible_channels[channel][device_type]:
+                    tile_dict[device_name] = {}
+                    for setting in settings:
+                        column_name = label_maker(f'{device_name}_{setting}')
+                        if getattr(self.channel_plan, column_name, None) is not None:
+                            array = getattr(self.channel_plan, column_name)[channel]
+                            input_type = self.channel_plan.column_data_types[column_name]
+                            if input_type is not None:
+                                tile_dict[device_name][setting] = input_type(array[row, column])
+                            else:
+                                tile_dict[device_name][setting] = array[row, column]
+            else:
+                column_name = label_maker(f'{device_type}')
+                if getattr(self.channel_plan, column_name, None) is not None:
+                    array = getattr(self.channel_plan, column_name)[channel]
+                    input_type = self.channel_plan.column_data_types[column_name]
+                    if input_type is not None:
+                        tile_dict[device_type] = input_type(array[row, column])
+                    else:
+                        tile_dict[device_type] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
             array = getattr(self.channel_plan, name)[channel]

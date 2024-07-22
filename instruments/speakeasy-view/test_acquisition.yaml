@@ -1,21 +1,21 @@
 acquisition:
   metadata:
-    subject_id: 123456
-    experimenter_name: adam glaser
-    immersion_medium: 0.05X SSC
-    immersion_medium_refractive_index: 1.33
-    x_anatomical_direction: Anterior_to_posterior
-    y_anatomical_direction: Inferior_to_superior
-    z_anatomical_direction: Left_to_right
-#  storage:
-#    - camera_name: vp-151mx
-#      filename_prefix: tile
-#      local_drive: C:\Users\svc_aind_imaging\Desktop
-#      external_drive: C:\Users\svc_aind_imaging\Desktop\test
-#    - camera_name: vnp-604mx
-#      filename_prefix: tile
-#      local_drive: C:\Users\svc_aind_imaging\Desktop
-#      external_drive: C:\Users\svc_aind_imaging\Desktop\test
+    driver: voxel.metadata.metadata_class
+    module: MetadataClass
+    init:
+      metadata_dictionary:
+        instrument_type: speakeasy
+        subject_id: 123456
+        experimenter_name: adam glaser
+        immersion_medium: 0.05X SSC
+        immersion_medium_refractive_index: 1.33
+        x_anatomical_direction: Anterior_to_posterior
+        y_anatomical_direction: Inferior_to_superior
+        z_anatomical_direction: Left_to_right
+      date_format: year/month/day/hour/minute/second
+      name_specs:
+        deliminator: _
+        format: [ instrument_type, subject_id ]
   operations:
     C15440-20UP:
       robocopy:

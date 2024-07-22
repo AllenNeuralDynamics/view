@@ -6,7 +6,7 @@ import useq
 import enum
 import numpy as np
 from superqt.utils import signals_blocked
-from time import time
+import inspect
 
 class Mode(enum.Enum):
     """Recognized ZPlanWidget modes."""
@@ -143,7 +143,7 @@ class ScanPlanWidget(QWidget):
 
     def scan_plan_construction(self, value: useq.GridFromEdges | useq.GridRowsColumns | useq.GridWidthHeight):
         """Create new z_plan widget for each new tile """
-        start = time()
+
         if self.z_plan_widgets.shape[0] != value.rows or self.z_plan_widgets.shape[1] != value.columns:
             old_row = self.z_plan_widgets.shape[0]
             old_col = self.z_plan_widgets.shape[1]
@@ -151,15 +151,19 @@ class ScanPlanWidget(QWidget):
             rows = value.rows
             cols = value.columns
             # close old row and column widget
-            start1 = time()
             if rows - old_row < 0:
-                self.iterate_z_widgets([rows, old_row], [0, old_col], False)
+                for i in range(rows, old_row):
+                    for j in range(old_col):
+                        self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
+                        self.z_plan_widgets[i, j].close()
 
             if cols - old_col < 0:
-                self.iterate_z_widgets([cols, old_col], [0, old_row], False)
-            print('deleting rows', start1-time())
+                for j in range(cols, old_col):
+                    for i in range(old_row):
+                        self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
+                        self.z_plan_widgets[i, j].close()
+
             # resize array to new size
-            start1 = time()
             for array, name in zip([self.z_plan_widgets, self.tile_visibility, self.scan_starts, self.scan_volumes],
                                    ['z_plan_widgets', '_tile_visibility', '_scan_starts', '_scan_volumes']):
 
@@ -174,40 +178,23 @@ class ScanPlanWidget(QWidget):
                     setattr(self, name, np.concatenate((array, add_on), axis=1))
                 elif cols < old_col:  # remove col
                     setattr(self, name, np.delete(array, [old_col - x for x in range(1, (old_col - cols) + 1)], axis=1))
-            print('updating numpy array times', time()-start1)
+
             # update new rows and columns with widgets
-            start2 = time()
             if rows - old_row > 0:
-                self.iterate_z_widgets([old_row, rows], [0, cols], True)
-
-            if cols - old_col > 0:
-                self.iterate_z_widgets([0, old_row], [old_col, cols], True)
-            print('adding rows', time()-start2)
-        print('total time elapsed ', time()-start)
-        self.scanChanged.emit()
-
-    def iterate_z_widgets(self, row_range: list, column_range: list, create: bool):
-        """Iterate through set ranges of columns and rows to open or close z widgets
-        :param row_range: 2 item list of start and end of rows to iterate through
-        :param column_range: 2 item list of start and end of column to iterate through
-        :param create: whether to create new z widgets to close and destroy them"""
-
-
-        for i in range(*row_range):
-            for j in range(*column_range):
-                if create:
-                    if self.stacked_widget.count() < 100:
+                for i in range(old_row, rows):
+                    for j in range(cols):  # take care of any new column values
                         self.create_z_plan_widget(i, j)
-                    else:
-                        break
-                else:
-                    self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
-                    self.z_plan_widgets[i, j].close()
+            if cols - old_col > 0:
+                for i in range(old_row):  # if new rows, already taken care of in previous loop
+                    for j in range(old_col, cols):
+                        self.create_z_plan_widget(i, j)
+
+        self.scanChanged.emit()
 
     def create_z_plan_widget(self, row, column):
         """Function to create and connect ZPlanWidget"""
 
-        z = ZPlanWidget(row, column, self.z_limits, self.unit)
+        z = ZPlanWidget(self.z_limits, self.unit)
         self.z_plan_widgets[row, column] = z
         z.setWindowTitle(f'({row}, {column})')
         z.setMode(self.z_plan_widgets[0, 0].mode())
@@ -251,21 +238,11 @@ class ZPlanWidget(ZPlanWidgetMMCore):
 
     clicked = Signal()
 
-    def __init__(self, row,
-                 column ,
-                 z_limits: [float] = None,
-                 unit: str = 'um',
-                 parent: QWidget | None = None):
-        """
-            :param row: row of z widget for reference
-            :param column: column of z widget for reference
-            :param z_limits: list containing max and min values of z dimension
-            :param unit: unit of all size values
-           """
+    def __init__(self, z_limits: [float] = None, unit: str = 'um', parent: QWidget | None = None):
+        """:param z_limits: list containing max and min values of z dimension
+           :param unit: unit of all size values"""
 
         self.start = QDoubleSpinBox()
-        self.row = row
-        self.column = column
 
         super().__init__(parent)
 

@@ -1,16 +1,17 @@
-from pathlib import Path
 import logging
-from ruamel.yaml import YAML
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
-from qtpy.QtCore import Slot
+from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
+from qtpy.QtCore import Slot, Qt
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QFrame, QHBoxLayout
-from qtpy.QtCore import Qt
+    QLabel, QPushButton, QSplitter
+from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
+from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
+
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -25,12 +26,17 @@ class AcquisitionView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
+        # Set app events
+        app = QApplication.instance()
+        #app.setAttribute(Qt.AA_ShareOpenGLContexts)
+        # app.focusChanged.connect(self.toggle_grab_fov_positions)
+
         self.instrument_view = instrument_view
 
         # Locks
         self.tiling_stage_locks = self.instrument_view.tiling_stage_locks
         self.scanning_stage_locks = self.instrument_view.scanning_stage_locks
-        #self.focusing_stage_locks = self.instrument_view.focusing_stage_locks  #TODO: update acquisiiton widgets to include focusing stage
+        # self.focusing_stage_locks = self.instrument_view.focusing_stage_locks  #TODO: update acquisiiton widgets to include focusing stage
         self.daq_locks = self.instrument_view.daq_locks
 
         # Eventual threads
@@ -66,6 +72,7 @@ class AcquisitionView:
 
         # splitter for operation widgets
         splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)
 
         # create scroll wheel for metadata widget
         scroll = QScrollArea()
@@ -76,6 +83,9 @@ class AcquisitionView:
         dock = QDockWidget(scroll.windowTitle(), self.main_window)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
+        dock.setWidget(scroll)
+        dock.setMinimumHeight(25)
         splitter.addWidget(dock)
 
         # create dock widget for operations
@@ -88,17 +98,14 @@ class AcquisitionView:
                 scroll.setWidget(stack)
                 scroll.setFixedWidth(self.metadata_widget.size().width())
                 dock = QDockWidget(stack.windowTitle())
+                dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
+                dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
-
-        self.main_layout.addWidget(splitter, 1,  3)
+        self.main_layout.addWidget(splitter, 1, 3)
         self.main_window.setLayout(self.main_layout)
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()
-
-        # Set app events
-        app = QApplication.instance()
-        app.focusChanged.connect(self.toggle_grab_fov_positions)
 
     def create_start_button(self):
         """Create button to start acquisition"""
@@ -159,7 +166,6 @@ class AcquisitionView:
         self.acquisition_thread = create_worker(self.acquisition.run)
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
-
 
     def acquisition_ended(self):
         """Re-enable UI's and threads after aquisition has ended"""
@@ -223,15 +229,12 @@ class AcquisitionView:
     def create_metadata_widget(self):
         """Create custom widget for metadata in config"""
 
-        # TODO: metadata label
-        acquisition_properties = dict(self.acquisition.config['acquisition']['metadata'])
-        metadata_widget = BaseDeviceWidget(acquisition_properties, acquisition_properties)
-        metadata_widget.ValueChangedInside[str].connect(lambda name: self.acquisition.config['acquisition']['metadata'].
-                                                        __setitem__(name, getattr(metadata_widget, name)))
+        metadata_widget = MetadataWidget(self.acquisition.metadata)
+        metadata_widget.ValueChangedInside[str].connect(lambda name: setattr(self.acquisition.metadata, name,
+                                                                             getattr(metadata_widget, name)))
         for name, widget in metadata_widget.property_widgets.items():
             widget.setToolTip('')  # reset tooltips
         metadata_widget.setWindowTitle(f'Metadata')
-        metadata_widget.show()
         return metadata_widget
 
     def create_volume_widget(self):
@@ -358,7 +361,11 @@ class AcquisitionView:
                 lambda value, op=operation, widget=gui:
                 self.operation_property_changed(value, op, widget))
         # Add label to gui
-        labeled = create_widget('V', QLabel(operation_name), gui)
+        font = QFont()
+        font.setBold(True)
+        label = QLabel(operation_name)
+        label.setFont(font)
+        labeled = create_widget('V', label, gui)
 
         # add ui to widget dictionary
         if not hasattr(self, f'{operation_type}_widgets'):
