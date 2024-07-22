@@ -339,6 +339,8 @@ class AcquisitionView:
                 if unit in ['%', 'percent', 'percentage']:
                     widget = getattr(gui, f'{prop_name}_widget')
                     progress_bar = QProgressBar()
+                    progress_bar.setMaximum(100)
+                    progress_bar.setMinimum(0)
                     widget.parentWidget().layout().replaceWidget(getattr(gui, f'{prop_name}_widget'), progress_bar)
                     widget.deleteLater()
                     setattr(gui, f'{prop_name}_widget', progress_bar)
@@ -376,7 +378,7 @@ class AcquisitionView:
         """Grab value of property and yield"""
 
         while True:  # best way to do this or have some sort of break?
-            sleep(.5)
+            sleep(.1)
             value = getattr(device, property_name)
             yield value, widget
 

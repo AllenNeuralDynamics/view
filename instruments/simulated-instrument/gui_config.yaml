@@ -59,12 +59,6 @@ instrument_view:
         module: CameraWidget
         init:
           advanced_user: True
-      vnp-604mx:
-        type: camera
-        driver: view.widgets.device_widgets.camera_widget
-        module: CameraWidget
-        init:
-          advanced_user: True
       PCIe-6738:
         type: daq
         driver: view.widgets.device_widgets.ni_widget
@@ -110,6 +104,10 @@ acquisition_view:
       items: [ 'this', 'is', 'an', 'example' ]
   operation_widgets:
     vp-151mx:
+      imaris:
+        type: writer
+        updating_properties:
+          - progress
       robocopy:
         type: transfer
         updating_properties:

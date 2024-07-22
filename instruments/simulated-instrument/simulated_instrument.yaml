@@ -3,17 +3,17 @@ instrument:
     '488':
       filters: [BP488]
       lasers: [488nm]
-      cameras: [vnp-604mx]
+      cameras: [vp-151mx]
       focusing_stages: [n stage axis]
     '561':
       filters: [BP561]
       lasers: [561nm]
-      cameras: [vnp-604mx]
+      cameras: [vp-151mx]
       focusing_stages: [n stage axis]
     '639':
       filters: [LP638]
       lasers: [639nm]
-      cameras: [vnp-604mx]
+      cameras: [vp-151mx]
       focusing_stages: [n stage axis]
   devices:
     639nm:
@@ -281,23 +281,6 @@ instrument:
       driver: voxel.devices.stage.simulated
       module: Joystick
       type: joystick
-    vnp-604mx:
-      driver: voxel.devices.camera.simulated
-      init:
-        id: sim001
-      module: Camera
-      settings:
-        exposure_time_ms: 40.0
-        pixel_type: mono16
-        height_offest_px: 4744
-        height_px: 1152
-        width_offset_px: 6528
-        width_px: 1152
-        trigger:
-          mode: 'off'
-          polarity: rising
-          source: external
-      type: camera
     vp-151mx:
       driver: voxel.devices.camera.simulated
       init:
@@ -316,4 +299,4 @@ instrument:
           source: external
       type: camera
   id: exaspim-01
-  master_device: vnp-604mx
+  master_device: vp-151mx
