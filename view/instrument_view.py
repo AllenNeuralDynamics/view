@@ -360,12 +360,15 @@ class InstrumentView(QWidget):
 
         (image, camera_name) = args
         if image is not None:
-            try:
+            layer_name = f"{camera_name} {self.livestream_channel}" if not snapshot else \
+                f"{camera_name} {self.livestream_channel} snapshot"
+
+            if layer_name in self.viewer.layers and not snapshot:
                 layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
                 layer.data = image
-            except KeyError:
-                # Add image to a new layer if layer doesn't exist yet
-                layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}")
+            else:
+                # Add image to a new layer if layer doesn't exist yet or image is snapshot
+                layer = self.viewer.add_image(image, name=layer_name)
                 layer.mouse_drag_callbacks.append(self.save_image)
                 if layer.multiscale == True:  # emit most down sampled image if multiscale
                     layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data[-1],
@@ -373,9 +376,9 @@ class InstrumentView(QWidget):
                 else:
                     layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data,
                                                                                               layer.contrast_limits))
-            if snapshot:    # emit signal if snapshot
-                image = image if not layer.multiscale else image[-1]
-                self.snapshotTaken.emit(image, layer.contrast_limits)
+                if snapshot:    # emit signal if snapshot
+                    image = image if not layer.multiscale else image[-1]
+                    self.snapshotTaken.emit(image, layer.contrast_limits)
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer
