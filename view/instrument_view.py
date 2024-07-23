@@ -315,8 +315,7 @@ class InstrumentView:
 
         i = 0
         while i < frames:  # while loop since frames can == inf
-            frame_info = self.instrument.cameras[camera_name].grab_frame(), camera_name
-            yield frame_info  # wait until unlocking camera to be able to quit napari thread
+            yield self.instrument.cameras[camera_name].grab_frame(), camera_name
             i += 1
 
     def update_layer(self, args):

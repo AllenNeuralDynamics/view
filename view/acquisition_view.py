@@ -28,14 +28,21 @@ class AcquisitionView:
         self.log.setLevel(log_level)
 
         self.instrument_view = instrument_view
+        self.acquisition = acquisition
+        self.instrument = self.acquisition.instrument
+        self.config = instrument_view.config
 
         # Eventual threads
         self.grab_fov_positions_worker = None
         self.property_workers = []
 
-        self.acquisition = acquisition
-        self.instrument = self.acquisition.instrument
-        self.config = instrument_view.config
+        # create workers for latest image taken by cameras
+        for camera_name, camera in self.instrument.cameras.items():
+            worker = self.grab_property_value(camera, 'latest_frame', camera_name)
+            worker.yielded.connect(self.instrument_view.update_layer)
+            worker.start()
+            worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
+            self.property_workers.append(worker)
 
         for device_name, operation_dictionary in self.acquisition.config['acquisition']['operations'].items():
             for operation_name, operation_specs in operation_dictionary.items():
@@ -155,11 +162,12 @@ class AcquisitionView:
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
 
+        # start all workers
         for worker in self.property_workers:
             worker.resume()
 
     def acquisition_ended(self):
-        """Re-enable UI's and threads after aquisition has ended"""
+        """Re-enable UI's and threads after acquisition has ended"""
 
         # enable acquisition view
         self.start_button.setEnabled(True)
