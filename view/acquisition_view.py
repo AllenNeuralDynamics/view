@@ -2,12 +2,13 @@ import logging
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
 from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
-from qtpy.QtCore import Slot
+from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
+from qtpy.QtCore import Slot, Qt
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
     QLabel, QPushButton, QSplitter
-from qtpy.QtCore import Qt
+from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 
@@ -102,10 +103,6 @@ class AcquisitionView(QWidget):
         self.setWindowTitle('Acquisition View')
         self.show()
 
-        # Set app events
-        app = QApplication.instance()
-        app.focusChanged.connect(self.toggle_grab_fov_positions)
-
     def create_start_button(self):
         """Create button to start acquisition"""
 
@@ -165,7 +162,6 @@ class AcquisitionView(QWidget):
         self.acquisition_thread = create_worker(self.acquisition.run)
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
-
 
     def acquisition_ended(self):
         """Re-enable UI's and threads after aquisition has ended"""
@@ -229,15 +225,12 @@ class AcquisitionView(QWidget):
     def create_metadata_widget(self):
         """Create custom widget for metadata in config"""
 
-        # TODO: metadata label
-        acquisition_properties = dict(self.acquisition.config['acquisition']['metadata'])
-        metadata_widget = BaseDeviceWidget(acquisition_properties, acquisition_properties)
-        metadata_widget.ValueChangedInside[str].connect(lambda name: self.acquisition.config['acquisition']['metadata'].
-                                                        __setitem__(name, getattr(metadata_widget, name)))
+        metadata_widget = MetadataWidget(self.acquisition.metadata)
+        metadata_widget.ValueChangedInside[str].connect(lambda name: setattr(self.acquisition.metadata, name,
+                                                                             getattr(metadata_widget, name)))
         for name, widget in metadata_widget.property_widgets.items():
             widget.setToolTip('')  # reset tooltips
         metadata_widget.setWindowTitle(f'Metadata')
-        metadata_widget.show()
         return metadata_widget
 
     def create_volume_widget(self):
@@ -365,7 +358,11 @@ class AcquisitionView(QWidget):
                 lambda value, op=operation, widget=gui:
                 self.operation_property_changed(value, op, widget))
         # Add label to gui
-        labeled = create_widget('V', QLabel(operation_name), gui)
+        font = QFont()
+        font.setBold(True)
+        label = QLabel(operation_name)
+        label.setFont(font)
+        labeled = create_widget('V', label, gui)
 
         # add ui to widget dictionary
         if not hasattr(self, f'{operation_type}_widgets'):
