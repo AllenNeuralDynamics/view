@@ -87,7 +87,7 @@ instrument_view:
                       "488": 2.5
                       "561": 2.5
 acquisition_view:
-  fov_dimensions: [ 1.0, 1.0, 0 ]
+  fov_dimensions: [ 10.672384, 8.00128 ]
   coordinate_plane: [ '-x', 'y', 'z' ]
   unit: 'mm'
   settings:

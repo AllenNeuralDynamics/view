@@ -18,10 +18,12 @@ import inflection
 import inspect
 import numpy as np
 
+
 class InstrumentView(QWidget):
     """"Class to act as a general instrument view model to voxel instrument"""
 
-    snapshotTaken = Signal((np.ndarray))
+    snapshotTaken = Signal((np.ndarray, list))
+    contrastChanged = Signal((np.ndarray, list))
 
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
 
@@ -56,6 +58,7 @@ class InstrumentView(QWidget):
 
         # Eventual attributes
         self.livestream_channel = None
+        self.snapshot = False  # flag to signal snapshot has been taken
 
         self.instrument = instrument
         self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
@@ -87,7 +90,7 @@ class InstrumentView(QWidget):
         # Set app events
         app = QApplication.instance()
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
-        #app.focusChanged.connect(self.toggle_grab_stage_positions)
+        # app.focusChanged.connect(self.toggle_grab_stage_positions)
 
     def setup_daqs(self):
         """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
@@ -156,7 +159,7 @@ class InstrumentView(QWidget):
                 # update tasks if livestreaming task is different from data acquisition task
                 if daq_name in self.config.get('livestream_tasks', {}).keys():
                     daq_widget.ValueChangedInside[str].connect(lambda attr, widget=daq_widget, name=daq_name:
-                                                               self.update_config_waveforms(widget, daq_name,  attr))
+                                                               self.update_config_waveforms(widget, daq_name, attr))
 
         stacked = self.stack_device_widgets('daq')
         self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs')
@@ -287,9 +290,12 @@ class InstrumentView(QWidget):
         :param frames: how many frames to take"""
 
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
-        self.grab_frames_worker.yielded.connect(self.update_layer)
-        if frames == 1:   # snapshot so emit snapshotTaken signal
-            self.grab_frames_worker.yielded.connect(lambda args: self.snapshotTaken.emit(args[0]))
+
+        if frames == 1:  # pass in optional argument that this image is a snapshot
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args, snapshot=True))
+        else:
+            self.grab_frames_worker.yielded.connect(self.update_layer)
+
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
 
@@ -347,9 +353,10 @@ class InstrumentView(QWidget):
             yield frame_info  # wait until unlocking camera to be able to quit napari thread
             i += 1
 
-    def update_layer(self, args):
+    def update_layer(self, args, snapshot: bool = False):
         """Update viewer with new camera frame
-        :param args: tuple containing image and camera name"""
+        :param args: tuple containing image and camera name
+        :param snapshot: if image taken is a snapshot or not """
 
         (image, camera_name) = args
         if image is not None:
@@ -360,7 +367,15 @@ class InstrumentView(QWidget):
                 # Add image to a new layer if layer doesn't exist yet
                 layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}")
                 layer.mouse_drag_callbacks.append(self.save_image)
-                # TODO: Add scale?
+                if layer.multiscale == True:  # emit most down sampled image if multiscale
+                    layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data[-1],
+                                                                                                 layer.contrast_limits))
+                else:
+                    layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data,
+                                                                                              layer.contrast_limits))
+            if snapshot:    # emit signal if snapshot
+                image = image if not layer.multiscale else image[-1]
+                self.snapshotTaken.emit(image, layer.contrast_limits)
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer
@@ -403,7 +418,8 @@ class InstrumentView(QWidget):
         :param args: tuple containing the name of stage and position of stage"""
 
         (name, position) = args
-        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets, **self.focusing_stage_widgets}  # group stage widgets dicts to find name
+        stages = {**self.tiling_stage_widgets, **self.scanning_stage_widgets,
+                  **self.focusing_stage_widgets}  # group stage widgets dicts to find name
         try:
             stages[name].position_mm_widget.setText(str(position))
         except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
@@ -507,7 +523,7 @@ class InstrumentView(QWidget):
             for k in name_lst[1:]:
                 dictionary = dictionary[k]
             descriptor = getattr(type(device), name_lst[0])
-            fset = getattr(descriptor, 'fset')    # account for property and deliminated
+            fset = getattr(descriptor, 'fset')  # account for property and deliminated
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
             if input_type != inspect._empty:
                 setattr(device, name_lst[0], input_type(value))

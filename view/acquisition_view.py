@@ -265,7 +265,7 @@ class AcquisitionView(QWidget):
         volume_widget.fovMoved.connect(self.move_stage)
         volume_widget.fovStop.connect(self.stop_stage)
         self.instrument_view.snapshotTaken.connect(volume_widget.handle_snapshot)  # connect snapshot signal
-
+        self.instrument_view.contrastChanged.connect(volume_widget.adjust_contrast)
         return volume_widget
 
     def move_stage(self, fov_position):

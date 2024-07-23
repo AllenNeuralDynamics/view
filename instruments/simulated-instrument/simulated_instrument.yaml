@@ -20,7 +20,7 @@ instrument:
       color: red
       driver: voxel.devices.lasers.simulated
       init:
-        port: COM5
+        id: COM5
       module: SimulatedLaser
       type: laser
     ASI FW-1000:
@@ -247,36 +247,29 @@ instrument:
               trigger_port: PFI0
       module: DAQ
       type: daq
-    combiner_0:
+    488nm:
+      color: purple
       driver: voxel.devices.lasers.simulated
       init:
-        port: COM3
-      module: SimulatedCombiner
-      subdevices:
-        488nm:
-          color: purple
-          driver: voxel.devices.lasers.simulated
-          init:
-            coefficients:
-              0: -57.515
-              1: 3.218
-            port: COM5
-            prefix: L6
-          module: SimulatedLaser
-          settings:
-            cdrh: 'OFF'
-            constant_current: 'ON'
-            modulation_mode: digital
-          type: laser
-        561nm:
-          color: greenyellow
-          driver: voxel.devices.lasers.simulated
-          init:
-            port: COM5
-            prefix: L3
-          module: SimulatedLaser
-          type: laser
-      type: combiner
+        coefficients:
+          0: -57.515
+          1: 3.218
+        id: COM5
+        prefix: L6
+      module: SimulatedLaser
+      settings:
+        cdrh: 'OFF'
+        constant_current: 'ON'
+        modulation_mode: digital
+      type: laser
+    561nm:
+      color: greenyellow
+      driver: voxel.devices.lasers.simulated
+      init:
+        id: COM5
+        prefix: L3
+      module: SimulatedLaser
+      type: laser
     tigerbox:
       driver: voxel.devices.stage.simulated
       module: Joystick

@@ -105,8 +105,8 @@ class VolumeModel(GLOrthoViewWidget):
                                path_end_color=path_end_color)
         self.addItem(self.path)
 
-        # initialize list of fov_images
-        self.fov_images = []
+        # initialize dict of fov_images
+        self.fov_images = {}
 
         # initialize fov
         self.fov_view = GLTileItem(width=fov_line_width)
@@ -168,15 +168,15 @@ class VolumeModel(GLOrthoViewWidget):
 
             for row in range(total_rows):
                 for column in range(total_columns):
-                    coord = self.grid_coords[row][column]
+                    coord = [x*pol for x, pol in zip(self.grid_coords[row][column], self.polarity)]
 
                     size = [*self.fov_dimensions[:2], self.scan_volumes[row, column]]
 
                     tile = GLTileItem(width=self.tile_line_width)
                     tile.setSize(*size)
-                    tile.setTransform(QMatrix4x4(1, 0, 0, coord[0] * self.polarity[0],
-                                                0, 1, 0, coord[1] * self.polarity[1],
-                                                0, 0, 1, coord[2] * self.polarity[2],
+                    tile.setTransform(QMatrix4x4(1, 0, 0, coord[0],
+                                                0, 1, 0, coord[1],
+                                                0, 0, 1, coord[2],
                                                 0, 0, 0, 1))
                     tile.setColor(self.tile_color)
                     tile.setVisible(self.tile_visibility[row, column])
@@ -221,16 +221,16 @@ class VolumeModel(GLOrthoViewWidget):
                          coord_order])
         self.path.setData(pos=path)
 
-    def add_fov_image(self, image: np.array, coords: list):
+    def add_fov_image(self, image: np.array, coords: list, levels):
         """add image to model assuming image has same fov dimensions and orientation
         :param image: numpy array of image to display in model
-        :param coords: list of coordinates corresponding to the coordinate plane of model"""
+        :param coords: list of coordinates corresponding to the coordinate plane of model,
+        :param levels: levels for passed in image"""
 
-        image_rgba = makeRGBA(image, levels=[0, 256])[0]
+        image_rgba = makeRGBA(image, levels=levels)
+        image_rgba[0][:, :, 3] = 200
 
-        image_rgba[:, :, 3] = 200
-
-        gl_image = GLImageItem(image_rgba,
+        gl_image = GLImageItem(image_rgba[0],
                                glOptions='translucent')
         x, y, z = coords
         gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
@@ -238,9 +238,23 @@ class VolumeModel(GLOrthoViewWidget):
                                          0, 0, 1, 0,    # 0 since tiling plane will display scan plan at 0
                                          0, 0, 0, 1))
         self.addItem(gl_image)
-        self.fov_images.append(gl_image)
+        self.fov_images[image.tobytes()] = gl_image
+
         if self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
             gl_image.setVisible(False)
+
+    def adjust_glimage_contrast(self, image, contrast_levels):
+        """
+        Adjust image in model contrast levels
+        :param image: numpy array of image key in fov_images
+        :param contrast_levels: levels for passed in image
+        :return:
+        """
+
+        glimage = self.fov_images[image.tobytes()]
+        coords = [glimage.transform()[i, 3] for i in range(3)]
+        self.removeItem(glimage)
+        self.add_fov_image(image, coords, contrast_levels)
 
     def toggle_fov_image_visibility(self, visible: bool):
         """Function to hide all fov_images

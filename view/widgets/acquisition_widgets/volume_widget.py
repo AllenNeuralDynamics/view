@@ -455,21 +455,22 @@ class VolumeWidget(QWidget):
             z = self.scan_plan_widget.z_plan_widgets[show_row, show_col]
             self.scan_plan_widget.stacked_widget.setCurrentWidget(z)
 
-    def handle_snapshot(self, image):
+    def handle_snapshot(self, image, levels):
         """Correctly contrast image and grab fov coordinates
-        :param image: numpy array of image to display in model"""
+        :param image: numpy array of image to display in model
+        :param levels: levels for passed in image"""
 
         # grab correct coordinates where image was taken
         coords = self.fov_position
+        self.volume_model.add_fov_image(image, coords, levels)
 
-        # contrast image
-        maximum = np.percentile(image, 90)
-        minimum = int(np.percentile(image, 5))
-        image.clip(minimum, maximum, out=image, dtype='float64')
-        image -= minimum
-        image = np.floor_divide(image, (maximum - minimum) / 256, out=image, casting='unsafe')
+    def adjust_contrast(self, image, contrast_limits):
+        """Function to adjust contrast levels of images in volume_model
+        :param image: numpy array of image key in fov_images
+        :param contrast_levels: levels for passed in image"""
 
-        self.volume_model.add_fov_image(image, coords)
+
+        self.volume_model.adjust_glimage_contrast(image, contrast_limits)
 
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
