@@ -25,6 +25,10 @@ class InstrumentView:
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
+        # set all loggers to log_level
+        loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        for logger in loggers:
+            logger.setLevel(log_level)
 
         # Eventual widget groups
         self.laser_widgets = {}
@@ -315,6 +319,7 @@ class InstrumentView:
 
         i = 0
         while i < frames:  # while loop since frames can == inf
+            sleep(.1)
             yield self.instrument.cameras[camera_name].grab_frame(), camera_name
             i += 1
 
