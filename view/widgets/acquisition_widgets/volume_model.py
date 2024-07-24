@@ -221,7 +221,7 @@ class VolumeModel(GLOrthoViewWidget):
                          coord_order])
         self.path.setData(pos=path)
 
-    def add_fov_image(self, image: np.array, coords: list, levels):
+    def add_fov_image(self, image: np.array, coords: list, levels: list):
         """add image to model assuming image has same fov dimensions and orientation
         :param image: numpy array of image to display in model
         :param coords: list of coordinates corresponding to the coordinate plane of model,
