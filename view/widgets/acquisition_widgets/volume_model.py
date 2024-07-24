@@ -413,14 +413,16 @@ class VolumeModel(GLOrthoViewWidget):
                 return
 
         elif event.button() == Qt.RightButton:
-            for keys, image in self.fov_images.items():
+
+            for key, image in self.fov_images.items():
                 coords = [image.transform()[i, 3] for i in range(3)]
                 if coords[0]-self.fov_dimensions[0] <= coords[0] <= coords[0]+self.fov_dimensions[0] and \
                         coords[1]-self.fov_dimensions[1] <= coords[1] <= coords[1]+self.fov_dimensions[1]:
                     return_value = self.delete_fov_image_query(coords)
                     if return_value == QMessageBox.Ok:
                         self.removeItem(image)
-                        del self.fov_images[keys]
+                    break
+            del self.fov_images[key]
 
 
     def mouseMoveEvent(self, event):
