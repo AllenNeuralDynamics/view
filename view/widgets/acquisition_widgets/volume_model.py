@@ -235,7 +235,7 @@ class VolumeModel(GLOrthoViewWidget):
         x, y, z = coords
         gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
                                          0, self.fov_dimensions[1]/image.shape[1], 0, y * self.polarity[1],
-                                         0, 0, 1, 0,    # 0 since tiling plane will display scan plan at 0
+                                         0, 0, 1, z * self.polarity[2],    # 0 since tiling plane will display scan plan at 0
                                          0, 0, 0, 1))
         self.addItem(gl_image)
         self.fov_images[image.tobytes()] = gl_image
@@ -413,7 +413,7 @@ class VolumeModel(GLOrthoViewWidget):
                 return
 
         elif event.button() == Qt.RightButton:
-
+            delete_key = None
             for key, image in self.fov_images.items():
                 coords = [image.transform()[i, 3] for i in range(3)]
                 if coords[0]-self.fov_dimensions[0] <= coords[0] <= coords[0]+self.fov_dimensions[0] and \
@@ -421,10 +421,12 @@ class VolumeModel(GLOrthoViewWidget):
                     return_value = self.delete_fov_image_query(coords)
                     if return_value == QMessageBox.Ok:
                         self.removeItem(image)
+                        delete_key = key
                     break
-            del self.fov_images[key]
+            if delete_key is not None:
+                del self.fov_images[delete_key]
 
-
+            self.itemsAt()
     def mouseMoveEvent(self, event):
         """Override mouseMoveEvent so user can't change view"""
         pass
