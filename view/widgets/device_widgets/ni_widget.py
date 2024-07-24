@@ -38,7 +38,7 @@ class NIWidget(BaseDeviceWidget):
         # create waveform widget
         if advanced_user:
             self.waveform_widget = WaveformWidget()
-            self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
+            #self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
 
         # create tree widget and format configured widgets into tree
         self.tree = QTreeWidget()

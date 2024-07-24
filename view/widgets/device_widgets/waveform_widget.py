@@ -73,6 +73,12 @@ class WaveformWidget(PlotWidget):
                                                         f'<s><font size="50" color="{item.color}">&nbsp;&nbsp;&nbsp;'
                                                         f'</font></s>')
 
+    # def mouseMoveEvent(self, ev):
+    #     """Overwriting to disable panning"""
+    #     pass
+    def wheelEvent(self, ev):
+        """Overwriting to disable zoom"""
+        pass
 
 class DraggableGraphItem(GraphItem):
     # initialize waveform parameters
