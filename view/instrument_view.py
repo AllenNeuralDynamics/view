@@ -361,7 +361,10 @@ class InstrumentView:
         :param event: event type"""
 
         if event.button == 2:  # Left click
-            image = Image.fromarray(layer.data)
+            if layer.multiscale:
+                image = Image.fromarray(layer.data[0])
+            else:
+                image = Image.fromarray(layer.data)
             fname = QFileDialog()
             folder = fname.getSaveFileName(directory=str(Path(__file__).parent.resolve() /
                                                          Path(
