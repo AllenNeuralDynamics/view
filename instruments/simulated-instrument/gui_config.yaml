@@ -18,6 +18,12 @@ instrument_view:
         module: StageWidget
         init:
           advanced_user: False
+      n stage axis:
+        type: focusing_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
       tigerbox:
         type: joystick
         driver: view.widgets.device_widgets.joystick_widget
@@ -62,7 +68,7 @@ instrument_view:
         driver: view.widgets.device_widgets.camera_widget
         module: CameraWidget
         init:
-          advanced_user: True
+          advanced_user: False
       PCIe-6738:
         type: daq
         driver: view.widgets.device_widgets.ni_widget
