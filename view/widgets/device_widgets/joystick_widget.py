@@ -8,13 +8,12 @@ class JoystickWidget(BaseDeviceWidget):
         """Modify BaseDeviceWidget to be specifically for Joystick.
         :param joystic: joystick object"""
 
-        properties = scan_for_properties(joystick)
+        properties = scan_for_properties(joystick) if advanced_user else {}
         super().__init__(type(joystick), properties)
         self.advanced_user = advanced_user
-        self.create_axis_combo_box()
 
-        if not self.advanced_user:
-            self.property_widgets['stage_axes'].setVisible(False)
+        if self.advanced_user:
+            self.create_axis_combo_box()
 
     def create_axis_combo_box(self):
         """Transform Instrument Axis text box into combo box and allow selection of only available axes"""

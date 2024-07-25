@@ -316,7 +316,7 @@ class AcquisitionView(QWidget):
                 position = scan_stage.position_mm
                 fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
 
-            yield fov_pos  # don't yield while locked
+            yield fov_pos
 
     def create_operation_widgets(self, device_name: str, operation_name: str, operation_specs: dict):
         """Create widgets based on operation dictionary attributes from instrument or acquisition

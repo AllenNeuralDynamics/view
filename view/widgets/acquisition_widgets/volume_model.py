@@ -320,7 +320,6 @@ class VolumeModel(GLOrthoViewWidget):
                         * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
 
         else:
-            print('outside y')
             center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 \
                         * (self.size().width() / self.size().height())
@@ -375,8 +374,8 @@ class VolumeModel(GLOrthoViewWidget):
         vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
 
         # create dictionaries of from fov and pos
-        fov = {'x': self.fov_dimensions[0] * self.polarity[0],
-               'y': self.fov_dimensions[1] * self.polarity[1],
+        fov = {'x': self.fov_dimensions[0],
+               'y': self.fov_dimensions[1],
                'z': 0}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
 
@@ -388,14 +387,14 @@ class VolumeModel(GLOrthoViewWidget):
         h_ax = self.view_plane[0]
         v_ax = self.view_plane[1]
 
-        new_pos = {transform[0]: (center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]],
-                   transform[1]: (center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]],
-                   transform[2]: pos[transform[2]]}
+        new_pos = {transform[0]: ((center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]]) * self.polarity[0],
+                   transform[1]: ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]]) * self.polarity[1],
+                   transform[2]: pos[transform[2]] * self.polarity[2]}
 
         if event.button() == Qt.LeftButton:
-            return_value, checkbox = self.move_fov_query([new_pos['x'] * self.polarity[0],
-                                                          new_pos['y'] * self.polarity[1],
-                                                          new_pos['z'] * self.polarity[2]])
+            return_value, checkbox = self.move_fov_query([new_pos['x'],
+                                                          new_pos['y'],
+                                                          new_pos['z']])
 
             if return_value == QMessageBox.Ok:
                 if not checkbox:  # Move to exact location
@@ -406,7 +405,7 @@ class VolumeModel(GLOrthoViewWidget):
                     distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
                     tile = flattened[index]
                     pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
-                self.fov_position = [pos['x'], pos['y'], pos['z']]
+                #self.fov_position = [pos['x'], pos['y'], pos['z']]
                 self.view_plane = plane  # make sure grid plane remains the same
                 self.fovMoved.emit([pos['x'], pos['y'], pos['z']])
 
