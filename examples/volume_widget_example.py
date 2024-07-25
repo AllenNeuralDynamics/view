@@ -41,8 +41,8 @@ if __name__ == "__main__":
     }
 
     lasers = {
-        '488nm': SimulatedLaser(port='hello'),
-        '639nm': SimulatedLaser(port='there')
+        '488nm': SimulatedLaser(id='hello'),
+        '639nm': SimulatedLaser(id='there')
     }
 
     laser_widgets = {

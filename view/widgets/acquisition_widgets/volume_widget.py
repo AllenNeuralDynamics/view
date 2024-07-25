@@ -151,6 +151,11 @@ class VolumeWidget(QWidget):
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
 
+        # initialize first tile and add to layout
+        print('initializing')
+        self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
+        self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
+
         # hook up scan_plan_widget signals to update grid and channel plan when tiles are changed
         self.scan_plan_widget.scanChanged.connect(self.update_model)
         self.scan_plan_widget.apply_all.toggled.connect(self.toggle_apply_all)
@@ -160,9 +165,10 @@ class VolumeWidget(QWidget):
         self.fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
         self.fov_position = fov_position
 
-        # initialize first tile and add to layout
-        self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
-        self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
+        # # initialize first tile and add to layout
+        # print('initializing')
+        # self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
+        # self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         self.setLayout(self.layout)
         self.show()
