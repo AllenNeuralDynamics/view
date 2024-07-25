@@ -12,6 +12,8 @@ class CameraWidget(BaseDeviceWidget):
         :param camera: camera object"""
 
         self.camera_properties = scan_for_properties(camera)
+        del self.camera_properties['latest_frame']    # remove image property
+
         super().__init__(type(camera), self.camera_properties)
 
         if not advanced_user:   # hide widgets

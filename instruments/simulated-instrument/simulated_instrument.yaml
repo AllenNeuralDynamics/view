@@ -28,29 +28,6 @@ instrument:
       lasers:
       - 639nm
   devices:
-    488nm:
-      color: purple
-      driver: voxel.devices.lasers.simulated
-      init:
-        coefficients:
-          0: -57.515
-          1: 3.218
-        id: COM5
-        prefix: L6
-      module: SimulatedLaser
-      settings:
-        cdrh: 'OFF'
-        constant_current: 'ON'
-        modulation_mode: digital
-      type: laser
-    561nm:
-      color: greenyellow
-      driver: voxel.devices.lasers.simulated
-      init:
-        id: COM5
-        prefix: L3
-      module: SimulatedLaser
-      type: laser
     639nm:
       color: red
       driver: voxel.devices.lasers.simulated
@@ -61,7 +38,7 @@ instrument:
     ASI FW-1000:
       driver: voxel.devices.filterwheel.simulated
       init:
-        filters: &id001
+        filters:
           BP405: 0
           BP488: 1
           BP561: 2
@@ -71,48 +48,48 @@ instrument:
           MB405/488/561/638: 4
         id: 0
       module: FilterWheel
+      type: filter_wheel
       subdevices:
         BP405:
+          type: filter
           driver: voxel.devices.filter.simulated
+          module: Filter
           init:
             id: BP405
-            wheel: &id002 !!python/object:voxel.devices.filterwheel.simulated.FilterWheel
-              _filter: 2
-              filters: *id001
-              id: 0
-              log: !!python/object/apply:logging.getLogger
-              - voxel.devices.filterwheel.simulated.FilterWheel
-          module: Filter
-          type: filter
         BP488:
+          type: filter
           driver: voxel.devices.filter.simulated
+          module: Filter
           init:
             id: BP488
-            wheel: *id002
-          module: Filter
-          type: filter
         BP561:
+          type: filter
           driver: voxel.devices.filter.simulated
+          module: Filter
           init:
             id: BP561
-            wheel: *id002
-          module: Filter
-          type: filter
         LP638:
+          type: filter
           driver: voxel.devices.filter.simulated
+          module: Filter
           init:
             id: LP638
-            wheel: *id002
-          module: Filter
-          type: filter
         MB405/488/561/638:
+          type: filter
           driver: voxel.devices.filter.simulated
+          module: Filter
           init:
             id: MB405/488/561/638
-            wheel: *id002
-          module: Filter
-          type: filter
-      type: filter_wheel
+
+    ASI MS-8000 z axis:
+      driver: voxel.devices.stage.simulated
+      init:
+        hardware_axis: x
+        instrument_axis: z
+      module: Stage
+      settings:
+        speed_mm_s: 1.0
+      type: scanning_stage
     ASI MS-8000 x axis:
       driver: voxel.devices.stage.simulated
       init:
@@ -131,20 +108,19 @@ instrument:
       settings:
         speed_mm_s: 1.0
       type: tiling_stage
-    ASI MS-8000 z axis:
+    n stage axis:
       driver: voxel.devices.stage.simulated
       init:
-        hardware_axis: x
-        instrument_axis: z
+        hardware_axis: n
+        instrument_axis: n
       module: Stage
       settings:
         speed_mm_s: 1.0
-      type: scanning_stage
+      type: focusing_stage
     PCIe-6738:
       driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
-      module: DAQ
       settings:
         tasks:
           ao_task:
@@ -182,7 +158,7 @@ instrument:
                 parameters:
                   amplitude_volts:
                     channels:
-                      '488': 0.833
+                      '488': 1.5
                       '561': 1.0
                       '639': 1.0
                   cutoff_frequency_hz:
@@ -249,7 +225,7 @@ instrument:
               trigger_port: PFI0
           co_task:
             counters:
-            - ctr0
+              - ctr0
             name: co task
             timing:
               frequency_hz: 2.0
@@ -281,38 +257,35 @@ instrument:
               trigger_mode: 'on'
               trigger_polarity: rising
               trigger_port: PFI0
+      module: DAQ
       type: daq
-    n stage axis:
-      driver: voxel.devices.stage.simulated
+    488nm:
+      color: purple
+      driver: voxel.devices.lasers.simulated
       init:
-        hardware_axis: n
-        instrument_axis: n
-      module: Stage
+        coefficients:
+          0: -57.515
+          1: 3.218
+        id: COM5
+        prefix: L6
+      module: SimulatedLaser
       settings:
-        speed_mm_s: 1.0
-      type: focusing_stage
+        cdrh: 'OFF'
+        constant_current: 'ON'
+        modulation_mode: digital
+      type: laser
+    561nm:
+      color: greenyellow
+      driver: voxel.devices.lasers.simulated
+      init:
+        id : COM5
+        prefix: L3
+      module: SimulatedLaser
+      type: laser
     tigerbox:
       driver: voxel.devices.stage.simulated
       module: Joystick
       type: joystick
-    vnp-604mx:
-      driver: voxel.devices.camera.simulated
-      init:
-        id: sim001
-      module: Camera
-      settings:
-        exposure_time_ms: 40.0
-        pixel_type: mono16
-        roi:
-          height_offest_px: 4744
-          height_px: 1152
-          width_offset_px: 6528
-          width_px: 1152
-        trigger:
-          mode: 'off'
-          polarity: rising
-          source: external
-      type: camera
     vp-151mx:
       driver: voxel.devices.camera.simulated
       init:
@@ -321,15 +294,14 @@ instrument:
       settings:
         exposure_time_ms: 20.0
         pixel_type: mono16
-        roi:
-          height_offest_px: 4744
-          height_px: 1152
-          width_offset_px: 6528
-          width_px: 1152
+        height_offest_px: 4744
+        height_px: 1152
+        width_offset_px: 6528
+        width_px: 1152
         trigger:
           mode: 'off'
           polarity: rising
           source: external
       type: camera
   id: exaspim-01
-  master_device: vnp-604mx
+  master_device: vp-151mx

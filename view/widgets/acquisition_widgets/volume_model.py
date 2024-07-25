@@ -9,7 +9,6 @@ from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxIte
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
 
-
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):

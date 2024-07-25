@@ -6,12 +6,13 @@ from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
 from qtpy.QtCore import Slot, Qt
 import inflection
 from time import sleep
-from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QApplication, QDockWidget, \
-    QLabel, QPushButton, QSplitter
+from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QDockWidget, \
+    QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
-
+from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 
 class AcquisitionView:
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -26,25 +27,22 @@ class AcquisitionView:
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
-        # Set app events
-        app = QApplication.instance()
-        #app.setAttribute(Qt.AA_ShareOpenGLContexts)
-        # app.focusChanged.connect(self.toggle_grab_fov_positions)
-
         self.instrument_view = instrument_view
-
-        # Locks
-        self.tiling_stage_locks = self.instrument_view.tiling_stage_locks
-        self.scanning_stage_locks = self.instrument_view.scanning_stage_locks
-        # self.focusing_stage_locks = self.instrument_view.focusing_stage_locks  #TODO: update acquisiiton widgets to include focusing stage
-        self.daq_locks = self.instrument_view.daq_locks
-
-        # Eventual threads
-        self.grab_fov_positions_worker = None
-
         self.acquisition = acquisition
         self.instrument = self.acquisition.instrument
         self.config = instrument_view.config
+
+        # Eventual threads
+        self.grab_fov_positions_worker = None
+        self.property_workers = []
+
+        # create workers for latest image taken by cameras
+        for camera_name, camera in self.instrument.cameras.items():
+            worker = self.grab_property_value(camera, 'latest_frame', camera_name)
+            worker.yielded.connect(self.instrument_view.update_layer)
+            worker.start()
+            worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
+            self.property_workers.append(worker)
 
         for device_name, operation_dictionary in self.acquisition.config['acquisition']['operations'].items():
             for operation_name, operation_specs in operation_dictionary.items():
@@ -107,6 +105,10 @@ class AcquisitionView:
         self.main_window.setWindowTitle('Acquisition View')
         self.main_window.show()
 
+        # Set app events
+        app = QApplication.instance()
+        app.lastWindowClosed.connect(self.close)  # shut everything down when closing
+
     def create_start_button(self):
         """Create button to start acquisition"""
 
@@ -127,13 +129,6 @@ class AcquisitionView:
 
     def start_acquisition(self):
         """Start acquisition"""
-
-        # stop stage threads
-        self.grab_fov_positions_worker.quit()
-        self.instrument_view.grab_stage_positions_worker.quit()
-
-        if self.grab_fov_positions_worker.is_running or self.instrument_view.grab_stage_positions_worker.is_running:
-            sleep(0.1)
 
         # add tiles to acquisition config
         self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
@@ -167,8 +162,12 @@ class AcquisitionView:
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
 
+        # start all workers
+        for worker in self.property_workers:
+            worker.resume()
+
     def acquisition_ended(self):
-        """Re-enable UI's and threads after aquisition has ended"""
+        """Re-enable UI's and threads after acquisition has ended"""
 
         # enable acquisition view
         self.start_button.setEnabled(True)
@@ -186,9 +185,10 @@ class AcquisitionView:
         self.instrument_view.setDisabled(False)
 
         # restart stage threads
-        self.instrument_view.setup_live_position()
-        self.instrument_view.grab_stage_positions_worker.pause()
         self.setup_fov_position()
+
+        for worker in self.property_workers:
+            worker.pause()
 
     def stack_device_widgets(self, device_type):
         """Stack like device widgets in layout and hide/unhide with combo box
@@ -254,12 +254,10 @@ class AcquisitionView:
         # add tiling stages
         for name, stage in self.instrument.tiling_stages.items():
             if stage.instrument_axis in coordinate_plane:
-                with self.tiling_stage_locks[name]:
-                    limits.update({f'{stage.instrument_axis}': stage.limits_mm})
+                limits.update({f'{stage.instrument_axis}': stage.limits_mm})
         # last axis should be scanning axis
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-        with self.scanning_stage_locks[scan_name]:
-            limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
+        limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
         if len([i for i in limits.keys() if i in coordinate_plane]) != 3:
             raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
         kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
@@ -277,20 +275,13 @@ class AcquisitionView:
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
         for axis, position in zip(self.volume_widget.coordinate_plane[:2], fov_position[:2]):
-            with self.tiling_stage_locks[stage_names[axis]]:
-                self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
+            self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-        with self.scanning_stage_locks[scan_name]:
-            scan_stage.move_absolute_mm(fov_position[2], wait=False)
+        scan_stage.move_absolute_mm(fov_position[2], wait=False)
 
     def stop_stage(self):
         """Slot for stop stage"""
 
-        # TODO: Should we do this? I'm worried that halting is pretty time sensitive but pausing
-        #  grab_fov_positions_worker shouldn't take too long
-        self.grab_fov_positions_worker.pause()
-        while not self.grab_fov_positions_worker.is_paused:
-            sleep(.0001)
         for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
                             **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
             stage.halt()
@@ -311,31 +302,18 @@ class AcquisitionView:
             sleep(.1)
             fov_pos = [None] * 3
             for name, stage in self.instrument.tiling_stages.items():
-                with self.tiling_stage_locks[name]:
-                    if stage.instrument_axis in self.volume_widget.coordinate_plane:
-                        fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
-                        position = stage.position_mm
-                        # FIXME: Sometimes tigerbox yields empty stage position so return None if this happens?
-                        fov_pos[fov_index] = position if position is not None \
-                            else self.volume_widget.fov_position[fov_index]
+                if stage.instrument_axis in self.volume_widget.coordinate_plane:
+                    fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
+                    position = stage.position_mm
+                    # FIXME: Sometimes tigerbox yields empty stage position so return None if this happens?
+                    fov_pos[fov_index] = position if position is not None \
+                        else self.volume_widget.fov_position[fov_index]
                 (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-                with self.scanning_stage_locks[scan_name]:
-                    position = scan_stage.position_mm
-                    fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
+
+                position = scan_stage.position_mm
+                fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
 
             yield fov_pos  # don't yield while locked
-
-    def toggle_grab_fov_positions(self):
-        """When focus on view has changed, resume or pause grabbing stage positions"""
-        # TODO: Think about locking all device locks to make sure devices aren't being communicated with?
-        # TODO: Update widgets with values from hardware? Things could've changed when using the acquisition widget
-        try:
-            if self.main_window.isActiveWindow() and self.grab_fov_positions_worker.is_paused:
-                self.grab_fov_positions_worker.resume()
-            elif not self.main_window.isActiveWindow() and self.grab_fov_positions_worker.is_running:
-                self.grab_fov_positions_worker.pause()
-        except RuntimeError:  # Pass error when window has been closed
-            pass
 
     def create_operation_widgets(self, device_name: str, operation_name: str, operation_specs: dict):
         """Create widgets based on operation dictionary attributes from instrument or acquisition
@@ -347,7 +325,7 @@ class AcquisitionView:
         operation = getattr(self.acquisition, inflection.pluralize(operation_type))[device_name][operation_name]
 
         specs = self.config['acquisition_view']['operation_widgets'].get(device_name, {}).get(operation_name, {})
-        if specs != {} and specs.get('type', '') == operation_type:
+        if specs.get('type', '') == operation_type and 'driver' in specs.keys() and 'module' in specs.keys():
             gui_class = getattr(importlib.import_module(specs['driver']), specs['module'])
             gui = gui_class(operation, **specs.get('init', {}))  # device gets passed into widget
         else:
@@ -360,6 +338,27 @@ class AcquisitionView:
             gui.ValueChangedInside[str].connect(
                 lambda value, op=operation, widget=gui:
                 self.operation_property_changed(value, op, widget))
+
+            updating_props = specs.get('updating_properties', [])
+            for prop_name in updating_props:
+                descriptor = getattr(type(operation), prop_name)
+                unit = getattr(descriptor, 'unit', None)
+                # if operation is percentage, change property widget to QProgressbar
+                if unit in ['%', 'percent', 'percentage']:
+                    widget = getattr(gui, f'{prop_name}_widget')
+                    progress_bar = QProgressBar()
+                    progress_bar.setMaximum(100)
+                    progress_bar.setMinimum(0)
+                    widget.parentWidget().layout().replaceWidget(getattr(gui, f'{prop_name}_widget'), progress_bar)
+                    widget.deleteLater()
+                    setattr(gui, f'{prop_name}_widget', progress_bar)
+                worker = self.grab_property_value(operation, prop_name, getattr(gui, f'{prop_name}_widget'))
+                worker.yielded.connect(self.update_property_value)
+                worker.start()
+                worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
+                self.property_workers.append(worker)
+
+
         # Add label to gui
         font = QFont()
         font.setBold(True)
@@ -381,6 +380,34 @@ class AcquisitionView:
 
         labeled.setWindowTitle(f'{device_name} {operation_type} {operation_name}')
         labeled.show()
+
+    @thread_worker
+    def grab_property_value(self, device, property_name, widget):
+        """Grab value of property and yield"""
+
+        while True:  # best way to do this or have some sort of break?
+            sleep(.1)
+            value = getattr(device, property_name)
+            yield value, widget
+
+    def update_property_value(self, args):
+        """Update stage position in stage widget
+        :param args: tuple containing the name of stage and position of stage"""
+
+        (value, widget) = args
+        try:
+            if type(widget) in [QLineEdit, QScrollableLineEdit]:
+                widget.setText(str(value))
+            elif type(widget) in [QSpinBox, QDoubleSpinBox, QSlider, QScrollableFloatSlider]:
+                widget.setValue(value)
+            elif type(widget) == QComboBox:
+                index = widget.findText(value)
+                widget.setCurrentIndex(index)
+            elif type(widget) == QProgressBar:
+                widget.setValue(round(value))
+
+        except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
+            pass
 
     @Slot(str)
     def operation_property_changed(self, attr_name: str, operation, widget):
@@ -408,3 +435,19 @@ class AcquisitionView:
         except (KeyError, TypeError) as e:
             self.log.warning(f"{attr_name} can't be mapped into operation properties due to {e}")
             pass
+
+    def close(self):
+        """Close operations and end threads"""
+
+        for worker in self.property_workers:
+            worker.quit()
+        self.grab_fov_positions_worker.quit()
+        for device_name, operation_dictionary in self.acquisition.config['acquisition']['operations'].items():
+            for operation_name, operation_specs in operation_dictionary.items():
+                operation_type = operation_specs['type']
+                operation = getattr(self.acquisition, inflection.pluralize(operation_type))[device_name][operation_name]
+                try:
+                    operation.close()
+                except AttributeError:
+                    self.log.debug(f'{device_name} {operation_name} does not have close function')
+        self.acquisition.close()

@@ -2,8 +2,8 @@ from qtpy.QtWidgets import QApplication, QMessageBox, QPushButton, QFileDialog
 import sys
 from view.instrument_view import InstrumentView
 from view.acquisition_view import AcquisitionView
-from voxel.instruments.instrument import Instrument
-from voxel.acquisition.acquisition import Acquisition
+from exaspim_control.exa_spim_instrument import ExASPIM
+from exaspim_control.exa_spim_acquisition import ExASPIMAcquisition
 from pathlib import Path
 import os
 import yaml
@@ -21,6 +21,7 @@ class SimulatedInstrumentView(InstrumentView):
     """View for ExASPIM Instrument"""
 
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
+
         super().__init__(instrument, config_path, log_level)
         app.aboutToQuit.connect(self.update_config_on_quit)
 
@@ -89,11 +90,11 @@ class SimulatedInstrumentView(InstrumentView):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setAttribute(Qt.AA_DontCheckOpenGLContextThreadAffinity)
+
     # instrument
-    instrument = Instrument(INSTRUMENT_YAML)
+    instrument = ExASPIM(INSTRUMENT_YAML)
     # acquisition
-    acquisition = Acquisition(instrument, ACQUISITION_YAML)
+    acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
     instrument_view = SimulatedInstrumentView(instrument, GUI_YAML)
     acquisition_view = AcquisitionView(acquisition, instrument_view)
