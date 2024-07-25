@@ -1,20 +1,32 @@
 instrument:
   channels:
     '488':
-      filters: [BP488]
-      lasers: [488nm]
-      cameras: [vp-151mx]
-      focusing_stages: [n stage axis]
+      cameras:
+      - vnp-604mx
+      filters:
+      - BP488
+      focusing_stages:
+      - n stage axis
+      lasers:
+      - 488nm
     '561':
-      filters: [BP561]
-      lasers: [561nm]
-      cameras: [vp-151mx]
-      focusing_stages: [n stage axis]
+      cameras:
+      - vnp-604mx
+      filters:
+      - BP561
+      focusing_stages:
+      - n stage axis
+      lasers:
+      - 561nm
     '639':
-      filters: [LP638]
-      lasers: [639nm]
-      cameras: [vp-151mx]
-      focusing_stages: [n stage axis]
+      cameras:
+      - vnp-604mx
+      filters:
+      - LP638
+      focusing_stages:
+      - n stage axis
+      lasers:
+      - 639nm
   devices:
     639nm:
       color: red

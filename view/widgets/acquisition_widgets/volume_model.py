@@ -162,15 +162,15 @@ class VolumeModel(GLOrthoViewWidget):
 
             for row in range(total_rows):
                 for column in range(total_columns):
-                    coord = self.grid_coords[row][column]
+                    coord = [x*pol for x, pol in zip(self.grid_coords[row][column], self.polarity)]
 
                     size = [*self.fov_dimensions[:2], self.scan_volumes[row, column]]
 
                     tile = GLTileItem(width=self.tile_line_width)
                     tile.setSize(*size)
-                    tile.setTransform(QMatrix4x4(1, 0, 0, coord[0] * self.polarity[0],
-                                                0, 1, 0, coord[1] * self.polarity[1],
-                                                0, 0, 1, coord[2] * self.polarity[2],
+                    tile.setTransform(QMatrix4x4(1, 0, 0, coord[0],
+                                                0, 1, 0, coord[1],
+                                                0, 0, 1, coord[2],
                                                 0, 0, 0, 1))
                     tile.setColor(self.tile_color)
                     tile.setVisible(self.tile_visibility[row, column])
@@ -191,6 +191,7 @@ class VolumeModel(GLOrthoViewWidget):
                                           opacity=opacity,
                                           glOptions='additive',
                                           )
+                    box.setVisible(self.tile_visibility[row, column])
                     self.addItem(box)
                     self.grid_box_items.append(box)
 
@@ -271,6 +272,7 @@ class VolumeModel(GLOrthoViewWidget):
                         * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
 
         else:
+            print('outside y')
             center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 \
                         * (self.size().width() / self.size().height())

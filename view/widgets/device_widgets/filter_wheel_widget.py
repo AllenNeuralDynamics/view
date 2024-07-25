@@ -1,4 +1,4 @@
-from pyqtgraph import PlotWidget, TextItem, mkPen, mkBrush, ScatterPlotItem, setConfigOptions
+from pyqtgraph import PlotWidget, TextItem, mkPen, mkBrush, ScatterPlotItem, setConfigOptions, Point
 from qtpy.QtWidgets import QGraphicsEllipseItem, QSizePolicy
 from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot
 from math import sin, cos, pi, atan, degrees, radians
@@ -130,7 +130,7 @@ class FilterWheelGraph(PlotWidget):
                                  (self.radius - 3) * sin(radians(i))]])
 
 class FilterItem(TextItem):
-    pressed = Signal((str, list))
+    pressed = Signal((str, Point))
 
     def mousePressEvent(self, ev):
         super().mousePressEvent(ev)
