@@ -362,9 +362,8 @@ class InstrumentView(QWidget):
         if image is not None:
             layer_name = f"{camera_name} {self.livestream_channel}" if not snapshot else \
                 f"{camera_name} {self.livestream_channel} snapshot"
-
             if layer_name in self.viewer.layers and not snapshot:
-                layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
+                layer = self.viewer.layers[layer_name]
                 layer.data = image
             else:
                 # Add image to a new layer if layer doesn't exist yet or image is snapshot
