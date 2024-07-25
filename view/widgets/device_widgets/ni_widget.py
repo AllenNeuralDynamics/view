@@ -37,7 +37,7 @@ class NIWidget(BaseDeviceWidget):
         # create waveform widget
         if advanced_user:
             self.waveform_widget = WaveformWidget()
-            self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
+            #self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
 
         # create tree widget and format configured widgets into tree
         self.tree = QTreeWidget()
@@ -136,16 +136,17 @@ class NIWidget(BaseDeviceWidget):
     def waveform_value_changed(self, value, name):
         """Update textbox if waveform is changed"""
 
-        name_lst = name.split('.')
-        textbox = getattr(self, f'{name}_widget')
-        slider = getattr(self, f'{name}_slider')
-        value = round(value, 0) if 'time' in name else round(value, 3)
-        textbox.setText(str(value))
-        slider.setValue(value)
-        dictionary = pathGet(self.__dict__, name_lst[0:-1])
-        dictionary.__setitem__(name_lst[-1], value)
-        setattr(self, name, value)
-        self.ValueChangedInside.emit(name)
+        if hasattr(self, f'{name}_slider'): # value is included in exposed branches
+            name_lst = name.split('.')
+            textbox = getattr(self, f'{name}_widget')
+            slider = getattr(self, f'{name}_slider')
+            value = round(value, 0) if 'time' in name else round(value, 3)
+            textbox.setText(str(value))
+            slider.setValue(value)
+            dictionary = pathGet(self.__dict__, name_lst[0:-1])
+            dictionary.__setitem__(name_lst[-1], value)
+            setattr(self, name, value)
+            self.ValueChangedInside.emit(name)
 
     def remodel_timing_widgets(self, name, widget):
         """Remodel timing widget with driver options"""
@@ -211,7 +212,6 @@ class NIWidget(BaseDeviceWidget):
                                        pathGet(self.__dict__, path[0:-1]).__setitem__(path[-1], value))
             slider.sliderMoved.connect(lambda: self.ValueChangedInside.emit(name))
             slider.sliderMoved.connect(lambda: self.update_waveform(name))
-
         setattr(self, f'{name}_slider', slider)
 
     def create_tree_widget(self, name, parent=None):

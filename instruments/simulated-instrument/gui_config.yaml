@@ -18,6 +18,14 @@ instrument_view:
         module: StageWidget
         init:
           advanced_user: False
+      n stage axis:
+        type: focusing_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+        updating_properties:
+          - position_mm
       tigerbox:
         type: joystick
         driver: view.widgets.device_widgets.joystick_widget
@@ -56,13 +64,7 @@ instrument_view:
         driver: view.widgets.device_widgets.camera_widget
         module: CameraWidget
         init:
-          advanced_user: True
-      vnp-604mx:
-        type: camera
-        driver: view.widgets.device_widgets.camera_widget
-        module: CameraWidget
-        init:
-          advanced_user: True
+          advanced_user: False
       PCIe-6738:
         type: daq
         driver: view.widgets.device_widgets.ni_widget
@@ -106,4 +108,13 @@ acquisition_view:
       delegate: combo
       type: str
       items: [ 'this', 'is', 'an', 'example' ]
-  operation_widgets: { }
+  operation_widgets:
+    vp-151mx:
+      imaris:
+        type: writer
+        updating_properties:
+          - progress
+      robocopy:
+        type: transfer
+        updating_properties:
+          - progress

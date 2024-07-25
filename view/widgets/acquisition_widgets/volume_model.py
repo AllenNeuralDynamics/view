@@ -11,7 +11,6 @@ from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxIte
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
 
-
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):
@@ -197,6 +196,7 @@ class VolumeModel(GLOrthoViewWidget):
                                           opacity=opacity,
                                           glOptions='additive',
                                           )
+                    box.setVisible(self.tile_visibility[row, column])
                     self.addItem(box)
                     self.grid_box_items.append(box)
 
@@ -320,6 +320,7 @@ class VolumeModel(GLOrthoViewWidget):
                         * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
 
         else:
+            print('outside y')
             center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 \
                         * (self.size().width() / self.size().height())

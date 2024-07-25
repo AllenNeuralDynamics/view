@@ -165,10 +165,10 @@ instrument:
         roi:
           width_px: 2304
           height_px: 2304
-#        trigger:
-#          mode: on
-#          source: external
-#          polarity: rising
+        trigger:
+          mode: start
+          source: external
+          polarity: positive
     PCIe-6738:
       type: daq
       driver: voxel.devices.daq.ni

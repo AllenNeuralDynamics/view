@@ -40,18 +40,24 @@ instrument_view:
       module: StageWidget
       init:
         advanced_user: False
+      updating_properties:
+        - position_mm
     ASI MS-8000 y axis:
       type: tiling_stage
       driver: view.widgets.device_widgets.stage_widget
       module: StageWidget
       init:
         advanced_user: False
+      updating_properties:
+        - position_mm
     ASI MS-8000 z axis:
       type: tiling_stage
       driver: view.widgets.device_widgets.stage_widget
       module: StageWidget
       init:
         advanced_user: False
+      updating_properties:
+        - position_mm
     C15440-20UP:
       type: camera
       driver: view.widgets.device_widgets.camera_widget
