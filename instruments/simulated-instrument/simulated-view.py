@@ -27,9 +27,10 @@ class SimulatedInstrumentView(InstrumentView):
 
         self.config_save_to = self.instrument.config_path
 
-    def update_layer(self, args):
+    def update_layer(self, args, snapshot: bool = False):
         """Multiscale image from exaspim
-        :param args: tuple containing image and camera name"""
+        :param args: tuple containing image and camera name
+        :param snapshot: if image taken is a snapshot or not"""
 
         (image, camera_name) = args
         if image is not None:
@@ -38,7 +39,7 @@ class SimulatedInstrumentView(InstrumentView):
             for binning in range(0, 5):  # TODO: variable or get from somewhere?
                 downsampled_frame = downsampler.run(multiscale[-1])
                 multiscale.append(downsampled_frame)
-            super().update_layer((multiscale, camera_name))
+            super().update_layer((multiscale, camera_name), snapshot)
 
     def update_config_on_quit(self):
         """Add functionality to close function to save device properties to instrument config"""

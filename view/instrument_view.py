@@ -1,5 +1,5 @@
 from ruamel.yaml import YAML
-from qtpy.QtCore import Slot
+from qtpy.QtCore import Slot, Signal
 from pathlib import Path
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
@@ -17,11 +17,17 @@ import inflection
 import inspect
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
+import numpy as np
 
-class InstrumentView:
+class InstrumentView(QWidget):
     """"Class to act as a general instrument view model to voxel instrument"""
 
+    snapshotTaken = Signal((np.ndarray, list))
+    contrastChanged = Signal((np.ndarray, list))
+
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
+
+        super().__init__()
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
@@ -46,6 +52,7 @@ class InstrumentView:
 
         # Eventual attributes
         self.livestream_channel = None
+        self.snapshot = False  # flag to signal snapshot has been taken
 
         self.instrument = instrument
         self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
@@ -145,7 +152,7 @@ class InstrumentView:
                 # update tasks if livestreaming task is different from data acquisition task
                 if daq_name in self.config.get('livestream_tasks', {}).keys():
                     daq_widget.ValueChangedInside[str].connect(lambda attr, widget=daq_widget, name=daq_name:
-                                                               self.update_config_waveforms(widget, daq_name,  attr))
+                                                               self.update_config_waveforms(widget, daq_name, attr))
 
         stacked = self.stack_device_widgets('daq')
         self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs')
@@ -273,7 +280,12 @@ class InstrumentView:
         :param frames: how many frames to take"""
 
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
-        self.grab_frames_worker.yielded.connect(self.update_layer)
+
+        if frames == 1:  # pass in optional argument that this image is a snapshot
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args, snapshot=True))
+        else:
+            self.grab_frames_worker.yielded.connect(self.update_layer)
+
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
 
@@ -323,20 +335,31 @@ class InstrumentView:
             yield self.instrument.cameras[camera_name].grab_frame(), camera_name
             i += 1
 
-    def update_layer(self, args):
+    def update_layer(self, args, snapshot: bool = False):
         """Update viewer with new camera frame
-        :param args: tuple containing image and camera name"""
+        :param args: tuple containing image and camera name
+        :param snapshot: if image taken is a snapshot or not """
 
         (image, camera_name) = args
         if image is not None:
-            try:
-                layer = self.viewer.layers[f"Video {camera_name} {self.livestream_channel}"]
+            layer_name = f"{camera_name} {self.livestream_channel}" if not snapshot else \
+                f"{camera_name} {self.livestream_channel} snapshot"
+            if layer_name in self.viewer.layers and not snapshot:
+                layer = self.viewer.layers[layer_name]
                 layer.data = image
-            except KeyError:
-                # Add image to a new layer if layer doesn't exist yet
-                layer = self.viewer.add_image(image, name=f"Video {camera_name} {self.livestream_channel}")
+            else:
+                # Add image to a new layer if layer doesn't exist yet or image is snapshot
+                layer = self.viewer.add_image(image, name=layer_name)
                 layer.mouse_drag_callbacks.append(self.save_image)
-                # TODO: Add scale?
+                if layer.multiscale == True:  # emit most down sampled image if multiscale
+                    layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data[-1],
+                                                                                                 layer.contrast_limits))
+                else:
+                    layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data,
+                                                                                              layer.contrast_limits))
+                if snapshot:    # emit signal if snapshot
+                    image = image if not layer.multiscale else image[-1]
+                    self.snapshotTaken.emit(image, layer.contrast_limits)
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer
@@ -476,7 +499,7 @@ class InstrumentView:
 
             # attempt to pass in correct value of correct type
             descriptor = getattr(type(device), name_lst[0])
-            fset = getattr(descriptor, 'fset')    # account for property and deliminated
+            fset = getattr(descriptor, 'fset')  # account for property and deliminated
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
             if input_type != inspect._empty:
                 setattr(device, name_lst[0], input_type(value))

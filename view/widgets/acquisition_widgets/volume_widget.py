@@ -305,8 +305,10 @@ class VolumeWidget(QWidget):
             self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
             if not self.volume_model.path.visible() and self.path_show.isChecked():
                 self.volume_model.toggle_path_visibility(True)
+            self.volume_model.toggle_fov_image_visibility(True)
         else:  # hide path if not in tiling view plane
             self.volume_model.toggle_path_visibility(False)
+            self.volume_model.toggle_fov_image_visibility(False)
 
     def change_table(self, value, row, column):
         """If z widget is changed, update table"""
@@ -452,6 +454,23 @@ class VolumeWidget(QWidget):
             show_row, show_col = [int(x) for x in self.table.item(current_row, 0).text() if x.isdigit()]
             z = self.scan_plan_widget.z_plan_widgets[show_row, show_col]
             self.scan_plan_widget.stacked_widget.setCurrentWidget(z)
+
+    def handle_snapshot(self, image, levels):
+        """Correctly contrast image and grab fov coordinates
+        :param image: numpy array of image to display in model
+        :param levels: levels for passed in image"""
+
+        # grab correct coordinates where image was taken
+        coords = self.fov_position
+        self.volume_model.add_fov_image(image, coords, levels)
+
+    def adjust_contrast(self, image, contrast_limits):
+        """Function to adjust contrast levels of images in volume_model
+        :param image: numpy array of image key in fov_images
+        :param contrast_levels: levels for passed in image"""
+
+
+        self.volume_model.adjust_glimage_contrast(image, contrast_limits)
 
     def create_tile_list(self):
         """Return a list of tiles for a scan"""

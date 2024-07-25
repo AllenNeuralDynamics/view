@@ -14,7 +14,7 @@ from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWid
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 
-class AcquisitionView:
+class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
 
     def __init__(self, acquisition, instrument_view, log_level='INFO'):
@@ -24,6 +24,9 @@ class AcquisitionView:
         :param instrument_view: view object relating to instrument. Needed to lock stage
         :param log_level:
         """
+
+        super().__init__()
+
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
@@ -58,7 +61,6 @@ class AcquisitionView:
         self.setup_fov_position()
 
         # Set up main window
-        self.main_window = QWidget()
         self.main_layout = QGridLayout()
 
         # Add start and stop button
@@ -78,7 +80,7 @@ class AcquisitionView:
         scroll.setWidget(self.metadata_widget)
         scroll.setWindowTitle('Metadata')
         scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        dock = QDockWidget(scroll.windowTitle(), self.main_window)
+        dock = QDockWidget(scroll.windowTitle(), self)
         dock.setWidget(scroll)
         dock.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
@@ -100,10 +102,10 @@ class AcquisitionView:
                 dock.setWidget(scroll)
                 dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
-        self.main_layout.addWidget(splitter, 1, 3)
-        self.main_window.setLayout(self.main_layout)
-        self.main_window.setWindowTitle('Acquisition View')
-        self.main_window.show()
+        self.main_layout.addWidget(splitter, 1,  3)
+        self.setLayout(self.main_layout)
+        self.setWindowTitle('Acquisition View')
+        self.show()
 
         # Set app events
         app = QApplication.instance()
@@ -266,7 +268,8 @@ class AcquisitionView:
         volume_widget = VolumeWidget(self.instrument_view, **kwds)
         volume_widget.fovMoved.connect(self.move_stage)
         volume_widget.fovStop.connect(self.stop_stage)
-
+        self.instrument_view.snapshotTaken.connect(volume_widget.handle_snapshot)  # connect snapshot signal
+        self.instrument_view.contrastChanged.connect(volume_widget.adjust_contrast)
         return volume_widget
 
     def move_stage(self, fov_position):
@@ -357,7 +360,6 @@ class AcquisitionView:
                 worker.start()
                 worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
                 self.property_workers.append(worker)
-
 
         # Add label to gui
         font = QFont()

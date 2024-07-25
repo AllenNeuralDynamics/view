@@ -105,8 +105,8 @@ instrument:
         port: COM5
       subdevices:
 #            405nm:
-#              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
-#              module: LaserLBXOxxius
+#              driver: voxel.devices.lasers.oxxius.oxxius_lbx
+#              module: OxxiusLBXLaser
 #              color: purple
 #              init:
 #                prefix: L6
@@ -119,10 +119,11 @@ instrument:
 #                modulation_mode: digital
           488nm:
             type: laser
-            driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
-            module: LaserLBXOxxius
+            driver: voxel.devices.lasers.oxxius.oxxius_lbx
+            module: OxxiusLBXLaser
             color: blue
             init:
+              id : 488nm
               prefix: L5
               coefficients:
                 1: 2.3125
@@ -133,8 +134,8 @@ instrument:
               modulation_mode: digital
 # not hooked up to nidaq yet
 #            638nm:
-#              driver: voxel.devices.lasers.oxxius.laser_lbx_oxxius
-#              module: LaserLBXOxxius
+#              driver: voxel.devices.lasers.oxxius.oxxius_lbx
+#              module: OxxiusLBXLaser
 #              color: red
 #              init:
 #                prefix: L1
@@ -147,8 +148,8 @@ instrument:
 #                modulation_mode: digital
 #          561nm:
 #            type: laser
-#            driver: voxel.devices.lasers.oxxius.laser_lcx_oxxius
-#            module: LaserLCXOxxius
+#            driver: voxel.devices.lasers.oxxius.oxxius_lcx
+#            module: OxxiusLCXLaser
 #            color: greenyellow
 #            init:
 #              prefix: L3

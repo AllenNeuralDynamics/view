@@ -1,9 +1,11 @@
+from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem, GLImageItem
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
 from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
+from pyqtgraph import makeRGBA
 from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewWidget
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
@@ -101,6 +103,9 @@ class VolumeModel(GLOrthoViewWidget):
                                path_start_color=path_start_color,
                                path_end_color=path_end_color)
         self.addItem(self.path)
+
+        # initialize dict of fov_images
+        self.fov_images = {}
 
         # initialize fov
         self.fov_view = GLTileItem(width=fov_line_width)
@@ -216,6 +221,49 @@ class VolumeModel(GLOrthoViewWidget):
                          coord_order])
         self.path.setData(pos=path)
 
+    def add_fov_image(self, image: np.array, coords: list, levels: list):
+        """add image to model assuming image has same fov dimensions and orientation
+        :param image: numpy array of image to display in model
+        :param coords: list of coordinates corresponding to the coordinate plane of model,
+        :param levels: levels for passed in image"""
+
+        image_rgba = makeRGBA(image, levels=levels)
+        image_rgba[0][:, :, 3] = 200
+
+        gl_image = GLImageItem(image_rgba[0],
+                               glOptions='translucent')
+        x, y, z = coords
+        gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
+                                         0, self.fov_dimensions[1]/image.shape[1], 0, y * self.polarity[1],
+                                         0, 0, 1, z * self.polarity[2],    # 0 since tiling plane will display scan plan at 0
+                                         0, 0, 0, 1))
+        self.addItem(gl_image)
+        self.fov_images[image.tobytes()] = gl_image
+
+        if self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
+            gl_image.setVisible(False)
+
+    def adjust_glimage_contrast(self, image, contrast_levels):
+        """
+        Adjust image in model contrast levels
+        :param image: numpy array of image key in fov_images
+        :param contrast_levels: levels for passed in image
+        :return:
+        """
+
+        if image.tobytes() in self.fov_images.keys():   # check if image has been deleted
+            glimage = self.fov_images[image.tobytes()]
+            coords = [glimage.transform()[i, 3] for i in range(3)]
+            self.removeItem(glimage)
+            self.add_fov_image(image, coords, contrast_levels)
+
+    def toggle_fov_image_visibility(self, visible: bool):
+        """Function to hide all fov_images
+        :param visible: boolean for if fov_images should be visible"""
+
+        for image in self.fov_images.values():
+            image.setVisible(visible)
+
     def _update_opts(self):
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""
 
@@ -302,36 +350,49 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec(), checkbox.isChecked()
 
+    def delete_fov_image_query(self, fov_image_pos):
+        """Message box asking if user wants to move fov position
+        :param fov_image_pos: coordinates of fov image"""
+
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setText(f"Do you want to delete image at {fov_image_pos} [{self.unit}]?")
+        msgBox.setWindowTitle("Deleting FOV Image")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+
+        return msgBox.exec()
+
     def mousePressEvent(self, event):
         """Override mouseMoveEvent so user can't change view
         and allow user to move fov easier"""
 
         plane = self.view_plane
+        # Translate mouseclick x, y into view widget coordinate plane.
+        horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov']))) / 1200
+        vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
+                self.size().height() / self.size().width())) / 1200
+        horz_scale = ((event.x() * 2 * horz_dist) / self.size().width())
+        vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
+
+        # create dictionaries of from fov and pos
+        fov = {'x': self.fov_dimensions[0] * self.polarity[0],
+               'y': self.fov_dimensions[1] * self.polarity[1],
+               'z': 0}
+        pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
+
+        transform_dict = {grid: stage for grid, stage in zip(['x', 'y', 'z'], self.coordinate_plane)}
+        other_dim = [dim for dim in transform_dict if dim not in plane][0]
+        transform = [transform_dict[plane[0]], transform_dict[plane[1]], transform_dict[other_dim]]
+
+        center = {'x': self.opts['center'].x(), 'y': self.opts['center'].y(), 'z': self.opts['center'].z()}
+        h_ax = self.view_plane[0]
+        v_ax = self.view_plane[1]
+
+        new_pos = {transform[0]: (center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]],
+                   transform[1]: (center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]],
+                   transform[2]: pos[transform[2]]}
+
         if event.button() == Qt.LeftButton:
-            # Translate mouseclick x, y into view widget coordinate plane.
-            horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])))/1200
-            vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
-                    self.size().height() / self.size().width()))/1200
-            horz_scale = ((event.x() * 2 * horz_dist) / self.size().width())
-            vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
-
-            # create dictionaries of from fov and pos
-            fov = {'x': self.fov_dimensions[0] * self.polarity[0],
-                   'y': self.fov_dimensions[1] * self.polarity[1],
-                   'z': 0}
-            pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
-
-            transform_dict = {grid: stage for grid, stage in zip(['x', 'y', 'z'], self.coordinate_plane)}
-            other_dim = [dim for dim in transform_dict if dim not in plane][0]
-            transform = [transform_dict[plane[0]], transform_dict[plane[1]], transform_dict[other_dim]]
-
-            center = {'x': self.opts['center'].x(), 'y': self.opts['center'].y(), 'z': self.opts['center'].z()}
-            h_ax = self.view_plane[0]
-            v_ax = self.view_plane[1]
-
-            new_pos = {transform[0]: (center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]],
-                       transform[1]: (center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]],
-                       transform[2]: pos[transform[2]]}
             return_value, checkbox = self.move_fov_query([new_pos['x'] * self.polarity[0],
                                                           new_pos['y'] * self.polarity[1],
                                                           new_pos['z'] * self.polarity[2]])
@@ -352,6 +413,21 @@ class VolumeModel(GLOrthoViewWidget):
             else:
                 return
 
+        elif event.button() == Qt.RightButton:
+            delete_key = None
+            for key, image in self.fov_images.items():
+                coords = [image.transform()[i, 3] for i in range(3)]
+                if coords[0]-self.fov_dimensions[0] <= coords[0] <= coords[0]+self.fov_dimensions[0] and \
+                        coords[1]-self.fov_dimensions[1] <= coords[1] <= coords[1]+self.fov_dimensions[1]:
+                    return_value = self.delete_fov_image_query(coords)
+                    if return_value == QMessageBox.Ok:
+                        self.removeItem(image)
+                        delete_key = key
+                    break
+            if delete_key is not None:
+                del self.fov_images[delete_key]
+
+            self.itemsAt()
     def mouseMoveEvent(self, event):
         """Override mouseMoveEvent so user can't change view"""
         pass
