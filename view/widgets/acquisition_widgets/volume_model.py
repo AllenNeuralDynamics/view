@@ -235,7 +235,7 @@ class VolumeModel(GLOrthoViewWidget):
         x, y, z = coords
         gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
                                          0, self.fov_dimensions[1]/image.shape[1], 0, y * self.polarity[1],
-                                         0, 0, 1, z * self.polarity[2],    # 0 since tiling plane will display scan plan at 0
+                                         0, 0, 1, z * self.polarity[2],
                                          0, 0, 0, 1))
         self.addItem(gl_image)
         self.fov_images[image.tobytes()] = gl_image
@@ -253,7 +253,7 @@ class VolumeModel(GLOrthoViewWidget):
 
         if image.tobytes() in self.fov_images.keys():   # check if image has been deleted
             glimage = self.fov_images[image.tobytes()]
-            coords = [glimage.transform()[i, 3] for i in range(3)]
+            coords = [glimage.transform()[i, 3]/pol for i, pol in zip(range(3), self.polarity)]
             self.removeItem(glimage)
             self.add_fov_image(image, coords, contrast_levels)
 
@@ -426,7 +426,6 @@ class VolumeModel(GLOrthoViewWidget):
             if delete_key is not None:
                 del self.fov_images[delete_key]
 
-            self.itemsAt()
     def mouseMoveEvent(self, event):
         """Override mouseMoveEvent so user can't change view"""
         pass

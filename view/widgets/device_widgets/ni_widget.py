@@ -191,7 +191,7 @@ class NIWidget(BaseDeviceWidget):
             port = '.'.join(path[:path.index("ports") + 2]) if 'ports' in path else 0
             # Triangle and sawtooths max amplitude can be less than max volts due to offset so force fixup check
             maximum = getattr(self, f'{port}.device_max_volts', 5)
-            minimum = -maximum if 'amplitude' in name else 0     # allow for negative amplitude
+            minimum = getattr(self, f'{port}.device_min_volts', 0) if 'amplitude' not in name else -maximum     # allow for negative amplitude
             slider.setMaximum(maximum)
             slider.setMinimum(minimum)
             textbox.validator().setRange(minimum, maximum, decimals=3)

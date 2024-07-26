@@ -351,15 +351,15 @@ class InstrumentView(QWidget):
                 # Add image to a new layer if layer doesn't exist yet or image is snapshot
                 layer = self.viewer.add_image(image, name=layer_name)
                 layer.mouse_drag_callbacks.append(self.save_image)
-                if layer.multiscale == True:  # emit most down sampled image if multiscale
-                    layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data[-1],
-                                                                                                 layer.contrast_limits))
-                else:
-                    layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data,
-                                                                                              layer.contrast_limits))
                 if snapshot:    # emit signal if snapshot
-                    image = image if not layer.multiscale else image[-1]
+                    image = image if not layer.multiscale else image[-3]
                     self.snapshotTaken.emit(image, layer.contrast_limits)
+                    if layer.multiscale == True:  # emit most down sampled image if multiscale
+                        layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data[-3],
+                                                                                                     layer.contrast_limits))
+                    else:
+                        layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data,
+                                                                                                  layer.contrast_limits))
 
     def save_image(self, layer, event):
         """Save image in viewer by right-clicking viewer
