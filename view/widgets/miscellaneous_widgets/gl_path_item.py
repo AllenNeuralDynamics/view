@@ -11,7 +11,7 @@ class GLPathItem(GLLinePlotItem):
 
         super().__init__(parentItem)
 
-        self.arrow_size = kwds.get('arrow_size', .04)
+        self.arrow_size_percent = kwds.get('arrow_size', 6.0)
         self.arrow_aspect_ratio = kwds.get('arrow_aspect_ratio', 4)
         self.path_start_color = kwds.get('path_start_color', 'magenta')
         self.path_end_color = kwds.get('path_end_color', 'green')
@@ -29,53 +29,61 @@ class GLPathItem(GLLinePlotItem):
             if len(path) > 1:
                 vector = path[-1] - path[-2]
                 if vector[1] > 0:
-                    x = np.array([path[-1, 0] - self.arrow_size,
-                                  path[-1, 0] + self.arrow_size,
+                    # calculate arrow size based on vector
+                    arrow_size = abs(vector[1])*self.arrow_size_percent / 100
+                    x = np.array([path[-1, 0] - arrow_size,
+                                  path[-1, 0] + arrow_size,
                                   path[-1, 0],
-                                  path[-1, 0] - self.arrow_size])
+                                  path[-1, 0] - arrow_size])
                     y = np.array([path[-1, 1],
                                   path[-1, 1],
-                                  path[-1, 1] + self.arrow_size * self.arrow_aspect_ratio,
+                                  path[-1, 1] + arrow_size * self.arrow_aspect_ratio,
                                   path[-1, 1]])
                     z = np.array([path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2]])
                 elif vector[1] < 0:
-                    x = np.array([path[-1, 0] + self.arrow_size,
-                                  path[-1, 0] - self.arrow_size,
+                    # calculate arrow size based on vector
+                    arrow_size = abs(vector[1])*self.arrow_size_percent / 100
+                    x = np.array([path[-1, 0] + arrow_size,
+                                  path[-1, 0] - arrow_size,
                                   path[-1, 0],
-                                  path[-1, 0] + self.arrow_size])
+                                  path[-1, 0] + arrow_size])
                     y = np.array([path[-1, 1],
                                   path[-1, 1],
-                                  path[-1, 1] - self.arrow_size * self.arrow_aspect_ratio,
+                                  path[-1, 1] - arrow_size * self.arrow_aspect_ratio,
                                   path[-1, 1]])
                     z = np.array([path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2]])
                 elif vector[0] < 0:
+                    # calculate arrow size based on vector
+                    arrow_size = abs(vector[0])*self.arrow_size_percent / 100
                     x = np.array([path[-1, 0],
                                   path[-1, 0],
-                                  path[-1, 0] - self.arrow_size * self.arrow_aspect_ratio,
+                                  path[-1, 0] - arrow_size * self.arrow_aspect_ratio,
                                   path[-1, 0]])
-                    y = np.array([path[-1, 1] + self.arrow_size,
-                                  path[-1, 1] - self.arrow_size,
+                    y = np.array([path[-1, 1] + arrow_size,
+                                  path[-1, 1] - arrow_size,
                                   path[-1, 1],
-                                  path[-1, 1] + self.arrow_size])
+                                  path[-1, 1] + arrow_size])
                     z = np.array([path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2]])
                 else:
+                    # calculate arrow size based on vector
+                    arrow_size = abs(vector[0])*self.arrow_size_percent / 100
                     x = np.array([path[-1, 0],
                                   path[-1, 0],
-                                  path[-1, 0] + self.arrow_size * self.arrow_aspect_ratio,
+                                  path[-1, 0] + arrow_size * self.arrow_aspect_ratio,
                                   path[-1, 0]])
-                    y = np.array([path[-1, 1] - self.arrow_size,
-                                  path[-1, 1] + self.arrow_size,
+                    y = np.array([path[-1, 1] - arrow_size,
+                                  path[-1, 1] + arrow_size,
                                   path[-1, 1],
-                                  path[-1, 1] - self.arrow_size])
+                                  path[-1, 1] - arrow_size])
                     z = np.array([path[-1, 2],
                                   path[-1, 2],
                                   path[-1, 2],

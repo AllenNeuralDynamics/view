@@ -11,6 +11,7 @@ from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxIte
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
 
+
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):
@@ -47,7 +48,7 @@ class VolumeModel(GLOrthoViewWidget):
                  fov_line_width: int = 2,
                  fov_opacity: float = .15,
                  path_line_width: int = 2,
-                 path_arrow_size: float = 0.5,
+                 path_arrow_size: float = 6.0,
                  path_arrow_aspect_ratio: int = 4,
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
@@ -69,7 +70,7 @@ class VolumeModel(GLOrthoViewWidget):
         :param fov_line_width: width of fov outline
         :param fov_opacity: opacity of fov face where 1 is fully opaque
         :param path_line_width: width of path line
-        :param path_arrow_size: size of arrow at the end of path
+        :param path_arrow_size: size of arrow at the end of path as a percentage of the field of view
         :param path_arrow_aspect_ratio: aspect ratio of arrow
         :param path_start_color: start color of path
         :param path_end_color: end color of path
