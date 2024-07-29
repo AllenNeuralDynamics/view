@@ -44,7 +44,7 @@ class VolumeWidget(QWidget):
         fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
 
         # create model and add extra checkboxes/inputs/buttons to customize volume model
-        self.volume_model = VolumeModel(unit, coordinate_plane, fov_dimensions, fov_position)
+        self.volume_model = VolumeModel(unit, coordinate_plane, fov_dimensions, fov_position, limits)
         self.fovMoved = self.volume_model.fovMoved  # expose for ease of access
 
         checkboxes = QHBoxLayout()

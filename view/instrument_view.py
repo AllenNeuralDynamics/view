@@ -279,6 +279,19 @@ class InstrumentView(QWidget):
         :param camera_name: name of camera to set up
         :param frames: how many frames to take"""
 
+        if self.grab_frames_worker.is_running:
+            if frames == 1:  # create snapshot layer with the latest image
+                # TODO: Maybe make this it's own function
+                layer_name = f"{camera_name} {self.livestream_channel}"
+                multiscale_image = self.viewer.layers[layer_name].data
+                layer = self.viewer.add_image(multiscale_image, name=layer_name + ' snapshot')
+                layer.mouse_drag_callbacks.append(self.save_image)
+                self.snapshotTaken.emit(np.rot90(multiscale_image[-3], k=3), layer.contrast_limits)
+                layer.events.contrast_limits.connect(
+                    lambda event: self.contrastChanged.emit(np.rot90(layer.data[-3], k=3),
+                                                            layer.contrast_limits))
+            return
+
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
 
         if frames == 1:  # pass in optional argument that this image is a snapshot
@@ -461,7 +474,10 @@ class InstrumentView(QWidget):
 
         while True:  # best way to do this or have some sort of break?
             sleep(.5)
-            value = getattr(device, property_name)
+            try:
+                value = getattr(device, property_name)
+            except ValueError:  # Tigerbox sometime coughs up garbage. Locking issue?
+                value = None
             yield value, widget
 
     def update_property_value(self, args):

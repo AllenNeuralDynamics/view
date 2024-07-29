@@ -144,9 +144,13 @@ class AcquisitionView(QWidget):
                 daq.tasks = self.instrument.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
                 # Tasks should be added and written in acquisition?
 
+        # anchor grid in volume widget
+        for anchor in self.volume_widget.anchor_widgets:
+            anchor.setChecked(True)
+
+
         # disable acquisition view. Can't disable whole thing so stop button can be functional
         self.start_button.setEnabled(False)
-        self.volume_widget.setEnabled(False)
         self.metadata_widget.setEnabled(False)
         for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
             if hasattr(self, f'{operation}_widgets'):
@@ -158,6 +162,10 @@ class AcquisitionView(QWidget):
 
         # disable instrument view
         self.instrument_view.setDisabled(True)
+
+        # self.acquisition.run()
+        # self.instrument_view.setDisabled(False)
+        # self.acquisition_ended()
 
         # Start acquisition
         self.acquisition_thread = create_worker(self.acquisition.run)
@@ -182,6 +190,10 @@ class AcquisitionView(QWidget):
                 for widget in device_widgets.values():
                     widget.setDisabled(False)
         self.stop_button.setEnabled(False)
+
+        # unanchor grid in volume widget
+        for anchor in self.volume_widget.anchor_widgets:
+            anchor.setChecked(False)
 
         # enable instrument view
         self.instrument_view.setDisabled(False)
@@ -288,7 +300,6 @@ class AcquisitionView(QWidget):
         for name, stage in {**getattr(self.instrument, 'scanning_stages', {}),
                             **getattr(self.instrument, 'tiling_stages', {})}.items():  # combine stage
             stage.halt()
-        self.grab_fov_positions_worker.resume()
 
     def setup_fov_position(self):
         """Set up live position thread"""
@@ -302,20 +313,16 @@ class AcquisitionView(QWidget):
         """Grab stage position from all stage objects and yield positions"""
 
         while True:  # best way to do this or have some sort of break?
-            sleep(.1)
-            fov_pos = [None] * 3
-            for name, stage in self.instrument.tiling_stages.items():
+            fov_pos = self.volume_widget.fov_position
+            for name, stage in {**self.instrument.tiling_stages, **self.instrument.scanning_stages}.items():
                 if stage.instrument_axis in self.volume_widget.coordinate_plane:
-                    fov_index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
-                    position = stage.position_mm
-                    # FIXME: Sometimes tigerbox yields empty stage position so return None if this happens?
-                    fov_pos[fov_index] = position if position is not None \
-                        else self.volume_widget.fov_position[fov_index]
-                (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-
-                position = scan_stage.position_mm
-                fov_pos[2] = position if position is not None else self.volume_widget.fov_position[2]
-
+                    index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
+                    try:
+                        pos = stage.position_mm
+                        fov_pos[index] = pos if pos is not None else fov_pos[index]
+                    except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
+                        print(e)
+                    sleep(.1)
             yield fov_pos
 
     def create_operation_widgets(self, device_name: str, operation_name: str, operation_specs: dict):
@@ -388,7 +395,7 @@ class AcquisitionView(QWidget):
         """Grab value of property and yield"""
 
         while True:  # best way to do this or have some sort of break?
-            sleep(.1)
+            sleep(.5)
             value = getattr(device, property_name)
             yield value, widget
 
