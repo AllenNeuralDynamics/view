@@ -42,7 +42,7 @@ class AcquisitionView(QWidget):
         # create workers for latest image taken by cameras
         for camera_name, camera in self.instrument.cameras.items():
             worker = self.grab_property_value(camera, 'latest_frame', camera_name)
-            worker.yielded.connect(self.instrument_view.update_layer)
+            worker.yielded.connect(self.update_acquisition_layer)
             worker.start()
             worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
             self.property_workers.append(worker)
@@ -147,7 +147,11 @@ class AcquisitionView(QWidget):
         # anchor grid in volume widget
         for anchor in self.volume_widget.anchor_widgets:
             anchor.setChecked(True)
-
+        self.volume_widget.table.setDisabled(True)
+        self.volume_widget.channel_plan.setDisabled(True)
+        self.volume_widget.scan_plan_widget.setDisabled(True)
+        self.volume_widget.scan_plan_widget.stacked_widget.setDisabled(True)
+        self.volume_widget.tile_plan_widget.setDisabled(True)
 
         # disable acquisition view. Can't disable whole thing so stop button can be functional
         self.start_button.setEnabled(False)
@@ -163,10 +167,6 @@ class AcquisitionView(QWidget):
         # disable instrument view
         self.instrument_view.setDisabled(True)
 
-        # self.acquisition.run()
-        # self.instrument_view.setDisabled(False)
-        # self.acquisition_ended()
-
         # Start acquisition
         self.acquisition_thread = create_worker(self.acquisition.run)
         self.acquisition_thread.start()
@@ -175,6 +175,7 @@ class AcquisitionView(QWidget):
         # start all workers
         for worker in self.property_workers:
             worker.resume()
+            sleep(1)
 
     def acquisition_ended(self):
         """Re-enable UI's and threads after acquisition has ended"""
@@ -194,6 +195,11 @@ class AcquisitionView(QWidget):
         # unanchor grid in volume widget
         for anchor in self.volume_widget.anchor_widgets:
             anchor.setChecked(False)
+        self.volume_widget.table.setEnabled(True)
+        self.volume_widget.channel_plan.setEnabled(True)
+        self.volume_widget.scan_plan_widget.setEnabled(True)
+        self.volume_widget.scan_plan_widget.stacked_widget.setEnabled(True)
+        self.volume_widget.tile_plan_widget.setEnabled(True)
 
         # enable instrument view
         self.instrument_view.setDisabled(False)
@@ -321,7 +327,7 @@ class AcquisitionView(QWidget):
                         pos = stage.position_mm
                         fov_pos[index] = pos if pos is not None else fov_pos[index]
                     except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
-                        print(e)
+                       pass
                     sleep(.1)
             yield fov_pos
 
@@ -390,12 +396,27 @@ class AcquisitionView(QWidget):
         labeled.setWindowTitle(f'{device_name} {operation_type} {operation_name}')
         labeled.show()
 
+    def update_acquisition_layer(self, args):
+        """Update viewer with latest frame taken during acquisition
+        :param args: tuple containing image and camera name
+        """
+
+        (image, camera_name) = args
+        if image is not None:
+            # TODO: How to get current channel
+            layer_name = f"{camera_name}"
+            if layer_name in self.instrument_view.viewer.layers :
+                layer = self.instrument_view.viewer.layers[layer_name]
+                layer.data = image
+            else:
+                layer = self.instrument_view.viewer.add_image(image, name=layer_name)
+
     @thread_worker
     def grab_property_value(self, device, property_name, widget):
         """Grab value of property and yield"""
 
         while True:  # best way to do this or have some sort of break?
-            sleep(.5)
+            sleep(1)
             value = getattr(device, property_name)
             yield value, widget
 
@@ -414,7 +435,6 @@ class AcquisitionView(QWidget):
                 widget.setCurrentIndex(index)
             elif type(widget) == QProgressBar:
                 widget.setValue(round(value))
-
         except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
             pass
 
