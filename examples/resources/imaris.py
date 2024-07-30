@@ -41,6 +41,7 @@ class Writer:
     def __init__(self):
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
         # Opinioated decision on chunking dimension order
         self.chunk_dim_order = ('z', 'y', 'x')
         # Flow control attributes to synchronize inter-process communication.

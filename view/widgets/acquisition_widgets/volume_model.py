@@ -131,22 +131,14 @@ class VolumeModel(GLOrthoViewWidget):
                                              glOptions='additive')
         self.addItem(self.fov_view_face)
 
-        # add stage limits into model
-        # limits_pos = [np.mean(limits[0]),
-        #               np.mean(limits[1]),
-        #               np.mean(limits[2])]
-        # limits_size = [limits[0][1] - limits[0][0],
-        #                limits[1][1] - limits[1][0],
-        #                limits[2][1] - limits[2][0]]
-        # shift_center = [limits_size[0]/2, limits_size[1]/2, limits_size[2]/2]
-        # self.limits_view = GLTileItem(width=limits_line_width)
-        # self.limits_view.setColor(limits_color)
-        # self.limits_view.setSize(*limits_size)
-        # self.limits_view.setTransform(QMatrix4x4(1, 0, 0, limits_pos[0] * self.polarity[0] + shift_center[0],
-        #                                       0, 1, 0, limits_pos[1] * self.polarity[1] + shift_center[1],
-        #                                       0, 0, 1, limits_pos[2] * self.polarity[2] + shift_center[2],
-        #                                       0, 0, 0, 1))
-        # self.addItem(self.limits_view)
+        size = [((max(limits[i])-min(limits[i]))+fov_dimensions[i]) for i in range(3)]
+        stage_limits = GLBoxItem(color='white')
+        stage_limits.setSize(x=size[0], y=size[1], z=size[2])
+        stage_limits.setTransform(QMatrix4x4(1, 0, 0,  min([x*self.polarity[0] for x in limits[0]]),
+                                              0, 1, 0, min([y*self.polarity[1] for y in limits[1]]),
+                                              0, 0, 1, min([z*self.polarity[2] for z in limits[2]]),
+                                              0, 0, 0, 1))
+        self.addItem(stage_limits)
 
         self.valueChanged[str].connect(self.update_model)
         self.resized.connect(self._update_opts)

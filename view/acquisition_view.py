@@ -42,7 +42,7 @@ class AcquisitionView(QWidget):
         # create workers for latest image taken by cameras
         for camera_name, camera in self.instrument.cameras.items():
             worker = self.grab_property_value(camera, 'latest_frame', camera_name)
-            worker.yielded.connect(self.update_acquisition_layer)
+            worker.yielded.connect(self.instrument_view.update_layer)
             worker.start()
             worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
             self.property_workers.append(worker)

@@ -263,10 +263,15 @@ class ZPlanWidget(ZPlanWidgetMMCore):
         self._top_to_bottom.hide()
         self.layout().children()[-1].itemAt(2).widget().hide()  # Direction label
 
-        # Add start box
-        self.start.valueChanged.connect(self._on_change)
+        # Add start box and trigger limit changes when valuechanged
         self.start.setSingleStep(.1)
-        self.start.setRange(z_limits[0], z_limits[1])
+        self.start.setRange(min(z_limits), max(z_limits))
+        self.start.valueChanged.connect(lambda v: self.range.setRange(0, min([abs(v-l) for l in z_limits])))
+        self.start.valueChanged.connect(lambda v: self.below.setRange(0, abs(v-min(z_limits))))
+        self.start.valueChanged.connect(lambda v: self.below.setRange(0, abs(v - max(z_limits))))
+        self.start.valueChanged.connect(self._on_change)
+        self.top.setRange(min(z_limits), max(z_limits))
+
         self._grid_layout.addWidget(QLabel("Start:"), 4, 0, Qt.AlignmentFlag.AlignRight)
         self._grid_layout.addWidget(self.start, 4, 1)
         # Add hide checkbox
