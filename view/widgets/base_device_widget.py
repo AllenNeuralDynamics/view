@@ -95,6 +95,8 @@ class BaseDeviceWidget(QMainWindow):
                 :param values: input into widget"""
 
         # options = values.keys() if widget_type == 'combo' else values
+        if type(values) is float:
+            values = round(values, 2)
         box = getattr(self, f'create_{widget_type}_box')(name, values)
         setattr(self, f"{name}_widget", box)  # add attribute for widget input for easy access
 
@@ -122,7 +124,11 @@ class BaseDeviceWidget(QMainWindow):
 
         # TODO: better way to handle weird types that will crash QT?
         value_type = type(value)
-        textbox = QScrollableLineEdit(str(value))
+        if value_type == float:
+            # round floats to 2 decimal places
+            textbox = QScrollableLineEdit("{:.2f}".format(value))
+        else:
+            textbox = QScrollableLineEdit(str(value))
         name_lst = name.split('.')
         if len(name_lst) != 1:  # name is a dictionary and key pair split by .
             # Must find dictionary each editing finish
