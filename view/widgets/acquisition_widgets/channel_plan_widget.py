@@ -218,7 +218,7 @@ class ChannelPlanWidget(QTabWidget):
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
-        self.prefix[channel] = np.zeros(self._tile_volumes.shape, dtype=str)
+        self.prefix[channel] = np.zeros(self._tile_volumes.shape, dtype='U100')
 
         self.insertTab(0, table, channel)
         self.setCurrentIndex(0)
@@ -327,7 +327,6 @@ class ChannelPlanWidget(QTabWidget):
                     table.item(i, column - 1).setData(Qt.EditRole, float(step_size))
         else:
             array[*tile_index] = value
-
         table.blockSignals(False)
 
     def update_steps(self, tile_index, row,  channel):

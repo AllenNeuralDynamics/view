@@ -2,7 +2,7 @@ instrument:
   channels:
     '488':
       cameras:
-      - vnp-604mx
+      - vp-151mx
       filters:
       - BP488
       focusing_stages:
@@ -11,7 +11,7 @@ instrument:
       - 488nm
     '561':
       cameras:
-      - vnp-604mx
+      - vp-151mx
       filters:
       - BP561
       focusing_stages:
@@ -20,7 +20,7 @@ instrument:
       - 561nm
     '639':
       cameras:
-      - vnp-604mx
+      - vp-151mx
       filters:
       - LP638
       focusing_stages:
