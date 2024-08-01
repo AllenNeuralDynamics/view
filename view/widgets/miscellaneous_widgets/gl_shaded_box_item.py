@@ -27,16 +27,21 @@ class GLShadedBoxItem(GLMeshItem):
             [1, 3, 5], [7, 5, 3]]).reshape(1, 12, 3)
         size = size.reshape((nCubes, 1, 3))
         pos = pos.reshape((nCubes, 1, 3))
-        vertexes = (cubeVerts * size + pos)[0]
-        faces = (cubeFaces + (np.arange(nCubes) * 8).reshape(nCubes, 1, 1))[0]
-
+        self._vertexes = (cubeVerts * size + pos)[0]
+        self._faces = (cubeFaces + (np.arange(nCubes) * 8).reshape(nCubes, 1, 1))[0]
         if isinstance(color, str):
             rgbf = list(QColor(color).getRgbF())
             color = rgbf[:3] + [opacity*rgbf[3]]
 
         colors = np.array([color for i in range(12)])
 
-        super().__init__(vertexes=vertexes, faces=faces, faceColors=colors,
+        super().__init__(vertexes=self._vertexes, faces=self._faces, faceColors=colors,
                      drawEdges=True, edgeColor=(0, 0, 0, 1), glOptions=glOptions, parentItem=parentItem)
 
+    def updateColor(self, color=None, opacity=1):
+        if isinstance(color, str):
+            rgbf = list(QColor(color).getRgbF())
+            color = rgbf[:3] + [opacity*rgbf[3]]
+        colors = np.array([color for i in range(12)])
+        self.setMeshData(vertexes=self._vertexes, faces=self._faces, faceColors=colors)
 
