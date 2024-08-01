@@ -11,6 +11,7 @@ from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxIte
 from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
 
+
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):
@@ -42,17 +43,20 @@ class VolumeModel(GLOrthoViewWidget):
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
+                 limits: list[float] = None,
                  fov_color: str = 'yellow',
                  fov_line_width: int = 2,
                  fov_opacity: float = .15,
                  path_line_width: int = 2,
-                 path_arrow_size: float = .04,
+                 path_arrow_size: float = 6.0,
                  path_arrow_aspect_ratio: int = 4,
                  path_start_color: str = 'magenta',
                  path_end_color: str = 'green',
                  tile_color: str = 'cyan',
                  tile_opacity: float = .075,
-                 tile_line_width: int = 2):
+                 tile_line_width: int = 2,
+                 limits_line_width: int = 2,
+                 limits_color: str = 'white'):
 
         """
         GLViewWidget to display proposed grid of acquisition
@@ -61,17 +65,20 @@ class VolumeModel(GLOrthoViewWidget):
         :param coordinate_plane: coordinate plane displayed on widget.
         :param fov_dimensions: dimensions of field of view in coordinate plane
         :param fov_position: position of fov
+        :param limits: list of limits ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param fov_line_width: width of fov outline
         :param fov_line_width: width of fov outline
         :param fov_opacity: opacity of fov face where 1 is fully opaque
         :param path_line_width: width of path line
-        :param path_arrow_size: size of arrow at the end of path
+        :param path_arrow_size: size of arrow at the end of path as a percentage of the field of view
         :param path_arrow_aspect_ratio: aspect ratio of arrow
         :param path_start_color: start color of path
         :param path_end_color: end color of path
         :param tile_color: color of tiles
         :param tile_opacity: opacity of tile faces where 1 is fully opaque
         :param tile_line_width: width of tiles
+        :param limits_line_width: width of limits box
+        :param limits_color: color of limits box
         """
 
         super().__init__(rotationMethod='quaternion')
@@ -123,6 +130,15 @@ class VolumeModel(GLOrthoViewWidget):
                                              opacity=fov_opacity,
                                              glOptions='additive')
         self.addItem(self.fov_view_face)
+
+        size = [((max(limits[i])-min(limits[i]))+fov_dimensions[i]) for i in range(3)]
+        stage_limits = GLBoxItem(color='white')
+        stage_limits.setSize(x=size[0], y=size[1], z=size[2])
+        stage_limits.setTransform(QMatrix4x4(1, 0, 0,  min([x*self.polarity[0] for x in limits[0]]),
+                                              0, 1, 0, min([y*self.polarity[1] for y in limits[1]]),
+                                              0, 0, 1, min([z*self.polarity[2] for z in limits[2]]),
+                                              0, 0, 0, 1))
+        self.addItem(stage_limits)
 
         self.valueChanged[str].connect(self.update_model)
         self.resized.connect(self._update_opts)
@@ -231,11 +247,11 @@ class VolumeModel(GLOrthoViewWidget):
         image_rgba[0][:, :, 3] = 200
 
         gl_image = GLImageItem(image_rgba[0],
-                               glOptions='translucent')
+                               glOptions='additive')
         x, y, z = coords
         gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
                                          0, self.fov_dimensions[1]/image.shape[1], 0, y * self.polarity[1],
-                                         0, 0, 1, z * self.polarity[2],    # 0 since tiling plane will display scan plan at 0
+                                         0, 0, 1, z * self.polarity[2],
                                          0, 0, 0, 1))
         self.addItem(gl_image)
         self.fov_images[image.tobytes()] = gl_image
@@ -253,7 +269,7 @@ class VolumeModel(GLOrthoViewWidget):
 
         if image.tobytes() in self.fov_images.keys():   # check if image has been deleted
             glimage = self.fov_images[image.tobytes()]
-            coords = [glimage.transform()[i, 3] for i in range(3)]
+            coords = [glimage.transform()[i, 3]/pol for i, pol in zip(range(3), self.polarity)]
             self.removeItem(glimage)
             self.add_fov_image(image, coords, contrast_levels)
 
@@ -320,7 +336,6 @@ class VolumeModel(GLOrthoViewWidget):
                         * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
 
         else:
-            print('outside y')
             center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 \
                         * (self.size().width() / self.size().height())
@@ -339,7 +354,7 @@ class VolumeModel(GLOrthoViewWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(f"Do you want to move the field of view from "
-                       f"{[round(x, 2) * t for x, t in zip(self.fov_position, self.polarity)]} [{self.unit}] to "
+                       f"{[round(x, 2) for x in self.fov_position]} [{self.unit}] to "
                        f"{[round(x, 2) for x in new_fov_pos]} [{self.unit}]?")
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
@@ -367,6 +382,9 @@ class VolumeModel(GLOrthoViewWidget):
         and allow user to move fov easier"""
 
         plane = self.view_plane
+        view_pol = [self.polarity[self.coordinate_plane.index(plane[0])],
+                    self.polarity[self.coordinate_plane.index(plane[1])],
+                    self.polarity[self.coordinate_plane.index(*(set(self.coordinate_plane)-set(plane)))]]
         # Translate mouseclick x, y into view widget coordinate plane.
         horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov']))) / 1200
         vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
@@ -375,8 +393,8 @@ class VolumeModel(GLOrthoViewWidget):
         vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
 
         # create dictionaries of from fov and pos
-        fov = {'x': self.fov_dimensions[0] * self.polarity[0],
-               'y': self.fov_dimensions[1] * self.polarity[1],
+        fov = {'x': self.fov_dimensions[0],
+               'y': self.fov_dimensions[1],
                'z': 0}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
 
@@ -388,14 +406,14 @@ class VolumeModel(GLOrthoViewWidget):
         h_ax = self.view_plane[0]
         v_ax = self.view_plane[1]
 
-        new_pos = {transform[0]: (center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]],
-                   transform[1]: (center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]],
-                   transform[2]: pos[transform[2]]}
+        new_pos = {transform[0]: ((center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]]) * view_pol[0],
+                   transform[1]: ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]]) * view_pol[1],
+                   transform[2]: pos[transform[2]] * view_pol[2]}
 
         if event.button() == Qt.LeftButton:
-            return_value, checkbox = self.move_fov_query([new_pos['x'] * self.polarity[0],
-                                                          new_pos['y'] * self.polarity[1],
-                                                          new_pos['z'] * self.polarity[2]])
+            return_value, checkbox = self.move_fov_query([new_pos['x'],
+                                                          new_pos['y'],
+                                                          new_pos['z']])
 
             if return_value == QMessageBox.Ok:
                 if not checkbox:  # Move to exact location
@@ -406,7 +424,7 @@ class VolumeModel(GLOrthoViewWidget):
                     distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
                     tile = flattened[index]
                     pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
-                self.fov_position = [pos['x'], pos['y'], pos['z']]
+                #self.fov_position = [pos['x'], pos['y'], pos['z']]
                 self.view_plane = plane  # make sure grid plane remains the same
                 self.fovMoved.emit([pos['x'], pos['y'], pos['z']])
 
@@ -427,7 +445,6 @@ class VolumeModel(GLOrthoViewWidget):
             if delete_key is not None:
                 del self.fov_images[delete_key]
 
-            self.itemsAt()
     def mouseMoveEvent(self, event):
         """Override mouseMoveEvent so user can't change view"""
         pass
