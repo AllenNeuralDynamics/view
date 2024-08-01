@@ -122,7 +122,11 @@ class BaseDeviceWidget(QMainWindow):
 
         # TODO: better way to handle weird types that will crash QT?
         value_type = type(value)
-        textbox = QScrollableLineEdit(str(value))
+        if value_type == float:
+            # round floats to 2 decimal places
+            textbox = QScrollableLineEdit("{:.2f}".format(value))
+        else:
+            textbox = QScrollableLineEdit(str(value))
         name_lst = name.split('.')
         if len(name_lst) != 1:  # name is a dictionary and key pair split by .
             # Must find dictionary each editing finish
