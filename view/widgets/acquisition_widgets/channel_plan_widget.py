@@ -211,7 +211,7 @@ class ChannelPlanWidget(QTabWidget):
                 if type(delegate) == QSpinItemDelegate:
                     getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
                 elif type(delegate) == QComboItemDelegate:
-                    getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape, dtype='<U5')
+                    getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
                     getattr(self, f'{column_name}')[channel][:, :] = delegate.items[0]
                 else:
                     getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
