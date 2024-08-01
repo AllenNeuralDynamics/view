@@ -1,7 +1,7 @@
 from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem, GLImageItem
 from qtpy.QtWidgets import QMessageBox, QCheckBox
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
+from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion, QColor
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
@@ -43,7 +43,8 @@ class VolumeModel(GLOrthoViewWidget):
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
                  fov_position: list[float] = [0.0, 0.0, 0.0],
-                 limits: list[float] = None,
+                 limits: list[float] = [[float('-inf'), float('inf')], [float('-inf'), float('inf')],
+                                        [float('-inf'), float('inf')]],
                  fov_color: str = 'yellow',
                  fov_line_width: int = 2,
                  fov_opacity: float = 0.15,
@@ -88,8 +89,8 @@ class VolumeModel(GLOrthoViewWidget):
         """
 
         super().__init__(rotationMethod='quaternion')
-        limits = [[-2, 2], [-2, 2], [-2, 2]]
-        self.makeCurrent()
+
+        # initialize attributes
         self.unit = unit
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
@@ -101,16 +102,16 @@ class VolumeModel(GLOrthoViewWidget):
         self.grid_coords = np.zeros([1, 1, 3])  # 2d list detailing start position of tiles
         self.start_tile_coord = np.zeros([1, 1, 3])
         self.end_tile_coord = np.zeros([1, 1, 3])
-
         self.grid_box_items = []  # 2D list detailing box items in grid
-        self.grid_tile_items = []  # list of 2D lists detailing face items in grid
         self.tile_visibility = np.array([[True]])  # 2d list detailing visibility of tiles
+
         # tile aesthetic properties
         self.active_tile_color = active_tile_color
         self.active_tile_opacity = active_tile_opacity
         self.inactive_tile_color = inactive_tile_color
         self.inactive_tile_opacity = inactive_tile_opacity
         self.tile_line_width = tile_line_width
+
         # limits aesthetic properties
         self.limits_line_width = limits_line_width
         self.limits_color = limits_color
@@ -128,41 +129,30 @@ class VolumeModel(GLOrthoViewWidget):
         self.fov_images = {}
 
         # initialize fov
-        self.fov_view = GLTileItem(width=fov_line_width)
-        self.fov_view.setColor(fov_color)
-        self.fov_view.setSize(*self.fov_dimensions)
+        self.fov_view = GLShadedBoxItem(width=fov_line_width,
+                                        pos=np.array([[self.fov_position]]),
+                                        size=np.array(self.fov_dimensions),
+                                        color=fov_color,
+                                        opacity=fov_opacity,
+                                        glOptions='additive'
+                                        )
         self.fov_view.setTransform(QMatrix4x4(1, 0, 0, self.fov_position[0] * self.polarity[0],
                                               0, 1, 0, self.fov_position[1] * self.polarity[1],
                                               0, 0, 1, self.fov_position[2] * self.polarity[2],
                                               0, 0, 0, 1))
         self.addItem(self.fov_view)
 
-        self.fov_view_face = GLShadedBoxItem(pos=np.array([[self.fov_position]]),
-                                             size=np.array(self.fov_dimensions),
-                                             color=fov_color,
-                                             opacity=fov_opacity,
-                                             glOptions='additive')
-        self.addItem(self.fov_view_face)
-
-        size = [((max(limits[i])-min(limits[i]))+fov_dimensions[i]) for i in range(3)]
-
-        stage_tile = GLTileItem(width=self.limits_line_width)
-        stage_tile.setColor(self.limits_color)
-        stage_tile.setSize(*size)
-        stage_tile.setTransform(QMatrix4x4(1, 0, 0, min([x*self.polarity[0] for x in limits[0]]),
-                                           0, 1, 0, min([y*self.polarity[1] for y in limits[1]]),
-                                           0, 0, 1, min([z*self.polarity[2] for z in limits[2]]),
-                                           0, 0, 0, 1))
-        self.addItem(stage_tile)
-
-        stage_limits = GLShadedBoxItem(pos=np.array([[[min([x*self.polarity[0] for x in limits[0]]),
-                                                      min([y*self.polarity[1] for y in limits[1]]),
-                                                      min([z*self.polarity[2] for z in limits[2]])]]]),
-                                       size=np.array(size),
-                                       color=self.limits_color,
-                                       opacity=self.limits_opacity,
-                                       glOptions='additive')
-        self.addItem(stage_limits)
+        if limits != [[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]]:
+            size = [((max(limits[i]) - min(limits[i])) + fov_dimensions[i]) for i in range(3)]
+            stage_limits = GLShadedBoxItem(width=self.limits_line_width,
+                                           pos=np.array([[[min([x * self.polarity[0] for x in limits[0]]),
+                                                           min([y * self.polarity[1] for y in limits[1]]),
+                                                           min([z * self.polarity[2] for z in limits[2]])]]]),
+                                           size=np.array(size),
+                                           color=self.limits_color,
+                                           opacity=self.limits_opacity,
+                                           glOptions='additive')
+            self.addItem(stage_limits)
 
         self.valueChanged[str].connect(self.update_model)
         self.resized.connect(self._update_opts)
@@ -173,73 +163,67 @@ class VolumeModel(GLOrthoViewWidget):
         """Update attributes of grid
         :param attribute_name: name of attribute to update"""
 
+        # update color of tiles based on z position
+        flat_coords = self.grid_coords.reshape([-1, 3])  # flatten array
+        flat_dims = self.scan_volumes.flatten()  # flatten array
+        coords = np.concatenate((flat_coords, [[x, y, (z + sz)] for (x, y, z), sz in zip(flat_coords, flat_dims)]))
+        extrema = [[min(coords[:, 0]), max(coords[:, 0])],
+                   [min(coords[:, 1]), max(coords[:, 1])],
+                   [min(coords[:, 2]), max(coords[:, 2])]]
+
+        in_grid = not any(
+            [pos > pos_max or pos < pos_min for (pos_min, pos_max), pos in zip(extrema, self.fov_position)])
+
         if attribute_name == 'fov_position':
             # update fov_pos
             self.fov_view.setTransform(QMatrix4x4(1, 0, 0, self.fov_position[0] * self.polarity[0],
                                                   0, 1, 0, self.fov_position[1] * self.polarity[1],
                                                   0, 0, 1, self.fov_position[2] * self.polarity[2],
                                                   0, 0, 0, 1))
-            self.fov_view_face.setTransform(QMatrix4x4(1, 0, 0, self.fov_position[0] * self.polarity[0],
-                                                       0, 1, 0, self.fov_position[1] * self.polarity[1],
-                                                       0, 0, 1, self.fov_position[2] * self.polarity[2],
-                                                       0, 0, 0, 1))
+
+            color = self.grid_box_items[0].color() if len(self.grid_box_items) != 0 else None
+            if (not in_grid and color != self.inactive_tile_color) or (in_grid and color != self.active_tile_color):
+                new_color = self.inactive_tile_color if not in_grid else self.active_tile_color
+                for box in self.grid_box_items:
+                    box.setColor(color=new_color)
 
         else:
             self.fov_view.setSize(x=self.fov_dimensions[0],
                                   y=self.fov_dimensions[1],
                                   z=0.0)
-            self.fov_view_face.setTransform(QMatrix4x4(1, 0, 0, self.fov_position[0] * self.polarity[0],
-                                                       0, 1, 0, self.fov_position[1] * self.polarity[1],
-                                                       0, 0, 1, self.fov_position[2] * self.polarity[2],
-                                                       0, 0, 0, 1))
 
             # faster to remove every box than parse which ones have changes
             for box in self.grid_box_items:
                 self.removeItem(box)
             self.grid_box_items = []
 
-            for tile in self.grid_tile_items:
-                self.removeItem(tile)
-            self.grid_tile_items = []
-
             total_rows = len(self.grid_coords)
             total_columns = len(self.grid_coords[0])
 
             for row in range(total_rows):
                 for column in range(total_columns):
-                    coord = [x*pol for x, pol in zip(self.grid_coords[row][column], self.polarity)]
 
+                    coord = [x * pol for x, pol in zip(self.grid_coords[row][column], self.polarity)]
                     size = [*self.fov_dimensions[:2], self.scan_volumes[row, column]]
-
-                    tile = GLTileItem(width=self.tile_line_width)
-                    tile.setSize(*size)
-                    tile.setTransform(QMatrix4x4(1, 0, 0, coord[0],
-                                                 0, 1, 0, coord[1],
-                                                 0, 0, 1, coord[2],
-                                                 0, 0, 0, 1))
-                    tile.setColor(self.active_tile_color)
-                    tile.setVisible(self.tile_visibility[row, column])
-                    self.addItem(tile)
-                    self.grid_tile_items.append(tile)
 
                     # scale opacity for viewing
                     if self.view_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
                         opacity = self.active_tile_opacity
                     elif self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
-                        opacity = self.active_tile_opacity/total_columns
+                        opacity = self.active_tile_opacity / total_columns
                     else:
                         opacity = self.active_tile_opacity / total_rows
 
-                    box = GLShadedBoxItem(pos=np.array([[coord]]),
+                    box = GLShadedBoxItem(width=self.tile_line_width,
+                                          pos=np.array([[coord]]),
                                           size=np.array(size),
-                                          color=self.active_tile_color,
+                                          color=self.active_tile_color if in_grid else self.inactive_tile_color,
                                           opacity=opacity,
                                           glOptions='additive',
                                           )
                     box.setVisible(self.tile_visibility[row, column])
                     self.addItem(box)
                     self.grid_box_items.append(box)
-
 
         self._update_opts()
 
@@ -273,8 +257,8 @@ class VolumeModel(GLOrthoViewWidget):
         gl_image = GLImageItem(image_rgba[0],
                                glOptions='additive')
         x, y, z = coords
-        gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0]/image.shape[0], 0, 0, x * self.polarity[0],
-                                         0, self.fov_dimensions[1]/image.shape[1], 0, y * self.polarity[1],
+        gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0] / image.shape[0], 0, 0, x * self.polarity[0],
+                                         0, self.fov_dimensions[1] / image.shape[1], 0, y * self.polarity[1],
                                          0, 0, 1, z * self.polarity[2],
                                          0, 0, 0, 1))
         self.addItem(gl_image)
@@ -291,9 +275,9 @@ class VolumeModel(GLOrthoViewWidget):
         :return:
         """
 
-        if image.tobytes() in self.fov_images.keys():   # check if image has been deleted
+        if image.tobytes() in self.fov_images.keys():  # check if image has been deleted
             glimage = self.fov_images[image.tobytes()]
-            coords = [glimage.transform()[i, 3]/pol for i, pol in zip(range(3), self.polarity)]
+            coords = [glimage.transform()[i, 3] / pol for i, pol in zip(range(3), self.polarity)]
             self.removeItem(glimage)
             self.add_fov_image(image, coords, contrast_levels)
 
@@ -371,24 +355,6 @@ class VolumeModel(GLOrthoViewWidget):
             center.get('y', 0),
             center.get('z', 0))
 
-        # update color of tiles based on z position
-        absolute_coords = np.concatenate((coords, [[x, y, (z + sz)] for
-                                         (x, y, z), sz in zip(coords, dimensions)]))
-        x_min = min(absolute_coords[:, 0])  # min x value of tiles
-        x_max = max(absolute_coords[:, 0])  # max x value of tiles
-        y_min = min(absolute_coords[:, 1])  # min y value of tiles
-        y_max = max(absolute_coords[:, 1])  # max y value of tiles
-        z_min = min(absolute_coords[:, 2])  # min z value of tiles
-        z_max = max(absolute_coords[:, 2])  # max z value of tiles
-
-        for box, tile in zip(self.grid_box_items, self.grid_tile_items):
-            # recolor box if fov position outside range of tiles
-            if self.fov_position[2] > z_max or self.fov_position[2] < z_min or \
-               self.fov_position[1] > y_max or self.fov_position[1] < y_min or \
-               self.fov_position[0] > x_max or self.fov_position[0] < x_min:
-                tile.setColor(self.inactive_tile_color)
-                box.updateColor(color=self.inactive_tile_color, opacity=self.inactive_tile_opacity)
-
         self.update()
 
     def move_fov_query(self, new_fov_pos):
@@ -427,7 +393,7 @@ class VolumeModel(GLOrthoViewWidget):
         plane = self.view_plane
         view_pol = [self.polarity[self.coordinate_plane.index(plane[0])],
                     self.polarity[self.coordinate_plane.index(plane[1])],
-                    self.polarity[self.coordinate_plane.index(*(set(self.coordinate_plane)-set(plane)))]]
+                    self.polarity[self.coordinate_plane.index(*(set(self.coordinate_plane) - set(plane)))]]
         # Translate mouseclick x, y into view widget coordinate plane.
         horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov']))) / 1200
         vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
@@ -478,8 +444,8 @@ class VolumeModel(GLOrthoViewWidget):
             delete_key = None
             for key, image in self.fov_images.items():
                 coords = [image.transform()[i, 3] for i in range(3)]
-                if coords[0]-self.fov_dimensions[0] <= coords[0] <= coords[0]+self.fov_dimensions[0] and \
-                        coords[1]-self.fov_dimensions[1] <= coords[1] <= coords[1]+self.fov_dimensions[1]:
+                if coords[0] - self.fov_dimensions[0] <= coords[0] <= coords[0] + self.fov_dimensions[0] and \
+                        coords[1] - self.fov_dimensions[1] <= coords[1] <= coords[1] + self.fov_dimensions[1]:
                     return_value = self.delete_fov_image_query(coords)
                     if return_value == QMessageBox.Ok:
                         self.removeItem(image)
