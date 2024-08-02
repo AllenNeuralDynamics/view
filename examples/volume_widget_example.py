@@ -5,20 +5,10 @@ from unittest.mock import MagicMock
 from pathlib import Path
 import os
 from voxel.devices.lasers.simulated import SimulatedLaser
+from voxel.devices.stage.simulated import Stage
 from view.widgets.device_widgets.laser_widget import LaserWidget
 from threading import Lock
 from qtpy.QtCore import Qt
-
-RESOURCES_DIR = (
-        Path(os.path.dirname(os.path.realpath(__file__))) / "resources"
-)
-INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
-
-
-class MockInstrument:
-    def __init__(self, **kwds):
-        for key, value in kwds.items():
-            setattr(self, key, value)
 
 
 if __name__ == "__main__":
@@ -45,6 +35,15 @@ if __name__ == "__main__":
         '639nm': SimulatedLaser(id='there')
     }
 
+    tiling_stages = {
+        'x': Stage(hardware_axis='x', instrument_axis='x'),
+        'y': Stage(hardware_axis='y', instrument_axis='y')
+    }
+
+    scanning_stages = {
+        'z': Stage(hardware_axis='z', instrument_axis='z')
+    }
+
     laser_widgets = {
         '488nm': LaserWidget(lasers['488nm']),
         '639nm': LaserWidget(lasers['639nm'])
@@ -56,7 +55,7 @@ if __name__ == "__main__":
     }
 
     mocked_instrument = MagicMock()
-    mocked_instrument.configure_mock(lasers=lasers)
+    mocked_instrument.configure_mock(lasers=lasers, tiling_stages=tiling_stages, scanning_stages=scanning_stages)
     mocked_instrument_view = MagicMock()
     mocked_instrument_view.configure_mock(instrument=mocked_instrument, laser_widgets=laser_widgets, laser_widget_locks=laser_widget_locks)
     volume_widget = VolumeWidget(mocked_instrument_view, channels, settings)

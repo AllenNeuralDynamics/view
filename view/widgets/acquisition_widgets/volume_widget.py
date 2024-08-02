@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame, QStyle, QPushButton, QVBoxLayout
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -10,8 +10,6 @@ from qtpy.QtCore import Qt
 import numpy as np
 import useq
 from view.widgets.base_device_widget import label_maker
-import inspect
-
 
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
