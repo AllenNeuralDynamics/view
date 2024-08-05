@@ -1,15 +1,17 @@
 from pyqtgraph import PlotWidget, TextItem, mkPen, mkBrush, ScatterPlotItem, setConfigOptions, Point
-from qtpy.QtWidgets import QGraphicsEllipseItem, QSizePolicy
+from qtpy.QtWidgets import QGraphicsEllipseItem, QComboBox
 from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot
 from math import sin, cos, pi, atan, degrees, radians
-from qtpy.QtGui import QFont
+from qtpy.QtGui import QFont, QColor
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties
 
 setConfigOptions(antialias=True)
 
+
 class FilterWheelWidget(BaseDeviceWidget):
 
     def __init__(self, filter_wheel,
+                 colors: dict = {},
                  advanced_user: bool = True):
         """Simple scroll widget for filter wheel
         :param filter_wheel: filter wheel device"""
@@ -26,17 +28,23 @@ class FilterWheelWidget(BaseDeviceWidget):
         # Remove filter widget
         self.centralWidget().layout().removeWidget(self.filter_widget)
         self.filter_widget.deleteLater()
+        self.filters = filter_wheel.filters
+
         # recreate as combo box with filters as options
-        self.filter_widget = self.create_combo_box('filter', filter_wheel.filters)
-        self.filter_widget.setCurrentText(str(filter_wheel.filter))
+        self.filter_widget = QComboBox()
+        self.filter_widget.addItems([f'{v}: {k}' for k, v in self.filters.items()])
+        self.filter_widget.currentTextChanged.connect(lambda val: setattr(self, 'filter', val[val.index(' ')+1:]))
+        self.filter_widget.currentTextChanged.connect(lambda: self.ValueChangedInside.emit('filter'))
+        self.filter_widget.setCurrentText(f'{self.filters[filter_wheel.filter]}: {filter_wheel.filter}')
+
         # Add back to property widget
         self.property_widgets['filter'].layout().addWidget(self.filter_widget)
 
         # Create wheel widget and connect to signals
-        self.wheel_widget = FilterWheelGraph(list(filter_wheel.filters.keys()))
-        self.wheel_widget.ValueChangedInside[str].connect(lambda value: self.filter_widget.setCurrentText(str(value)))
-        self.filter_widget.currentTextChanged.connect(lambda value: self.wheel_widget.set_index(value))
-        self.ValueChangedOutside[str].connect(lambda name: self.wheel_widget.set_index(self.filter))
+        self.wheel_widget = FilterWheelGraph(self.filters, colors)
+        self.wheel_widget.ValueChangedInside[str].connect(lambda v: self.filter_widget.setCurrentText(f'{self.filters[v]}: {v}'))
+        self.filter_widget.currentTextChanged.connect(lambda val: self.wheel_widget.move_wheel(val[val.index(' ')+1:]))
+        self.ValueChangedOutside[str].connect(lambda name: self.wheel_widget.move_wheel(self.filter))
         self.centralWidget().layout().addWidget(self.wheel_widget)
 
         if not advanced_user:
@@ -45,63 +53,85 @@ class FilterWheelWidget(BaseDeviceWidget):
 
     def filter_change_wrapper(self, func):
         """Wrapper function that emits a signal when filterwheel filter setter has been called"""
+
         def wrapper(object, value):
             func(object, value)
             self.filter = value
             self.ValueChangedOutside[str].emit('filter')
+
         return wrapper
+
 
 class FilterWheelGraph(PlotWidget):
     ValueChangedInside = Signal((str,))
 
-    def __init__(self, filters, radius=10, **kwargs):
+    def __init__(self, filters: dict, colors: dict, diameter=10, **kwargs):
         """Simple scroll widget for filter wheel
         :param filters: list possible filters"""
 
         super().__init__(**kwargs)
 
-        self._timeline = TimeLine(loopCount=1, interval=50)
+        self._timelines = []
         self.setMouseEnabled(x=False, y=False)
         self.showAxes(False, False)
         self.setBackground('#262930')
 
         self.filters = filters
-        self.radius = radius
+        self.diameter = diameter
 
-        wheel = QGraphicsEllipseItem(-self.radius, -self.radius, self.radius * 2, self.radius * 2)
-        wheel.setPen(mkPen((0, 0, 0, 100)))
-        wheel.setBrush(mkBrush((128, 128, 128)))
+        # create wheel graphic
+        wheel = QGraphicsEllipseItem(-self.diameter, -self.diameter, self.diameter * 2, self.diameter * 2)
+        wheel.setPen(mkPen((0, 0, 0, 100)))  # outline of wheel
+        wheel.setBrush(mkBrush((128, 128, 128)))  # color of wheel
         self.addItem(wheel)
 
-        angles = [2 * pi / len(self.filters) * i for i in range(len(self.filters))]
-        points = {}
-        for angle, slot in zip(angles, self.filters):
-            point = FilterItem(text=str(slot), anchor=(.5, .5), color='white')
-            font = QFont()
-            font.setPixelSize(9)
-            point.setFont(font)
-            point.setPos((self.radius + 1) * cos(angle),
-                         (self.radius + 1) * sin(angle))
+        self.filter_path = self.diameter - 3
+        # calculate diameter of filters based on quantity
+        l = len(self.filters)
+        max_diameter = (self.diameter - self.filter_path - .5) * 2
+        del_filter = self.filter_path * cos((pi / 2) - (2 * pi / l)) - max_diameter  # dist between two filter points
+        filter_diameter = max_diameter if del_filter > 0 or l == 2 else self.filter_path * cos((pi / 2) - (2 * pi / l))
+
+        angles = [pi / 2+(2 * pi / l * i) for i in range(l)]
+        self.points = {}
+        for angle, (filter, i) in zip(angles, self.filters.items()):
+            color = QColor(colors.get(filter, None)).getRgb()
+            pos = [self.filter_path * cos(angle), self.filter_path * sin(angle)]
+            # create scatter point filter
+            point = FilterItem(filter_name=filter, size=filter_diameter, pxMode=False, pos=[pos])
+            point.setPen(mkPen(color))  # outline of filter
+            point.setBrush(mkBrush(color))  # color of filter
             point.pressed.connect(self.move_wheel)
             self.addItem(point)
-            points[slot] = point
+            self.points[filter] = point
 
-        self.notch = ScatterPlotItem(pos=[[(self.radius - 3) * cos(0),
-                                           (self.radius - 3) * sin(0)]], size=5, pxMode=False)
-        self.addItem(self.notch)
+            # create label
+            index = TextItem(text=str(i), anchor=(.5, .5), color='white')
+            font = QFont()
+            font.setPointSize(round(filter_diameter**2))
+            index.setFont(font)
+            index.setPos(*pos)
+            self.addItem(index)
+            self.points[i] = index
+
+        # create active wheel graphic. Add after to display over filters
+        active = ScatterPlotItem(size=2, pxMode=False, symbol='t1', pos=[[self.diameter * cos(pi / 2),
+                                                                          self.diameter * sin(pi / 2)]])
+        black = QColor('black').getRgb()
+        active.setPen(mkPen(black))  # outline
+        active.setBrush(mkBrush(black))  # color
+        self.addItem(active)
 
         self.setAspectLocked(1)
-    def set_index(self, slot_name):
-        filter_index = self.filters.index(slot_name)
-        angle = [2 * pi / len(self.filters) * i for i in range(len(self.filters))][filter_index]
-        self.move_wheel(slot_name, ((self.radius + 1) * cos(angle),(self.radius + 1) * sin(angle)))
 
-    def move_wheel(self, name, slot_pos):
+    def move_wheel(self, name):
 
         self.ValueChangedInside.emit(name)
-        notch_pos = [self.notch.getData()[0][0],self.notch.getData()[1][0]]
+        point = self.points[name]
+        filter_pos = [point.getData()[0][0],point.getData()[1][0]]
+        notch_pos = [self.diameter * cos(pi / 2), self.diameter * sin(pi / 2)]
         thetas = []
-        for x,y in [notch_pos, slot_pos]:
+        for x,y in [filter_pos, notch_pos]:
             if y > 0 > x or (y < 0 and x < 0):
                 thetas.append(180+degrees(atan(y/x)))
             elif y < 0 < x:
@@ -109,33 +139,57 @@ class FilterWheelGraph(PlotWidget):
             else:
                 thetas.append(degrees(atan(y/x)))
 
-        notch_theta, slot_theta = thetas
-        delta_theta = slot_theta-notch_theta
-        if slot_theta > notch_theta and delta_theta <= 180:
+        filter_theta, notch_theta = thetas
+        delta_theta = notch_theta-filter_theta
+        if notch_theta > filter_theta and delta_theta <= 180:
             step_size = 1
-        elif slot_theta > notch_theta and delta_theta > 180:
+        elif notch_theta > filter_theta and delta_theta > 180:
             step_size = -1
-            slot_theta = (slot_theta - notch_theta) - 360
+            notch_theta = (notch_theta - filter_theta) - 360
         else:
             step_size = -1
-        self._timeline.stop()
-        self._timeline = TimeLine(loopCount=1, interval=10, step_size=step_size)
-        self._timeline.setFrameRange(notch_theta, slot_theta)
-        self._timeline.frameChanged.connect(self.generate_data)
-        self._timeline.start()
+
+        # stop all previous
+        for timeline in self._timelines:
+            timeline.stop()
+
+        self._timelines = []
+        # create timelines for all filters and labels
+        filter_names = list(self.filters.keys())
+        filter_index = filter_names.index(name)
+        filters = [filter_names[(filter_index+i) % len(filter_names)] for i in range(len(filter_names))]  # reorder filters starting with filter selected
+        del_theta = 2 * pi / len(filters)
+        for i, filt in enumerate(filters):
+            shift = degrees((del_theta*i))
+            timeline = TimeLine(loopCount=1, interval=10, step_size=step_size)
+            timeline.setFrameRange(filter_theta+shift, notch_theta+shift)
+            timeline.frameChanged.connect(lambda i, slot=self.points[filt]: self.generate_data(i, slot))
+            timeline.frameChanged.connect(lambda i, slot=self.points[self.filters[filt]]: self.generate_data(i, slot))
+            self._timelines.append(timeline)
+
+        # start all
+        for timeline in self._timelines:
+            timeline.start()
 
     @Slot(float)
-    def generate_data(self, i):
-        self.notch.setData(pos=[[(self.radius - 3) * cos(radians(i)),
-                                 (self.radius - 3) * sin(radians(i))]])
+    def generate_data(self, i, point):
+        pos = [self.filter_path * cos(radians(i)),
+               self.filter_path * sin(radians(i))]
+        if type(point) == FilterItem:
+            point.setData(pos=[pos])
+        elif type(point) == TextItem:
+            point.setPos(*pos)
 
-class FilterItem(TextItem):
-    pressed = Signal((str, Point))
+class FilterItem(ScatterPlotItem):
+    pressed = Signal(str)
+
+    def __init__(self, filter_name: str, *args, **kwargs):
+        self.filter_name = filter_name
+        super().__init__(*args, **kwargs)
 
     def mousePressEvent(self, ev):
         super().mousePressEvent(ev)
-        self.pressed.emit(self.textItem.toPlainText(), self.pos())
-
+        self.pressed.emit(self.filter_name)
 
 class TimeLine(QObject):
     frameChanged = Signal(float)
