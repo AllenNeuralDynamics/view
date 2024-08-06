@@ -6,8 +6,8 @@ from qtpy.QtCore import Slot
 from pathlib import Path
 from ruamel.yaml import YAML
 
-INSTRUMENT_YAML = Path('/\\examples\\'
-                       'resources\\simulated_instrument.yaml')
+INSTRUMENT_YAML = Path('C:\\Users\\micah.woodard\\Projects\\view\\instruments\\speakeasy-view\\'
+                       'speakeasy_gui.yaml')
 
 @Slot(str)
 def widget_property_changed(name, device, widget):
@@ -31,20 +31,18 @@ if __name__ == "__main__":
     # set up daq
     config = YAML(typ='safe', pure=True).load(INSTRUMENT_YAML)
 
-    daq_tasks = config['instrument']['devices']['daqs']['PCIe-6738']['tasks']
+    daq_tasks = config['instrument_view']['livestream_tasks']['PCIe-6738']['tasks']
     ao_task = daq_tasks['ao_task']
-    do_task = daq_tasks['do_task']
     co_task = daq_tasks['co_task']
 
-    daq_object = DAQ("Dev2", daq_tasks)
+    daq_object = DAQ("Dev2")
+    daq_object.tasks = daq_tasks
     daq_object.add_task('ao')
-    daq_object.add_task('do')
     daq_object.add_task('co')
     daq_object.generate_waveforms('ao', '488')
-    daq_object.generate_waveforms('do', '488')
     daq_object.write_ao_waveforms()
-    daq_object.write_do_waveforms()
-    daq_tasks = NIWidget(daq_object, daq_tasks)
+
+    daq_tasks = NIWidget(daq_object)
     daq_tasks.show()
     daq_tasks.ValueChangedInside[str].connect(
         lambda value, dev=daq_object, widget=daq_tasks,: widget_property_changed(value, dev, widget))

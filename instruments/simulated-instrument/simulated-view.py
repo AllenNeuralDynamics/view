@@ -2,56 +2,44 @@ from qtpy.QtWidgets import QApplication, QMessageBox, QPushButton, QFileDialog
 import sys
 from view.instrument_view import InstrumentView
 from view.acquisition_view import AcquisitionView
-from voxel.instruments.microscopes.exaspim import ExASPIM
-from voxel.acquisition.exaspim import ExASPIMAcquisition
+from exaspim_control.exa_spim_instrument import ExASPIM
+from exaspim_control.exa_spim_acquisition import ExASPIMAcquisition
 from pathlib import Path
 import os
 import yaml
-from napari.qt.threading import thread_worker
-import pyclesperanto as cle
+from voxel.processes.gpu.gputools.downsample_2d import DownSample2D
 import inflection
+from qtpy.QtCore import Qt
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
 ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
 INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
 GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 
-# ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
-# INSTRUMENT_YAML = RESOURCES_DIR / 'speakeasy_instrument.yaml'
-# GUI_YAML = RESOURCES_DIR / 'speakeasy_gui.yaml'
 
 class SimulatedInstrumentView(InstrumentView):
     """View for ExASPIM Instrument"""
 
     def __init__(self, instrument, config_path: Path, log_level='INFO'):
+
         super().__init__(instrument, config_path, log_level)
         app.aboutToQuit.connect(self.update_config_on_quit)
 
         self.config_save_to = self.instrument.config_path
 
-    @thread_worker
-    def grab_frames(self, camera_name, frames=float("inf")):
-        """Grab frames from camera and create multiscale array
-        :param frames: how many frames to take
-        :param camera_name: name of camera"""
+    def update_layer(self, args, snapshot: bool = False):
+        """Multiscale image from exaspim
+        :param args: tuple containing image and camera name
+        :param snapshot: if image taken is a snapshot or not"""
 
-        i = 0
-        while i < frames:  # while loop since frames can == inf
-            with self.camera_locks[camera_name]:
-                frame = self.instrument.cameras[camera_name].grab_frame()
-
-            # TODO: Do we want to import from exaspim what to use?
-            multiscale = [frame]
-            input_frame = cle.push(frame)
-            for binning in range(2,6): # TODO: variable or get from somewhere?
-                downsampled_frame = cle.scale(input_frame,
-                                              factor_x=1 / binning,
-                                              factor_y=1 / binning,
-                                              device=cle.select_device(),
-                                              resize=True)
-                multiscale.append(cle.pull(downsampled_frame))
-            yield multiscale, camera_name  # wait until unlocking camera to be able to quit napari thread
-            i += 1
+        (image, camera_name) = args
+        if image is not None:
+            multiscale = [image]
+            downsampler = DownSample2D(binning=2)
+            for binning in range(0, 5):  # TODO: variable or get from somewhere?
+                downsampled_frame = downsampler.run(multiscale[-1])
+                multiscale.append(downsampled_frame)
+            super().update_layer((multiscale, camera_name), snapshot)
 
     def update_config_on_quit(self):
         """Add functionality to close function to save device properties to instrument config"""
@@ -95,7 +83,7 @@ class SimulatedInstrumentView(InstrumentView):
 
         fname = QFileDialog()
         folder = fname.getSaveFileName(directory=str(self.instrument.config_path))
-        if folder[0] != '': # user pressed cancel
+        if folder[0] != '':  # user pressed cancel
             msgBox.setText(f"Do you want to update the instrument configuration file at {folder[0]} "
                            f"to current instrument state?")
             self.config_save_to = folder[0]
@@ -110,5 +98,5 @@ if __name__ == "__main__":
     acquisition = ExASPIMAcquisition(instrument, ACQUISITION_YAML)
 
     instrument_view = SimulatedInstrumentView(instrument, GUI_YAML)
-    acquisition_view = AcquisitionView(acquisition, instrument_view, GUI_YAML)
+    acquisition_view = AcquisitionView(acquisition, instrument_view)
     sys.exit(app.exec_())

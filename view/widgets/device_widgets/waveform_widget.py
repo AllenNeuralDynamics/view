@@ -73,6 +73,12 @@ class WaveformWidget(PlotWidget):
                                                         f'<s><font size="50" color="{item.color}">&nbsp;&nbsp;&nbsp;'
                                                         f'</font></s>')
 
+    # def mouseMoveEvent(self, ev):
+    #     """Overwriting to disable panning"""
+    #     pass
+    def wheelEvent(self, ev):
+        """Overwriting to disable zoom"""
+        pass
 
 class DraggableGraphItem(GraphItem):
     # initialize waveform parameters
@@ -191,8 +197,9 @@ class DraggableGraphItem(GraphItem):
             self.offset_volts = (self.pos[2][1] + y_pos) / 2
             self.pos[2][1] = y_pos + (self.pos[2][1] - self.pos[3][1])
 
-        elif ind == 2 and getattr(self, 'device_max_volts') >= y_pos >= self.pos[3][1] >= getattr(self,
-                                                                                                  'device_min_volts'):
+        # elif ind == 2 and getattr(self, 'device_max_volts') >= y_pos >= self.pos[3][1] >= getattr(self,
+        #                                                                                           'device_min_volts'):
+        elif ind == 2 and getattr(self, 'device_max_volts') >= y_pos >=  getattr(self, 'device_min_volts'):
             y_list = [2]
             self.amplitude_volts = y_pos - self.offset_volts
             self.pos[3][1] = self.offset_volts - self.amplitude_volts
@@ -221,8 +228,9 @@ class DraggableGraphItem(GraphItem):
         # triangle will have 5 indices
         y_pos = ev.pos()[1] + self.dragOffsetY
 
-        if ind in [1, 3] and getattr(self, 'device_min_volts') <= y_pos <= self.pos[2][1] and \
-                y_pos + (self.pos[2][1] - self.pos[3][1]) <= getattr(self, 'device_max_volts'):
+        # if ind in [1, 3] and getattr(self, 'device_min_volts') <= y_pos <= self.pos[2][1] and \
+        #         y_pos + (self.pos[2][1] - self.pos[3][1]) <= getattr(self, 'device_max_volts'):
+        if ind in [1, 3] and getattr(self, 'device_min_volts') <= y_pos <= getattr(self, 'device_max_volts'):
             y_list = [0, 1, 3, 4]
             self.offset_volts = (self.pos[2][1] + y_pos) / 2
             self.pos[2][1] = y_pos + (self.pos[2][1] - self.pos[3][1])

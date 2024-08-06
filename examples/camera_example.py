@@ -3,7 +3,7 @@ from view.widgets.device_widgets.camera_widget import CameraWidget
 from qtpy.QtWidgets import QApplication
 import sys
 from qtpy.QtCore import Slot
-
+import inspect
 
 def scan_for_properties(device):
     """Scan for properties with setters and getters in class and return dictionary

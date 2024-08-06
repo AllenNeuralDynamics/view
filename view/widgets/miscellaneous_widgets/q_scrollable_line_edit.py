@@ -26,3 +26,4 @@ class QScrollableLineEdit(QLineEdit):
         self.setText(str(value))
 
 
+

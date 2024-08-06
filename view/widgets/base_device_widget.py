@@ -1,6 +1,6 @@
 from qtpy.QtCore import Signal, Slot, QTimer
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-from qtpy.QtWidgets import QWidget, QLineEdit, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow, QGridLayout, QFrame
+from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow
 from inspect import currentframe
 import importlib
 import enum
@@ -9,24 +9,24 @@ import re
 import logging
 import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
-#TODO deal with lists somehow. Some way to add maybe if setter?
+import inspect
 
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
     ValueChangedInside = Signal((str,))
 
-    def __init__(self, device_object, properties: dict):
+    def __init__(self, device_type, properties: dict):
         """Base widget for devices like camera, laser, stage, ect. Widget will scan properties of
         device object and create editable inputs for each if not in device_widgets class of device. If no device_widgets
         class is provided, then all properties are exposed
-        :param device_object: class or dictionary of device object
+        :param device_type: type of class or dictionary of device object
         :param properties: dictionary contain properties displayed in widget as keys and initial values as values"""
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         super().__init__()
-        self.device_object = device_object
-        self.device_driver = importlib.import_module(self.device_object.__module__) if type(self.device_object) != dict \
+        self.device_type = device_type
+        self.device_driver = importlib.import_module(self.device_type.__module__) if type(self.device_type) != dict \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
         self.create_property_widgets(properties, 'property')
 
@@ -42,7 +42,9 @@ class BaseDeviceWidget(QMainWindow):
         widgets = {}
         for name, value in properties.items():
             setattr(self, name, value)  # Add device properties as widget properties
-            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]))}
+            attr = getattr(self.device_type, name, None)
+            unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
+            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]+f'_{unit}'))}
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name
 
@@ -54,23 +56,30 @@ class BaseDeviceWidget(QMainWindow):
                 input_specs = value
                 widget_type = 'text'
             boxes = {}
+
             if not hasattr(value, 'keys') or type(arg_type) == enum.EnumMeta:
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
+
             elif hasattr(value, 'keys'):
                 for k, v in input_specs.items():
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
-                    label = QLabel(label_maker(k))
-                    if hasattr(v, 'keys') and widget_type != 'combo':  # values are complex and should be another widget
+                    label = QLabel(label_maker(k+f'_{unit}'))
+
+                    # if value has an item that is a dictionary but the widget type is not a combo box,
+                    # unique widgets should be made for this dictionary
+                    if hasattr(v, 'keys') and widget_type != 'combo':
                         box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # unique key for attribute
+                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
+
                     else:
                         box = self.create_attribute_widget(f"{name}.{k}", widget_type, v)
+
                     boxes[k] = create_widget('V', label, box)
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
 
-            if attr := getattr(self.device_object, name, False):  # if name is attribute of device
+            if attr is not None:  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring
                 if getattr(attr, 'fset', None) is None:  # Constant, unchangeable attribute
                     widgets[name].setDisabled(True)
@@ -80,7 +89,7 @@ class BaseDeviceWidget(QMainWindow):
         return widgets
 
     def create_attribute_widget(self, name, widget_type, values):
-        """Create a widget and create coresponding attribute
+        """Create a widget and create corresponding attribute
                 :param name: name of property
                 :param widget_type: widget type (QLineEdit or QCombobox)
                 :param values: input into widget"""
@@ -177,6 +186,7 @@ class BaseDeviceWidget(QMainWindow):
 
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""
+
         self.__dict__[name] = value
         if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)
@@ -220,9 +230,9 @@ def label_maker(string):
     """
 
     possible_units = ['mm', 'um', 'px', 'mW', 'W', 'ms', 'C', 'V', 'us']
-
     label = string.split('_')
     label = [words.capitalize() for words in label]
+
     for i, word in enumerate(label):
         for unit in possible_units:
             if unit.lower() == word.lower():    # TODO: Consider using regular expression here for better results?
@@ -247,8 +257,8 @@ def scan_for_properties(device):
     for attr_name in dir(device):
         try:
             attr = getattr(type(device), attr_name, None)
-            if isinstance(attr, property) and getattr(device, attr_name, None) is not None:
-                prop_dict[attr_name] = getattr(device, attr_name)
+            if isinstance(attr, property) or isinstance(inspect.unwrap(attr), property):
+                prop_dict[attr_name] = getattr(device, attr_name, None)
         except ValueError:  # Some attributes in processes raise ValueError if not started
             pass
 

@@ -1,10 +1,12 @@
 from pymmcore_widgets import ZPlanWidget as ZPlanWidgetMMCore
-from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget
+from qtpy.QtWidgets import QWidget, QDoubleSpinBox, QLabel, QHBoxLayout, QCheckBox, QSizePolicy, QStackedWidget, \
+    QGroupBox, QDoubleSpinBox
 from qtpy.QtCore import Qt, Signal
 import useq
 import enum
 import numpy as np
 from superqt.utils import signals_blocked
+import inspect
 
 class Mode(enum.Enum):
     """Recognized ZPlanWidget modes."""
@@ -37,6 +39,16 @@ class ScanPlanWidget(QWidget):
         self._scan_volumes = np.zeros([0, 1], dtype=float)
 
         self.stacked_widget = QStackedWidget()
+        # put widget into group box to display info in title
+        self.group_box = QGroupBox()
+        layout = QHBoxLayout()
+        layout.addWidget(self.stacked_widget)
+        self.group_box.setLayout(layout)
+        self.group_box.setTitle(f'Tile Volume')
+        self.group_box.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.stacked_widget.currentChanged.connect(lambda index: self.group_box.setTitle(
+            f'Tile Volume {self.stacked_widget.currentWidget().windowTitle()}') if not self.apply_all.isChecked()
+                                                                else self.group_box.setTitle(f'Tile Volume'))
 
         checkbox_layout = QHBoxLayout()
         self.apply_all = QCheckBox('Apply to All')
@@ -48,27 +60,6 @@ class ScanPlanWidget(QWidget):
         self.setLayout(checkbox_layout)
 
         self.show()
-
-    @property
-    def grid_position(self):
-        """Return the start position of grid"""
-        return self._grid_position
-
-    @grid_position.setter
-    def grid_position(self, value):
-        """Set start position of grid for all tiles"""
-
-        # mimic apply all if not checked so  only need to set_scan_start once for (0,0) and other widgets will update
-        if not self.apply_all.isChecked():
-            # block signals to only trigger graph update once
-            self.blockSignals(True)
-            self.apply_all.setChecked(True)
-            self.blockSignals(False)
-
-            self.z_plan_widgets[0, 0].start.setValue(value)
-            self.apply_all.setChecked(False)
-
-        self._grid_position = value
 
     @property
     def scan_starts(self):
@@ -96,12 +87,12 @@ class ScanPlanWidget(QWidget):
         value = z0.value()
         if self.apply_all.isChecked() and (row, column) == (0, 0):
             # update scan start, volume, and tile visibility
-            self._scan_starts[:, :] = value[0]
-            self._scan_volumes[:, :] = value[-1] - value[0]
+            self._scan_starts[:, :] = min(value)
+            self._scan_volumes[:, :] = max(value) - min(value)
             self._tile_visibility[:, :] = not z0.hide.isChecked()
 
             for i, j in np.ndindex(self.z_plan_widgets.shape):
-                if (i, j) == (0,0):
+                if (i, j) == (0, 0):
                     continue
                 z = self.z_plan_widgets[i, j]
                 if type(getattr(z, attr)) == QCheckBox:
@@ -110,8 +101,8 @@ class ScanPlanWidget(QWidget):
                     getattr(z, attr).setValue(widget_value)
                 z._on_change()  # update widget
         else:
-            self._scan_starts[row, column] = value[0]
-            self._scan_volumes[row, column] = value[-1] - value[0]
+            self._scan_starts[row, column] = min(value)
+            self._scan_volumes[row, column] = max(value) - min(value)
             self._tile_visibility[row, column] = not z0.hide.isChecked()
 
         self.scanChanged.emit()
@@ -126,8 +117,8 @@ class ScanPlanWidget(QWidget):
             if (row, column) == (0, 0):
                 z0 = self.z_plan_widgets[0, 0]
                 value = z0.value()
-                self._scan_starts[:, :] = value[0]
-                self._scan_volumes[:, :] = value[-1] - value[0]
+                self._scan_starts[:, :] = min(value)
+                self._scan_volumes[:, :] = max(value) - min(value)
                 self._tile_visibility[:, :] = not z0.hide.isChecked()
             else:
                 # if not checked, enable all widgets and connect signals: else, disable all and disconnect signals
@@ -145,24 +136,24 @@ class ScanPlanWidget(QWidget):
 
         if self.apply_all.isChecked():
             for i, j in np.ndindex(self.z_plan_widgets.shape):
-                if (i, j) == (0,0):
+                if (i, j) == (0, 0):
                     continue
                 z = self.z_plan_widgets[i, j]
-                z.setMode(self.z_plan_widgets[0, 0].mode())    # set mode to the same as 0, 0 to update correctly
+                z.setMode(self.z_plan_widgets[0, 0].mode())  # set mode to the same as 0, 0 to update correctly
 
     def scan_plan_construction(self, value: useq.GridFromEdges | useq.GridRowsColumns | useq.GridWidthHeight):
         """Create new z_plan widget for each new tile """
 
-        if self.z_plan_widgets.shape[0] != value.rows or self.z_plan_widgets.shape[1] != value.columns:
+        rows = value.rows
+        cols = value.columns
+        if self.z_plan_widgets.shape[0] != rows or self.z_plan_widgets.shape[1] != cols:
             old_row = self.z_plan_widgets.shape[0]
             old_col = self.z_plan_widgets.shape[1]
 
-            rows = value.rows
-            cols = value.columns
             # close old row and column widget
             if rows - old_row < 0:
                 for i in range(rows, old_row):
-                    for j in range(old_col):
+                    for j in range(cols):
                         self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
                         self.z_plan_widgets[i, j].close()
 
@@ -171,17 +162,16 @@ class ScanPlanWidget(QWidget):
                     for i in range(old_row):
                         self.stacked_widget.removeWidget(self.z_plan_widgets[i, j])
                         self.z_plan_widgets[i, j].close()
-
             # resize array to new size
             for array, name in zip([self.z_plan_widgets, self.tile_visibility, self.scan_starts, self.scan_volumes],
                                    ['z_plan_widgets', '_tile_visibility', '_scan_starts', '_scan_volumes']):
-
-                v = array[0, 0] if array.shape != (0,1) else 0  # initialize array with value from first tile
+                v = array[0, 0] if array.shape != (0, 1) else 0  # initialize array with value from first tile
                 if rows > old_row:  # add row
                     add_on = [[v] * array.shape[1]] * (rows - old_row)
                     setattr(self, name, np.concatenate((array, add_on), axis=0))
                 elif rows < old_row:  # remove row
-                    setattr(self, name, np.delete(array, [old_row - x for x in range(1, (old_row - rows) + 1)], axis=0))
+                    setattr(self, name, np.delete(array, [old_row - x for x in range(1, (old_row - rows)+1)], axis=0))
+                array = getattr(self, name)  # update in case rows changed
                 if cols > old_col:  # add column
                     add_on = [[v] * (cols - old_col) for _ in range(array.shape[0])]
                     setattr(self, name, np.concatenate((array, add_on), axis=1))
@@ -197,6 +187,7 @@ class ScanPlanWidget(QWidget):
                 for i in range(old_row):  # if new rows, already taken care of in previous loop
                     for j in range(old_col, cols):
                         self.create_z_plan_widget(i, j)
+
         self.scanChanged.emit()
 
     def create_z_plan_widget(self, row, column):
@@ -205,13 +196,15 @@ class ScanPlanWidget(QWidget):
         z = ZPlanWidget(self.z_limits, self.unit)
         self.z_plan_widgets[row, column] = z
         z.setWindowTitle(f'({row}, {column})')
-
+        z.setMode(self.z_plan_widgets[0, 0].mode())
         # connect signals for each input
         for name in ['start', 'top', 'step', 'steps', 'range', 'above', 'below']:
             widget = getattr(z, name)
-            widget.valueChanged.connect(lambda value, attr=name: self.update_scan(value, attr, row, column))
-            if self.apply_all.isChecked() and (row, column) != (0, 0):  # update widget with appropriate values
+            if type(widget) == QDoubleSpinBox:
+                widget.setDecimals(6)
+            if (row, column) != (0, 0):  # update widget with appropriate values
                 widget.setValue(getattr(self.z_plan_widgets[0, 0], name).value())
+            widget.valueChanged.connect(lambda value, attr=name: self.update_scan(value, attr, row, column))
         z.hide.toggled.connect(lambda value: self.update_scan(value, 'hide', row, column))
         z.hide.setChecked(not self._tile_visibility[row, column])
 
@@ -221,8 +214,10 @@ class ScanPlanWidget(QWidget):
         elif (row, column) == (0, 0):
             z._mode_group.triggered.connect(self.toggle_mode)
 
-        # added label identifying what tile it corresponds to
-        z._grid_layout.addWidget(QLabel(f'({row}, {column})'), 7, 1)
+        # update minimum value of end if start changes
+        z.top.setMinimum(z.start.value())
+        z.start.valueChanged.connect(lambda value: z.top.setMinimum(value))
+
         self.stacked_widget.addWidget(z)
         self.tileAdded.emit(row, column)
 
@@ -235,6 +230,7 @@ class ScanPlanWidget(QWidget):
 
         for name in ['start', 'top', 'step', 'steps', 'range', 'above', 'below']:
             getattr(z, name).blockSignals(block)
+
 
 class ZPlanWidget(ZPlanWidgetMMCore):
     """Widget to plan out scanning dimension"""
@@ -262,14 +258,20 @@ class ZPlanWidget(ZPlanWidgetMMCore):
                 elif widget.text() == '\u00b5m':
                     widget.setText(unit)
 
-        self._set_row_visible(0, False) # hide steps row
+        self._set_row_visible(0, False)  # hide steps row
         self._bottom_to_top.hide()
         self._top_to_bottom.hide()
         self.layout().children()[-1].itemAt(2).widget().hide()  # Direction label
 
-        # Add start box
+        # Add start box and trigger limit changes when valuechanged
+        self.start.setSingleStep(.1)
+        self.start.setRange(min(z_limits), max(z_limits))
+        self.start.valueChanged.connect(lambda v: self.range.setRange(0, min([abs(v-l) for l in z_limits])))
+        self.start.valueChanged.connect(lambda v: self.below.setRange(0, abs(v-min(z_limits))))
+        self.start.valueChanged.connect(lambda v: self.below.setRange(0, abs(v - max(z_limits))))
         self.start.valueChanged.connect(self._on_change)
-        self.start.setRange(z_limits[0], z_limits[1])
+        self.top.setRange(min(z_limits), max(z_limits))
+
         self._grid_layout.addWidget(QLabel("Start:"), 4, 0, Qt.AlignmentFlag.AlignRight)
         self._grid_layout.addWidget(self.start, 4, 1)
         # Add hide checkbox
@@ -284,9 +286,9 @@ class ZPlanWidget(ZPlanWidgetMMCore):
         if self._mode.value == 'top_bottom':
             return [self.start.value(), self.top.value()]
         elif self._mode.value == 'range_around':
-            return [self.start.value() + self.range.value()/2, self.start.value() - self.range.value()/2]
+            return [self.start.value() + self.range.value() / 2, self.start.value() - self.range.value() / 2]
         elif self._mode.value == 'above_below':
-            return [self.start.value()+self.above.value(), self.start.value()-self.below.value()]
+            return [self.start.value() + self.above.value(), self.start.value() - self.below.value()]
 
     def _on_change(self, update_steps: bool = True):
         """Overwrite to change setting step behaviour"""
@@ -307,6 +309,5 @@ class ZPlanWidget(ZPlanWidgetMMCore):
         """Overwrite to round step to stay within z range"""
         if steps:
             with signals_blocked(self.step):
-                print(self.currentZRange() / steps)
                 self.step.setValue(self.currentZRange() / steps)
         self._on_change(update_steps=False)

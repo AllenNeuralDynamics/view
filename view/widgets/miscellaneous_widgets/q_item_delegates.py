@@ -1,6 +1,5 @@
 from qtpy.QtWidgets import QStyledItemDelegate, QTextEdit, QSpinBox, QComboBox, QDoubleSpinBox
 
-
 class QTextItemDelegate(QStyledItemDelegate):
     """QStyledItemDelegate acting like QTextEdit"""
 
@@ -36,16 +35,17 @@ class QSpinItemDelegate(QStyledItemDelegate):
 
     def __init__(self, minimum=None, maximum=None, step=None, parent=None):
         super().__init__(parent)
-        self.minimum = minimum
-        self.maximum = maximum
+        self.minimum = minimum if minimum is not None else -2147483647
+        self.maximum = maximum if maximum is not None else 2147483647
         self.step = step if step is not None else .01
 
     def createEditor(self, parent, options, index):
         box = QSpinBox(parent) if type(self.step) == int else QDoubleSpinBox(parent)
-        if self.minimum is not None:
-            box.setMinimum(self.minimum)
-        if self.maximum is not None:
-            box.setMaximum(self.maximum)
+
+        box.setMinimum(self.minimum)
+        box.setMaximum(self.maximum)
+        if type(box) == QDoubleSpinBox:
+            box.setDecimals(5)
         box.setSingleStep(self.step)
         return box
 

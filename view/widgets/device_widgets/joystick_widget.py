@@ -1,6 +1,5 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, label_maker, scan_for_properties
-from qtpy.QtWidgets import QLabel
-
+from qtpy.QtWidgets import QLabel, QFrame, QVBoxLayout
 
 class JoystickWidget(BaseDeviceWidget):
 
@@ -11,9 +10,10 @@ class JoystickWidget(BaseDeviceWidget):
 
         properties = scan_for_properties(joystick) if advanced_user else {}
         super().__init__(type(joystick), properties)
-        if advanced_user:
-            self.create_axis_combo_box()
+        self.advanced_user = advanced_user
 
+        if self.advanced_user:
+            self.create_axis_combo_box()
 
     def create_axis_combo_box(self):
         """Transform Instrument Axis text box into combo box and allow selection of only available axes"""
@@ -30,12 +30,18 @@ class JoystickWidget(BaseDeviceWidget):
             new_widget.currentTextChanged.connect(self.update_axes_selection)
             widget_dict = {'label': QLabel(label_maker(joystick_axis)),
                            **getattr(self, f'joystick_mapping.{joystick_axis}_widgets')}
-            joystick_widgets.append(create_widget('V', **widget_dict))
+            # add frame
+            frame = QFrame()
+            layout = QVBoxLayout()
+            layout.addWidget(create_widget('V', **widget_dict))
+            frame.setLayout(layout)
+            frame.setStyleSheet(f".QFrame {{ border:1px solid grey ; }} ")
+            if not self.advanced_user:
+                frame.setEnabled(False)
+            joystick_widgets.append(frame)
 
         self.centralWidget().layout().replaceWidget(self.property_widgets['joystick_mapping'],
                                                     create_widget('HV', *joystick_widgets))
-
-
 
     def update_axes_selection(self):
         """When joystick axis mapped to new stage axis, update available stage axis"""

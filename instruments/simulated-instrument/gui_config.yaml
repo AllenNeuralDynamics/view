@@ -1,110 +1,120 @@
-device_widgets:
-    ASI MS-8000 z axis:
-      type:   scanning_stage
-      driver: view.widgets.device_widgets.stage_widget
-      module: StageWidget
-      init:
-        advanced_user: False
-    ASI MS-8000 y axis:
-      type: tiling_stage
-      driver: view.widgets.device_widgets.stage_widget
-      module: StageWidget
-      init:
-        advanced_user: False
-    ASI MS-8000 x axis:
-      type:   tiling_stage
-      driver: view.widgets.device_widgets.stage_widget
-      module: StageWidget
-      init:
-        advanced_user: False
-    tigerbox:
-      type: joystick
-      driver: view.widgets.device_widgets.joystick_widget
-      module: JoystickWidget
-      init:
-        advanced_user: False
-    "488nm":
-      type: laser
-      driver: view.widgets.device_widgets.laser_widget
-      module: LaserWidget
-      init:
-        color: blue
-        advanced_user: False
-    "561nm":
-      type: laser
-      driver: view.widgets.device_widgets.laser_widget
-      module: LaserWidget
-      init:
-        color: green
-        advanced_user: False
-    "639nm":
-      type: laser
-      driver: view.widgets.device_widgets.laser_widget
-      module: LaserWidget
-      init:
-        color: red
-        advanced_user: True
-    ASI FW-1000:
-      type: filter_wheel
-      driver: view.widgets.device_widgets.filter_wheel_widget
-      module: FilterWheelWidget
-      init:
-        advanced_user: True
-    vp-151mx:
-      type: camera
-      driver: view.widgets.device_widgets.camera_widget
-      module: CameraWidget
-      init:
-        advanced_user: True
-    vnp-604mx:
-      type: camera
-      driver: view.widgets.device_widgets.camera_widget
-      module: CameraWidget
-      init:
-        advanced_user: True
-    PCIe-6738:
-      type: daq
-      driver: view.widgets.device_widgets.ni_widget
-      module: NIWidget
-      init:
+instrument_view:
+  device_widgets:
+      ASI MS-8000 z axis:
+        type:   scanning_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+      ASI MS-8000 y axis:
+        type: tiling_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+      ASI MS-8000 x axis:
+        type:   tiling_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+      n stage axis:
+        type: focusing_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+        updating_properties:
+          - position_mm
+      tigerbox:
+        type: joystick
+        driver: view.widgets.device_widgets.joystick_widget
+        module: JoystickWidget
+        init:
+          advanced_user: False
+      "488nm":
+        type: laser
+        driver: view.widgets.device_widgets.laser_widget
+        module: LaserWidget
+        init:
+          color: blue
+          advanced_user: False
+      "561nm":
+        type: laser
+        driver: view.widgets.device_widgets.laser_widget
+        module: LaserWidget
+        init:
+          color: green
+          advanced_user: False
+      "639nm":
+        type: laser
+        driver: view.widgets.device_widgets.laser_widget
+        module: LaserWidget
+        init:
+          color: red
           advanced_user: True
-          exposed_branches:
-            tasks.ao_task.ports.tunable lens:
-              parameters.amplitude_volts.channels:
-                    "488": 1.0
-                    "561": 1.0
-                    "639": 1.0
-            tasks.ao_task.ports.x galvo mirror:
-              parameters:
-                amplitude_volts:
-                  channels:
-                    "488": 1.0
-                    "561": 1.0
-                    "639": 1.0
-                offset_volts:
-                  channels:
-                    "488": 2.5
-                    "561": 2.5
-operation_widgets:
-  volume_widget:
-    init:
-      fov_dimensions: [0.686592, 0.686592]
-      coordinate_plane: ['x', 'y', 'z']
-      unit: 'mm'
-      channels:
-        '488':
-          filters: [ BP488 ]
-          lasers: [ 488nm ]
-          cameras: [ vnp-604mx ]
-        '561':
-          filters: [ BP561 ]
-          lasers: [ 561nm ]
-          cameras: [ vnp-604mx ]
-        '639':
-          filters: [ LP638 ]
-          lasers: [ 639nm ]
-          cameras: [ vnp-604mx ]
-      settings:
-        cameras: [binning]
-        lasers: [power_setpoint_mw]
-        filter_wheels: [filter]
+      ASI FW-1000:
+        type: filter_wheel
+        driver: view.widgets.device_widgets.filter_wheel_widget
+        module: FilterWheelWidget
+        init:
+          advanced_user: True
+      vp-151mx:
+        type: camera
+        driver: view.widgets.device_widgets.camera_widget
+        module: CameraWidget
+        init:
+          advanced_user: False
+      PCIe-6738:
+        type: daq
+        driver: view.widgets.device_widgets.ni_widget
+        module: NIWidget
+        init:
+            advanced_user: True
+            exposed_branches:
+              tasks.ao_task.ports.tunable lens:
+                parameters.amplitude_volts.channels:
+                      "488": 1.0
+                      "561": 1.0
+                      "639": 1.0
+              tasks.ao_task.ports.x galvo mirror:
+                parameters:
+                  amplitude_volts:
+                    channels:
+                      "488": 1.0
+                      "561": 1.0
+                      "639": 1.0
+                  offset_volts:
+                    channels:
+                      "488": 2.5
+                      "561": 2.5
+acquisition_view:
+  fov_dimensions: [ 10.672384, 8.00128 ]
+  coordinate_plane: [ '-x', 'y', 'z' ]
+  unit: 'mm'
+  settings:
+    cameras: [ binning ]
+    lasers: [ power_setpoint_mw ]
+    focusing_stages: [position_mm]
+    start_delay_time:
+      delegate: spin
+      type: float
+      minimum: 0
+    repeats:
+      delegate: spin
+      type: int
+      minimum: 0
+    example:
+      delegate: combo
+      type: str
+      items: [ 'this', 'is', 'an', 'example' ]
+  operation_widgets:
+    vp-151mx:
+      imaris:
+        type: writer
+        updating_properties:
+          - progress
+      robocopy:
+        type: transfer
+        updating_properties:
+          - progress
