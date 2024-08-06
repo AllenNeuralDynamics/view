@@ -14,17 +14,17 @@ class ChannelPlanWidget(QTabWidget):
 
     channelAdded = Signal([str])
 
-    def __init__(self, instrument_view, channels: dict, settings: dict, unit: str = 'um'):
+    def __init__(self, instrument_view, channels: dict, properties: dict, unit: str = 'um'):
         """
         :param channels: dictionary defining channels for instrument
-        :param settings: allowed setting for devices
+        :param properties: allowed setting for devices
         """
 
         super().__init__()
 
         self.possible_channels = channels
         self.channels = []
-        self.settings = settings
+        self.properties = properties
         self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
 
         # setup units for step size and step calculation
@@ -82,19 +82,19 @@ class ChannelPlanWidget(QTabWidget):
 
             columns = ['step size [um]', 'steps', 'prefix']
             delegates = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
-            for device_type, settings in self.settings.items():
+            for device_type, properties in self.properties.items():
                 if device_type in self.possible_channels[channel].keys():
                     for device_name in self.possible_channels[channel][device_type]:
                         device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
                         device_object = getattr(instrument_view.instrument, device_type)[device_name]
-                        for setting in settings:
+                        for setting in properties:
                             # select delegate to use based on type
                             column_name = label_maker(f'{device_name}_{setting}')
                             descriptor = getattr(type(device_object), setting)
                             if not isinstance(descriptor, property) or getattr(descriptor, 'fset', None) is None:
                                 self.column_data_types[column_name] = None
                                 continue
-                            # try and correctly type settings based on setter
+                            # try and correctly type properties based on setter
                             fset = getattr(descriptor, 'fset')
                             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
                             self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
@@ -111,21 +111,21 @@ class ChannelPlanWidget(QTabWidget):
                                 delegates.append(QComboItemDelegate(items=items))
                             else:  # TODO: How to handle dictionary values
                                 delegates.append(QTextItemDelegate())
-                elif type(settings) == dict:     # TODO: how to validate the GUI yaml?
+                elif type(properties) == dict:     # TODO: how to validate the GUI yaml?
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
                     columns.append(column_name)
-                    if settings['delegate'] == 'spin':
-                        minimum = settings.get('minimum', None)
-                        maximum = settings.get('maximum', None)
-                        step = settings.get('step', .1 if settings['type'] == 'float' else 1 )
+                    if properties['delegate'] == 'spin':
+                        minimum = properties.get('minimum', None)
+                        maximum = properties.get('maximum', None)
+                        step = properties.get('step', .1 if properties['type'] == 'float' else 1 )
                         delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                        self.column_data_types[column_name] = float if settings['type'] == 'float' else int
-                    elif settings['delegate'] == 'combo':
-                        items = settings['items']
+                        self.column_data_types[column_name] = float if properties['type'] == 'float' else int
+                    elif properties['delegate'] == 'combo':
+                        items = properties['items']
                         delegates.append(QComboItemDelegate(items=items))
                         type_mapping = {'int':int, 'float':float, 'str': str}
-                        self.column_data_types[column_name] = type_mapping[settings['type']]
+                        self.column_data_types[column_name] = type_mapping[properties['type']]
                     else:
                         delegates.append(QTextItemDelegate())
                         self.column_data_types[column_name] = str

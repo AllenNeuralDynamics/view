@@ -55,7 +55,7 @@ class InstrumentView(QWidget):
         self.snapshot = False  # flag to signal snapshot has been taken
 
         self.instrument = instrument
-        self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
+        self.config = YAML().load(config_path)  # TODO: maybe bulldozing comments but easier
 
         # Convenient config maps
         self.channels = self.instrument.config['instrument']['channels']
@@ -515,7 +515,7 @@ class InstrumentView(QWidget):
 
             # attempt to pass in correct value of correct type
             descriptor = getattr(type(device), name_lst[0])
-            fset = getattr(descriptor, 'fset')  # account for property and deliminated
+            fset = getattr(descriptor, 'fset')
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
             if input_type != inspect._empty:
                 setattr(device, name_lst[0], input_type(value))
