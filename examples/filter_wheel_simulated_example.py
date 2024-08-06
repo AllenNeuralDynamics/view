@@ -62,7 +62,7 @@ if __name__ == "__main__":
     widget.ValueChangedInside[str].connect(
         lambda value, dev=filter_wheel, widget=widget,: widget_property_changed(value, dev, widget))
     widget.show()
-    t1 = threading.Thread(target=move_filter)
-    t1.start()
+    # t1 = threading.Thread(target=move_filter)
+    # t1.start()
 
     sys.exit(app.exec_())

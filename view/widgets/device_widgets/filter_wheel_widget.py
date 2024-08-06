@@ -95,11 +95,11 @@ class FilterWheelGraph(PlotWidget):
         angles = [pi / 2+(2 * pi / l * i) for i in range(l)]
         self.points = {}
         for angle, (filter, i) in zip(angles, self.filters.items()):
-            color = QColor(colors.get(filter, None)).getRgb()
+            color = QColor(colors.get(filter, 'black')).getRgb()
             pos = [self.filter_path * cos(angle), self.filter_path * sin(angle)]
             # create scatter point filter
             point = FilterItem(filter_name=filter, size=filter_diameter, pxMode=False, pos=[pos])
-            point.setPen(mkPen(color))  # outline of filter
+            point.setPen(mkPen((0, 0, 0, 100), width=2))  # outline of filter
             point.setBrush(mkBrush(color))  # color of filter
             point.pressed.connect(self.move_wheel)
             self.addItem(point)
