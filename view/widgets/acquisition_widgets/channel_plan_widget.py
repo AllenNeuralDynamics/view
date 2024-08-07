@@ -13,6 +13,7 @@ class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
 
     channelAdded = Signal([str])
+    channelChanged = Signal()
 
     def __init__(self, instrument_view, channels: dict, properties: dict, unit: str = 'um'):
         """
@@ -298,6 +299,8 @@ class ChannelPlanWidget(QTabWidget):
         menu.addAction(action)
         self.add_tool.setMenu(menu)
 
+        self.channelChanged.emit()
+
     def cell_edited(self, row, column, channel=None):
         """Update table based on cell edit"""
 
@@ -329,6 +332,7 @@ class ChannelPlanWidget(QTabWidget):
             array[*tile_index] = value
         table.blockSignals(False)
 
+        self.channelChanged.emit()
     def update_steps(self, tile_index, row,  channel):
         """Update number of steps based on volume"""
 

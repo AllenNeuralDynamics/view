@@ -6,18 +6,21 @@ from view.widgets.acquisition_widgets.volume_model import VolumeModel
 from view.widgets.acquisition_widgets.tile_plan_widget import TilePlanWidget
 from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidget
 from view.widgets.base_device_widget import create_widget
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal
 import numpy as np
 import useq
 from view.widgets.base_device_widget import label_maker
 
+
 class VolumeWidget(QWidget):
     """Widget to combine scanning, tiling, channel, and model together to ease acquisition setup"""
+
+    tilesChanged = Signal()
 
     def __init__(self,
                  instrument_view,
                  channels: dict,
-                 settings: dict,
+                 properties: dict,
                  limits=[[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]],
                  coordinate_plane: list[str] = ['x', 'y', 'z'],
                  fov_dimensions: list[float] = [1.0, 1.0, 0],
@@ -26,7 +29,7 @@ class VolumeWidget(QWidget):
                  ):
         """
         :param channels: dictionary defining channels for instrument
-        :param settings: allowed setting for devices
+        :param properties: allowed prop for devices
         :param limits: list of limits ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param coordinate_plane: list describing instrument coordinate plane ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
         :param fov_dimensions: list of fov_dims which correspond to tiling dimensions
@@ -87,8 +90,10 @@ class VolumeWidget(QWidget):
         splitter.addWidget(top_widget)
 
         # create channel plan widget
-        self.channel_plan = ChannelPlanWidget(instrument_view, channels, settings, unit)
+        self.channel_plan = ChannelPlanWidget(instrument_view, channels, properties, unit)
         self.channel_plan.channelAdded.connect(self.channel_added)
+        self.channel_plan.channelAdded.connect(self.tilesChanged.emit)
+        self.channel_plan.channelChanged.connect(self.tilesChanged.emit)
         self.channel_plan.apply_to_all = True
 
         # setup table
@@ -210,6 +215,7 @@ class VolumeWidget(QWidget):
             scan_dim_1 = self.table.item(table_row, 2)
             self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][0]), scan_dim_0)
             self.undercover_update_item(float(self.tile_plan_widget.tile_positions[tile.row][tile.col][1]), scan_dim_1)
+        self.tilesChanged.emit()
 
     def update_model(self):
         """When scan changes, update model"""
@@ -467,7 +473,6 @@ class VolumeWidget(QWidget):
         :param image: numpy array of image key in fov_images
         :param contrast_levels: levels for passed in image"""
 
-
         self.volume_model.adjust_glimage_contrast(image, contrast_limits)
 
     def create_tile_list(self):
@@ -483,7 +488,6 @@ class VolumeWidget(QWidget):
             for ch in self.channel_plan.channels:
                 for tile in self.tile_plan_widget.value():
                     tiles.append(self.write_tile(ch, tile))
-
         return tiles
 
     def write_tile(self, channel, tile):
@@ -495,24 +499,24 @@ class VolumeWidget(QWidget):
         tile_dict = {
             'channel': channel,
             f'position_{self.unit}': {k[0]: self.table.item(table_row, j + 1).data(Qt.EditRole) for j, k in
-                         enumerate(self.columns[1:-1])},
+                                      enumerate(self.columns[1:-1])},
             'tile_number': table_row,
         }
 
         # load channel plan values
-        for device_type, settings in self.channel_plan.settings.items():
+        for device_type, properties in self.channel_plan.properties.items():
             if device_type in self.channel_plan.possible_channels[channel].keys():
                 for device_name in self.channel_plan.possible_channels[channel][device_type]:
                     tile_dict[device_name] = {}
-                    for setting in settings:
-                        column_name = label_maker(f'{device_name}_{setting}')
+                    for prop in properties:
+                        column_name = label_maker(f'{device_name}_{prop}')
                         if getattr(self.channel_plan, column_name, None) is not None:
                             array = getattr(self.channel_plan, column_name)[channel]
                             input_type = self.channel_plan.column_data_types[column_name]
                             if input_type is not None:
-                                tile_dict[device_name][setting] = input_type(array[row, column])
+                                tile_dict[device_name][prop] = input_type(array[row, column])
                             else:
-                                tile_dict[device_name][setting] = array[row, column]
+                                tile_dict[device_name][prop] = array[row, column]
             else:
                 column_name = label_maker(f'{device_type}')
                 if getattr(self.channel_plan, column_name, None) is not None:
@@ -526,5 +530,4 @@ class VolumeWidget(QWidget):
         for name in ['steps', 'step_size', 'prefix']:
             array = getattr(self.channel_plan, name)[channel]
             tile_dict[name] = array[row, column]
-
         return tile_dict

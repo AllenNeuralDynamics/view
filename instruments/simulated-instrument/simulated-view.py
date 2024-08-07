@@ -46,10 +46,8 @@ class SimulatedInstrumentView(InstrumentView):
 
         return_value = self.update_config_query()
         if return_value == QMessageBox.Ok:
-            for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
-                self.update_config(device_name, device_specs)
-            with open(self.config_save_to, 'w') as outfile:
-                yaml.dump(self.instrument.config, outfile)
+            self.instrument.update_current_state_config()
+            self.instrument.save_config(self.config_save_to)
 
     def update_config(self, device_name, device_specs):
         """Update setting in instrument config if already there

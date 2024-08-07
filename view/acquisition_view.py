@@ -35,6 +35,9 @@ class AcquisitionView(QWidget):
         self.instrument = self.acquisition.instrument
         self.config = instrument_view.config
 
+        # tile list
+        self.tiles = []
+
         # Eventual threads
         self.grab_fov_positions_worker = None
         self.property_workers = []
@@ -133,7 +136,7 @@ class AcquisitionView(QWidget):
         """Start acquisition"""
 
         # add tiles to acquisition config
-        self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
+        self.update_tiles()
 
         if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
             self.instrument_view.dismantle_live()
@@ -264,7 +267,7 @@ class AcquisitionView(QWidget):
             'fov_dimensions': self.config['acquisition_view']['fov_dimensions'],
             'coordinate_plane': self.config['acquisition_view'].get('coordinate_plane', ['x', 'y', 'z']),
             'unit': self.config['acquisition_view'].get('unit', 'mm'),
-            'settings': self.config['acquisition_view'].get('settings', {})
+            'properties': self.config['acquisition_view'].get('properties', {})
 
         }
 
@@ -286,9 +289,16 @@ class AcquisitionView(QWidget):
         volume_widget = VolumeWidget(self.instrument_view, **kwds)
         volume_widget.fovMoved.connect(self.move_stage)
         volume_widget.fovStop.connect(self.stop_stage)
+        volume_widget.tilesChanged.connect(self.update_tiles)
         self.instrument_view.snapshotTaken.connect(volume_widget.handle_snapshot)  # connect snapshot signal
         self.instrument_view.contrastChanged.connect(volume_widget.adjust_contrast)
         return volume_widget
+
+    def update_tiles(self):
+        """Update config with the latest tiles"""
+
+        self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
+
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
