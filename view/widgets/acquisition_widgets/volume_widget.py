@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup, QRadioButton, \
-    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame
+    QGridLayout, QTableWidgetItem, QTableWidget, QSplitter, QFrame, QMessageBox
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -469,6 +469,64 @@ class VolumeWidget(QWidget):
 
 
         self.volume_model.adjust_glimage_contrast(image, contrast_limits)
+
+    def autopopulate_tiles(self, tiles: list):
+        """Functionality to autopopulate widgets with existing tiles
+                :param tiles: list of tiles"""
+
+        # check that each tile has prefix, step, channel, position_mm, tile_number, and step_size
+        must_have = {'channel', f'position_{self.unit}', 'tile_number', 'steps', 'step_size', 'prefix'}
+        have_keys = any([must_have.issubset(set(tile.keys())) for tile in tiles])
+
+        if not have_keys:
+            self.tile_issue_popup(f'All tiles must have keys: {must_have}')
+            return
+
+        # sort tiles into channels
+        ch_ops = {tile['channel'] for tile in tiles}
+        channels = {ch: [tile for tile in tiles if tile['channel'] == ch] for ch in ch_ops}
+
+        # check that all channels are the same length
+        same_length = len({len(value) for value in channels.values()}) == 1
+        if not same_length:
+            self.toggle_apply_all(False)
+            # Add tiles to shorter ones with volume of 0
+            most_tiles = channels[list(channels.keys())[np.argmax([len(value) for value in channels.values()])[0]]]
+            for channel, tile_list in channels.items():
+                for i in range(len(tile_list), len(most_tiles)):
+                    new_tile = most_tiles[i]
+                    new_tile['channel'] = channel
+                    new_tile['steps'] = 0
+                    tiles.append(new_tile)
+            self.tile_issue_popup(f"Channels don't have the same number of tiles. Adding tiles with volume of 0", tiles)
+
+        # order tiles
+        tiles.sort(key=lambda tile: tile['tile_number'])
+
+        # use random channel to determine info
+        ch_tiles = tiles[0::len(list(channels.keys()))]
+        pos = [list(tile[f'position_{self.unit}'].values()) for tile in tiles]
+        overlaps = [[x0-x1 for x0, x1 in zip(pos[i],pos[i+1])] for i in range(len(ch_tiles)-1)]
+        print(overlaps)
+
+    def parse_tile_list(self, tiles: list):
+        """Functionality to parse tile list to autopopulate widgets
+        :param tiles: list of tiles"""
+
+
+    @staticmethod
+    def tile_issue_popup(error, default_list=[]):
+        """Pop up message informing user that input tile list is invalid and cannot be used
+        :param error: error that cause issue with parsing tile list
+        :param default_list: different version of list that adheres to volume widget """
+
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Warning)
+        msgBox.setText(f"Error with using pre configured tiles: {error}. Defaulting to tile list of {default_list}")
+        msgBox.setWindowTitle("Error Parsing PreConfigured Tiles")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+
+        return msgBox.exec()
 
     def create_tile_list(self):
         """Return a list of tiles for a scan"""
