@@ -508,7 +508,11 @@ class VolumeWidget(QWidget):
         pos = [list(tile[f'position_{self.unit}'].values()) for tile in ch_tiles]
         overlaps = [[abs(x0-x1)/fov for x0, x1, fov in zip(pos[i][:2],pos[i+1][:2], self.fov_dimensions[:2])]
                     for i in range(len(ch_tiles)-1)]
-        print(overlaps)
+        overlaps_equal = len({value for value in np.array(overlaps).flatten() if value != 0}) == 1
+        #if not overlaps_equal:
+
+        columns = 0
+        rows = 0
 
     def parse_tile_list(self, tiles: list):
         """Functionality to parse tile list to autopopulate widgets
