@@ -7,12 +7,14 @@ from qtpy.QtCore import Slot, Qt
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication
+    QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication, \
+    QMessageBox, QPushButton, QFileDialog
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+from pathlib import Path
 
 class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -105,13 +107,15 @@ class AcquisitionView(QWidget):
                 dock.setWidget(scroll)
                 dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
-        self.main_layout.addWidget(splitter, 1,  3)
+        self.main_layout.addWidget(splitter, 1, 3)
         self.setLayout(self.main_layout)
         self.setWindowTitle('Acquisition View')
         self.show()
 
         # Set app events
         app = QApplication.instance()
+        app.aboutToQuit.connect(self.update_config_on_quit)  # query if config should be saved and where
+        self.config_save_to = self.acquisition.config_path
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
     def create_start_button(self):
@@ -299,7 +303,6 @@ class AcquisitionView(QWidget):
 
         self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
 
-
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
 
@@ -337,7 +340,7 @@ class AcquisitionView(QWidget):
                         pos = stage.position_mm
                         fov_pos[index] = pos if pos is not None else fov_pos[index]
                     except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
-                       pass
+                        pass
                     sleep(.1)
             yield fov_pos
 
@@ -415,7 +418,7 @@ class AcquisitionView(QWidget):
         if image is not None:
             # TODO: How to get current channel
             layer_name = f"{camera_name}"
-            if layer_name in self.instrument_view.viewer.layers :
+            if layer_name in self.instrument_view.viewer.layers:
                 layer = self.instrument_view.viewer.layers[layer_name]
                 layer.data = image
             else:
@@ -474,6 +477,39 @@ class AcquisitionView(QWidget):
         except (KeyError, TypeError) as e:
             self.log.warning(f"{attr_name} can't be mapped into operation properties due to {e}")
             pass
+
+    def update_config_on_quit(self):
+        """Add functionality to close function to save device properties to instrument config"""
+
+        return_value = self.update_config_query()
+        if return_value == QMessageBox.Ok:
+            self.acquisition.update_current_state_config()
+            self.acquisition.save_config(self.config_save_to)
+
+    def update_config_query(self):
+        """Pop up message asking if configuration would like to be saved"""
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setText(f"Do you want to update the acquisition configuration file at {self.config_save_to} "
+                       f"to current acquisition state?")
+        msgBox.setWindowTitle("Updating Configuration")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        save_elsewhere = QPushButton('Change Directory')
+        msgBox.addButton(save_elsewhere, QMessageBox.DestructiveRole)
+
+        save_elsewhere.pressed.connect(lambda: self.select_directory(True, msgBox))
+
+        return msgBox.exec()
+
+    def select_directory(self, pressed, msgBox):
+        """Select directory"""
+
+        fname = QFileDialog()
+        folder = fname.getSaveFileName(directory=str(self.acquisition.config_path))
+        if folder[0] != '':  # user pressed cancel
+            msgBox.setText(f"Do you want to update the instrument configuration file at {folder[0]} "
+                           f"to current instrument state?")
+            self.config_save_to = Path(folder[0])
 
     def close(self):
         """Close operations and end threads"""
