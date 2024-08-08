@@ -505,8 +505,9 @@ class VolumeWidget(QWidget):
 
         # use random channel to determine info
         ch_tiles = tiles[0::len(list(channels.keys()))]
-        pos = [list(tile[f'position_{self.unit}'].values()) for tile in tiles]
-        overlaps = [[x0-x1 for x0, x1 in zip(pos[i],pos[i+1])] for i in range(len(ch_tiles)-1)]
+        pos = [list(tile[f'position_{self.unit}'].values()) for tile in ch_tiles]
+        overlaps = [[abs(x0-x1)/fov for x0, x1, fov in zip(pos[i][:2],pos[i+1][:2], self.fov_dimensions[:2])]
+                    for i in range(len(ch_tiles)-1)]
         print(overlaps)
 
     def parse_tile_list(self, tiles: list):
