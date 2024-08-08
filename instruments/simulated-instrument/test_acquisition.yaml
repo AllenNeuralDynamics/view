@@ -12,7 +12,7 @@ acquisition:
         x_anatomical_direction: Anterior_to_posterior
         y_anatomical_direction: Inferior_to_superior
         z_anatomical_direction: Left_to_right
-      date_format: year/month/day/hour/minute/second
+      date_format: Year/Month/Day/Hour/Minute/Second
       name_specs:
         deliminator: _
         format: [instrument_type, subject_id]
@@ -24,7 +24,7 @@ acquisition:
         module: Writer
         init:
           path: C:\local_test
-        settings:
+        properties:
           compression: lz4shuffle
           data_type: uint16
       robocopy:
@@ -47,7 +47,7 @@ acquisition:
         module: MaxProjection
         init:
           path: C:\local_test
-        settings:
+        properties:
           data_type: uint16
           projection_count_px: 32
       background_collection:
@@ -56,7 +56,7 @@ acquisition:
         module: BackgroundCollection
         init:
           path: C:\local_test
-        settings:
+        properties:
           data_type: uint16
           frame_count_px: 10
   tiles: []

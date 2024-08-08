@@ -25,6 +25,7 @@ class NIWidget(BaseDeviceWidget):
 
         self.advanced_user = advanced_user
         self.exposed_branches = {'tasks':daq.tasks} if exposed_branches is None else exposed_branches
+
         # initialize base widget to create convenient widgets and signals
         super().__init__(daq, {'tasks':daq.tasks})
         del self.property_widgets['tasks']  # delete so view won't confuse and try and update. Hacky?

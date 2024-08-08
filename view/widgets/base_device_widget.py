@@ -2,7 +2,7 @@ from qtpy.QtCore import Signal, Slot, QTimer
 from qtpy.QtGui import QIntValidator, QDoubleValidator
 from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow
 from inspect import currentframe
-import importlib
+from importlib import import_module
 import enum
 import types
 import re
@@ -26,7 +26,7 @@ class BaseDeviceWidget(QMainWindow):
 
         super().__init__()
         self.device_type = device_type
-        self.device_driver = importlib.import_module(self.device_type.__module__) if type(self.device_type) != dict \
+        self.device_driver = import_module(self.device_type.__module__) if not hasattr(self.device_type, 'keys') \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
         self.create_property_widgets(properties, 'property')
 
@@ -56,7 +56,6 @@ class BaseDeviceWidget(QMainWindow):
                 input_specs = value
                 widget_type = 'text'
             boxes = {}
-
             if not hasattr(value, 'keys') or type(arg_type) == enum.EnumMeta:
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
 
@@ -131,9 +130,8 @@ class BaseDeviceWidget(QMainWindow):
                                             __setitem__(name_lst[-1], value_type(textbox.text())))
         textbox.editingFinished.connect(lambda: setattr(self, name, value_type(textbox.text())))
         textbox.editingFinished.connect(lambda: self.ValueChangedInside.emit(name))
-
-        if value_type in (float, int):
-            validator = QIntValidator() if value_type == int else QDoubleValidator()
+        if issubclass(value_type, float) or issubclass(value_type, int):
+            validator = QIntValidator() if issubclass(value_type, int) else QDoubleValidator()
             textbox.setValidator(validator)
 
         return textbox

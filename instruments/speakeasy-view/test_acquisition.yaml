@@ -31,7 +31,7 @@ acquisition:
 #        module: Writer
 #        init:
 #          path: C:\Users\micah.woodard\Downloads
-#        settings:
+#        properties:
 #          compression: lz4shuffle
 #          data_type: uint16
 #      max_projection:
@@ -40,7 +40,7 @@ acquisition:
 #        module: MaxProjection
 #        init:
 #          path: ./local_test
-#        settings:
+#        properties:
 #          data_type: uint16
 #          projection_count_px: 32
 
