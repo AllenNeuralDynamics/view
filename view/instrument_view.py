@@ -4,8 +4,8 @@ from pathlib import Path
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
     scan_for_properties, disable_button
-from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QSlider, \
-    QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox
+from qtpy.QtWidgets import QStyle, QRadioButton, QWidget, QButtonGroup, QSlider, QGridLayout, QComboBox, QApplication, \
+    QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox, QPushButton, QFileDialog
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils.theme import get_theme
@@ -55,7 +55,7 @@ class InstrumentView(QWidget):
         self.snapshot = False  # flag to signal snapshot has been taken
 
         self.instrument = instrument
-        self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
+        self.config = YAML().load(config_path)  # TODO: maybe bulldozing comments but easier
 
         # Convenient config maps
         self.channels = self.instrument.config['instrument']['channels']
@@ -515,7 +515,7 @@ class InstrumentView(QWidget):
 
             # attempt to pass in correct value of correct type
             descriptor = getattr(type(device), name_lst[0])
-            fset = getattr(descriptor, 'fset')  # account for property and deliminated
+            fset = getattr(descriptor, 'fset')
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
             if input_type != inspect._empty:
                 setattr(device, name_lst[0], input_type(value))
@@ -561,6 +561,40 @@ class InstrumentView(QWidget):
                 widget.setDisabled(disable)
             except AttributeError:
                 pass
+
+
+    def update_config_on_quit(self):
+        """Add functionality to close function to save device properties to instrument config"""
+
+        return_value = self.update_config_query()
+        if return_value == QMessageBox.Ok:
+            self.instrument.update_current_state_config()
+            self.instrument.save_config(self.config_save_to)
+
+    def update_config_query(self):
+        """Pop up message asking if configuration would like to be saved"""
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setText(f"Do you want to update the instrument configuration file at {self.config_save_to} "
+                       f"to current instrument state?")
+        msgBox.setWindowTitle("Updating Configuration")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        save_elsewhere = QPushButton('Change Directory')
+        msgBox.addButton(save_elsewhere, QMessageBox.DestructiveRole)
+
+        save_elsewhere.pressed.connect(lambda: self.select_directory(True, msgBox))
+
+        return msgBox.exec()
+
+    def select_directory(self, pressed, msgBox):
+        """Select directory"""
+
+        fname = QFileDialog()
+        folder = fname.getSaveFileName(directory=str(self.instrument.config_path))
+        if folder[0] != '': # user pressed cancel
+            msgBox.setText(f"Do you want to update the instrument configuration file at {folder[0]} "
+                           f"to current instrument state?")
+            self.config_save_to = Path(folder[0])
 
     def close(self):
         """Close instruments and end threads"""

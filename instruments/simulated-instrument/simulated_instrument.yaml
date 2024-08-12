@@ -87,7 +87,7 @@ instrument:
         hardware_axis: x
         instrument_axis: z
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: scanning_stage
     ASI MS-8000 x axis:
@@ -96,7 +96,7 @@ instrument:
         hardware_axis: y
         instrument_axis: x
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: tiling_stage
     ASI MS-8000 y axis:
@@ -105,7 +105,7 @@ instrument:
         hardware_axis: z
         instrument_axis: y
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: tiling_stage
     n stage axis:
@@ -114,14 +114,14 @@ instrument:
         hardware_axis: n
         instrument_axis: n
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: focusing_stage
     PCIe-6738:
       driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
-      settings:
+      properties:
         tasks:
           ao_task:
             name: ao task
@@ -269,7 +269,7 @@ instrument:
         id: COM5
         prefix: L6
       module: SimulatedLaser
-      settings:
+      properties:
         cdrh: 'OFF'
         constant_current: 'ON'
         modulation_mode: digital
@@ -291,7 +291,7 @@ instrument:
       init:
         id: sim000
       module: Camera
-      settings:
+      properties:
         exposure_time_ms: 20.0
         pixel_type: mono16
         height_offest_px: 4744
