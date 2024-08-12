@@ -17,7 +17,7 @@ acquisition:
         deliminator: _
         format: &id001 [instrument_type, subject_id]
     properties:
-      acquisition_name: exaspim_123456_2024-08-08_15-44-40
+      acquisition_name: exaspim_123456_2024-08-08_15-48-13
       acquisition_name_format: *id001
       date_format: '%Y-%m-%d_%H-%M-%S'
       delimiter: _
@@ -142,9 +142,9 @@ acquisition:
   tiles:
   - channel: CH639
     position_mm:
-      x: -6.537907199999999
-      y: 9.401024
-      z: 14.0
+      x: -4.537907199999999
+      y: 11.601536
+      z: 12.0
     tile_number: 0
     vp-151mx:
       binning: 1
@@ -157,9 +157,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: -6.537907199999999
-      y: 9.401024
-      z: 14.0
+      x: -4.537907199999999
+      y: 11.601536
+      z: 12.0
     tile_number: 0
     vp-151mx:
       binning: 1
@@ -172,9 +172,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: -6.537907199999999
-      y: 9.401024
-      z: 14.0
+      x: -4.537907199999999
+      y: 11.601536
+      z: 12.0
     tile_number: 0
     vp-151mx:
       binning: 1
@@ -187,9 +187,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: 2.0
-      y: 9.401024
-      z: 14.0
+      x: 4.0
+      y: 11.601536
+      z: 12.0
     tile_number: 1
     vp-151mx:
       binning: 1
@@ -202,9 +202,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: 2.0
-      y: 9.401024
-      z: 14.0
+      x: 4.0
+      y: 11.601536
+      z: 12.0
     tile_number: 1
     vp-151mx:
       binning: 1
@@ -217,9 +217,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: 2.0
-      y: 9.401024
-      z: 14.0
+      x: 4.0
+      y: 11.601536
+      z: 12.0
     tile_number: 1
     vp-151mx:
       binning: 1
@@ -232,9 +232,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: 10.5379072
-      y: 9.401024
-      z: 14.0
+      x: 12.5379072
+      y: 11.601536
+      z: 12.0
     tile_number: 2
     vp-151mx:
       binning: 1
@@ -247,9 +247,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: 10.5379072
-      y: 9.401024
-      z: 14.0
+      x: 12.5379072
+      y: 11.601536
+      z: 12.0
     tile_number: 2
     vp-151mx:
       binning: 1
@@ -262,9 +262,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: 10.5379072
-      y: 9.401024
-      z: 14.0
+      x: 12.5379072
+      y: 11.601536
+      z: 12.0
     tile_number: 2
     vp-151mx:
       binning: 1
@@ -277,9 +277,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: 10.5379072
-      y: 3.0
-      z: 14.0
+      x: 12.5379072
+      y: 5.200512
+      z: 12.0
     tile_number: 3
     vp-151mx:
       binning: 1
@@ -292,9 +292,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: 10.5379072
-      y: 3.0
-      z: 14.0
+      x: 12.5379072
+      y: 5.200512
+      z: 12.0
     tile_number: 3
     vp-151mx:
       binning: 1
@@ -307,9 +307,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: 10.5379072
-      y: 3.0
-      z: 14.0
+      x: 12.5379072
+      y: 5.200512
+      z: 12.0
     tile_number: 3
     vp-151mx:
       binning: 1
@@ -322,9 +322,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: 2.0
-      y: 3.0
-      z: 14.0
+      x: 4.0
+      y: 5.200512
+      z: 12.0
     tile_number: 4
     vp-151mx:
       binning: 1
@@ -337,9 +337,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: 2.0
-      y: 3.0
-      z: 14.0
+      x: 4.0
+      y: 5.200512
+      z: 12.0
     tile_number: 4
     vp-151mx:
       binning: 1
@@ -352,9 +352,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: 2.0
-      y: 3.0
-      z: 14.0
+      x: 4.0
+      y: 5.200512
+      z: 12.0
     tile_number: 4
     vp-151mx:
       binning: 1
@@ -367,9 +367,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: -6.537907199999999
-      y: 3.0
-      z: 14.0
+      x: -4.537907199999999
+      y: 5.200512
+      z: 12.0
     tile_number: 5
     vp-151mx:
       binning: 1
@@ -382,9 +382,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: -6.537907199999999
-      y: 3.0
-      z: 14.0
+      x: -4.537907199999999
+      y: 5.200512
+      z: 12.0
     tile_number: 5
     vp-151mx:
       binning: 1
@@ -397,9 +397,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: -6.537907199999999
-      y: 3.0
-      z: 14.0
+      x: -4.537907199999999
+      y: 5.200512
+      z: 12.0
     tile_number: 5
     vp-151mx:
       binning: 1
@@ -412,9 +412,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: -6.537907199999999
-      y: -3.4010239999999996
-      z: 14.0
+      x: -4.537907199999999
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 6
     vp-151mx:
       binning: 1
@@ -427,9 +427,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: -6.537907199999999
-      y: -3.4010239999999996
-      z: 14.0
+      x: -4.537907199999999
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 6
     vp-151mx:
       binning: 1
@@ -442,9 +442,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: -6.537907199999999
-      y: -3.4010239999999996
-      z: 14.0
+      x: -4.537907199999999
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 6
     vp-151mx:
       binning: 1
@@ -457,9 +457,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: 2.0
-      y: -3.4010239999999996
-      z: 14.0
+      x: 4.0
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 7
     vp-151mx:
       binning: 1
@@ -472,9 +472,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: 2.0
-      y: -3.4010239999999996
-      z: 14.0
+      x: 4.0
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 7
     vp-151mx:
       binning: 1
@@ -487,9 +487,9 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: 2.0
-      y: -3.4010239999999996
-      z: 14.0
+      x: 4.0
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 7
     vp-151mx:
       binning: 1
@@ -502,9 +502,9 @@ acquisition:
     prefix: ''
   - channel: CH639
     position_mm:
-      x: 10.5379072
-      y: -3.4010239999999996
-      z: 14.0
+      x: 12.5379072
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 8
     vp-151mx:
       binning: 1
@@ -517,9 +517,9 @@ acquisition:
     prefix: ''
   - channel: CH561
     position_mm:
-      x: 10.5379072
-      y: -3.4010239999999996
-      z: 14.0
+      x: 12.5379072
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 8
     vp-151mx:
       binning: 1
@@ -532,10 +532,145 @@ acquisition:
     prefix: ''
   - channel: CH488
     position_mm:
-      x: 10.5379072
-      y: -3.4010239999999996
-      z: 14.0
+      x: 12.5379072
+      y: -1.2005119999999998
+      z: 12.0
     tile_number: 8
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 12.5379072
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 9
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 12.5379072
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 9
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 12.5379072
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 9
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 4.0
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 10
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 4.0
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 10
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 4.0
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 10
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: -4.537907199999999
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 11
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: -4.537907199999999
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 11
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: -4.537907199999999
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 11
     vp-151mx:
       binning: 1
     488nm:

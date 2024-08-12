@@ -37,6 +37,7 @@ class VolumeWidget(QWidget):
 
         self.instrument_view = instrument_view
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
+        self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
         self.unit = unit
         self.layout = QGridLayout()
         fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
@@ -201,6 +202,7 @@ class VolumeWidget(QWidget):
         :param value: latest tile plan value"""
 
         self.scan_plan_widget.scan_plan_construction(value)
+        print(self.volume_model.grid_coords)
         self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
 
         # update scanning coords of table
@@ -506,25 +508,51 @@ class VolumeWidget(QWidget):
         # use random channel to determine info
         ch_tiles = tiles[0::len(list(channels.keys()))]
         pos = [list(tile[f'position_{self.unit}'].values()) for tile in ch_tiles]
-        overlaps = [[abs(x0-x1) for x0, x1, fov in zip(pos[i][:2],pos[i+1][:2], self.fov_dimensions[:2])]
+        overlaps = [[abs(x0-x1)/fov for x0, x1, fov in zip(pos[i][:2],pos[i+1][:2], self.fov_dimensions[:2])]
                     for i in range(len(ch_tiles)-1)]
-        print(overlaps)
-        overlaps_equal = len({value for value in np.array(overlaps).flatten() if value != 0}) == 1
-        #if not overlaps_equal:
+        overlaps_set = {value for value in np.array(overlaps).flatten() if value != 0}
 
-        columns = 0
-        rows = 0
+        overlaps_equal = len(overlaps_set) == 1
+        if not overlaps_equal:
+            self.tile_issue_popup(f'All tiles must have same overlap')
+            return
+        overlap = max(overlaps[0])
+        self.tile_plan_widget.overlap.setValue((1-overlap)*100)
 
-    def parse_tile_list(self, tiles: list):
-        """Functionality to parse tile list to autopopulate widgets
-        :param tiles: list of tiles"""
+        # set mode to bounds to eliminate relative to and anchoring grid
+        self.tile_plan_widget.setMode('bounds')
+        self.tile_plan_widget.blockSignals(True)
+        # calculate extrema to find bounds
+        extrema = {'x_min': min(pos[:][0]), 'x_max': max(pos[:][0]),
+                  'y_min': min(pos[:][1]), 'y_max': max(pos[:][1])}
+        #print(pos, extrema)
+        if self.polarity[0] == 1:
+            self.tile_plan_widget.left.setValue(extrema['x_max'])
+            self.tile_plan_widget.right.setValue(extrema['x_min'])
+        else:
+            self.tile_plan_widget.right.setValue(extrema['x_max'])
+            self.tile_plan_widget.left.setValue(extrema['x_min'])
+        if self.polarity[1] == 1:
+            self.tile_plan_widget.bottom.setValue(extrema['y_min'])
+            self.tile_plan_widget.top.setValue(extrema['y_max'])
+        else:
+            self.tile_plan_widget.top.setValue(extrema['y_min'])
+            self.tile_plan_widget.bottom.setValue(extrema['y_max'])
+        print([print(t) for t in self.tile_plan_widget.value()])
 
 
-    @staticmethod
-    def tile_issue_popup(error, default_list=[]):
+
+
+
+        self.tile_plan_widget.blockSignals(False)
+
+
+    def tile_issue_popup(self, error, default_list = None):
         """Pop up message informing user that input tile list is invalid and cannot be used
         :param error: error that cause issue with parsing tile list
         :param default_list: different version of list that adheres to volume widget """
+
+        default_list = default_list if default_list is not None else self.create_tile_list()
 
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Warning)
