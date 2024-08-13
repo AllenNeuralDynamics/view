@@ -27,14 +27,15 @@ if __name__ == "__main__":
     metadata_dictionary = {
         'instrument_type': 'simulated',
         'subject_id': 123456,
-        'experimenter_name': 'Chris P. Bacon',
-        'immersion_medium': '0.05XSSC',
-        'immersion_medium_refractive_index': 1.33,
-        'x_anatomical_direction': 'Anterior_to_posterior',
-        'y_anatomical_direction': 'Inferior_to_superior',
-        'z_anatomical_direction': 'Left_to_right'}
+        'experimenter_name': ['Chris P. Bacon', 'help'],
+        'immersion': {
+        'medium': '0.05XSSC',
+        'refractive_index': 1.33},
+        'x_anatomical_direction': 'Anterior to Posterior',
+        'y_anatomical_direction': 'Inferior to Superior',
+        'z_anatomical_direction': 'Left to Right'}
 
-    datetime_format = 'year/month/day/hour/minute/second'
+    datetime_format = 'Year/Month/Day/Hour/Minute/Second'
 
     name_specs = {
         'deliminator': '_',
@@ -44,7 +45,11 @@ if __name__ == "__main__":
     metadata_widget = MetadataWidget(metadata_class)
 
     metadata_widget.show()
-    print(metadata_widget.size())
     metadata_widget.ValueChangedInside[str].connect(
         lambda value, dev=metadata_class, widget=metadata_widget,: widget_property_changed(value, dev, widget))
+
+    setattr(metadata_widget, 'experimenter_name', ['hello', 'world'])
+    setattr(metadata_widget, 'immersion', {
+        'medium': '0.05XSSC',
+        'refractive_index': 2})
     sys.exit(app.exec_())

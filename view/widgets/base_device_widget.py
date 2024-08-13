@@ -11,6 +11,7 @@ import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 import inspect
 
+
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
     ValueChangedInside = Signal((str,))
@@ -44,7 +45,7 @@ class BaseDeviceWidget(QMainWindow):
             setattr(self, name, value)  # Add device properties as widget properties
             attr = getattr(self.device_type, name, None)
             unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
-            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1]+f'_{unit}'))}
+            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name
 
@@ -56,25 +57,33 @@ class BaseDeviceWidget(QMainWindow):
                 input_specs = value
                 widget_type = 'text'
             boxes = {}
-            if not hasattr(value, 'keys') or type(arg_type) == enum.EnumMeta:
+            if not hasattr(value, 'keys') and type(value) != list or type(arg_type) == enum.EnumMeta:
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
 
-            elif hasattr(value, 'keys'):
+            elif hasattr(value, 'keys'):  # deal with dict like variables
                 for k, v in input_specs.items():
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
-                    label = QLabel(label_maker(k+f'_{unit}'))
+                    label = QLabel(label_maker(k + f'_{unit}'))
 
                     # if value has an item that is a dictionary but the widget type is not a combo box,
                     # unique widgets should be made for this dictionary
                     if hasattr(v, 'keys') and widget_type != 'combo':
                         box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
+                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()},
+                            f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
 
                     else:
                         box = self.create_attribute_widget(f"{name}.{k}", widget_type, v)
 
                     boxes[k] = create_widget('V', label, box)
+            elif type(value) == list:
+                for i, item in enumerate(input_specs):
+                    setattr(self, f"{name}.{i}", getattr(self, name)[i])
+                    label = QLabel('')
+                    box = self.create_attribute_widget(f"{name}.{i}", widget_type, item)
+                    boxes[item] = create_widget('V', label, box)
+
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
 
@@ -123,11 +132,15 @@ class BaseDeviceWidget(QMainWindow):
         value_type = type(value)
         textbox = QScrollableLineEdit(str(value))
         name_lst = name.split('.')
-        if len(name_lst) != 1:  # name is a dictionary and key pair split by .
+        parent_attr = pathGet(self.__dict__, name_lst[0:-1])
+        if hasattr(parent_attr, 'keys'):  # name is a dictionary and key pair split by .
             # Must find dictionary each editing finish
             textbox.editingFinished.connect(lambda:
                                             pathGet(self.__dict__, name_lst[0:-1]).
                                             __setitem__(name_lst[-1], value_type(textbox.text())))
+        elif type(parent_attr) == list:
+            textbox.editingFinished.connect(lambda: parent_attr.__setitem__(int(name_lst[-1]),
+                                                                            value_type(textbox.text())))
         textbox.editingFinished.connect(lambda: setattr(self, name, value_type(textbox.text())))
         textbox.editingFinished.connect(lambda: self.ValueChangedInside.emit(name))
         if issubclass(value_type, float) or issubclass(value_type, int):
@@ -160,11 +173,17 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name of attribute and widget"""
 
         value = getattr(self, name, None)
-        if not hasattr(value, 'keys'):   # not a dictionary like value
+        if not hasattr(value, 'keys') and type(value) != list:  # not a dictionary or list like value
             self._set_widget_text(name, value)
-        else:
+        elif hasattr(value, 'keys'):
             for k, v in value.items():  # multiple widgets to set values for
+                setattr(self, f'{name}.{k}', v)
                 self.update_property_widget(f'{name}.{k}')
+        else:
+            for i, item in enumerate(value):
+                if hasattr(self, f'{name}.{i}'):  # can't handle added indexes yet
+                    setattr(self, f'{name}.{i}', item)
+                    self.update_property_widget(f'{name}.{i}')
 
     def _set_widget_text(self, name, value):
         """Set widget text if widget is QLineEdit or QCombobox
@@ -188,6 +207,7 @@ class BaseDeviceWidget(QMainWindow):
         self.__dict__[name] = value
         if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)
+
 
 # Convenience Functions
 def create_widget(struct: str, *args, **kwargs):
@@ -222,6 +242,7 @@ def create_widget(struct: str, *args, **kwargs):
     widget.setLayout(layout)
     return widget
 
+
 def label_maker(string):
     """Removes underscores from variable names and capitalizes words
     :param string: string to make label out of
@@ -233,11 +254,12 @@ def label_maker(string):
 
     for i, word in enumerate(label):
         for unit in possible_units:
-            if unit.lower() == word.lower():    # TODO: Consider using regular expression here for better results?
+            if unit.lower() == word.lower():  # TODO: Consider using regular expression here for better results?
                 label[i] = f'[{unit}]'
 
     label = " ".join(label)
     return label
+
 
 def pathGet(dictionary: dict, path: list):
     """Based on list of nested dictionary keys, return inner dictionary"""
@@ -245,6 +267,7 @@ def pathGet(dictionary: dict, path: list):
     for k in path:
         dictionary = dictionary[k]
     return dictionary
+
 
 def scan_for_properties(device):
     """Scan for properties with setters and getters in class and return dictionary
@@ -261,6 +284,7 @@ def scan_for_properties(device):
             pass
 
     return prop_dict
+
 
 def disable_button(button, pause=1000):
     """Function to disable button clicks for a period of time to avoid crashing gui"""
