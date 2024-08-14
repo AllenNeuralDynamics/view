@@ -13,7 +13,7 @@ app = QApplication(sys.argv)
 
 
 class BaseDeviceWidgetTests(unittest.TestCase):
-    """tests for examples"""
+    """tests for BaseDeviceWidget"""
 
     def test_string_properties(self):
         """Test that BaseDeviceWidget can correctly handle properties that are strings"""

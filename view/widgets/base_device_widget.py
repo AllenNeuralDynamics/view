@@ -91,7 +91,6 @@ class BaseDeviceWidget(QMainWindow):
                     boxes[str(k)] = create_widget('V', label, box)
 
             # create schema validator so entries must adhere to specific format
-            print(name, schema)
             setattr(self, f"{name}_schema", Schema(schema))
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
@@ -124,7 +123,7 @@ class BaseDeviceWidget(QMainWindow):
 
         driver_vars = self.device_driver.__dict__
         for variable in driver_vars:
-            x = re.search(variable, fr'\b{inflection.pluralize(name)}?\b', re.IGNORECASE)
+            x = re.search(variable, fr'\b{inflection.pluralize(name.replace(".", "_"))}?\b', re.IGNORECASE)
             if x is not None:
                 if type(driver_vars[variable]) in [dict, list]:
                     return driver_vars[variable]
