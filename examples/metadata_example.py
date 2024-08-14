@@ -5,6 +5,7 @@ from qtpy.QtWidgets import QApplication
 import sys
 from qtpy.QtCore import Slot
 
+
 @Slot(str)
 def widget_property_changed(name, device, widget):
     """Slot to signal when widget has been changed
@@ -17,8 +18,8 @@ def widget_property_changed(name, device, widget):
     print('Device', name, ' changed to ', getattr(device, name_lst[0]))
     for k, v in widget.property_widgets.items():
         instrument_value = getattr(device, k)
-        #print(k, instrument_value)
-        #setattr(widget, k, instrument_value)
+        # print(k, instrument_value)
+        # setattr(widget, k, instrument_value)
 
 
 if __name__ == "__main__":
@@ -27,10 +28,10 @@ if __name__ == "__main__":
     metadata_dictionary = {
         'instrument_type': 'simulated',
         'subject_id': 123456,
-        'experimenter_name': [{'first':'Chris P.', 'last': 'Bacon'}, 'help'],
+        'experimenter_name': ['Chris P. Bacon'],
         'immersion': {
-        'medium': '0.05XSSC',
-        'refractive_index': 1.33},
+            'medium': '0.05XSSC',
+            'refractive_index': 1.33},
         'x_anatomical_direction': 'Anterior to Posterior',
         'y_anatomical_direction': 'Inferior to Superior',
         'z_anatomical_direction': 'Left to Right'}
@@ -48,8 +49,4 @@ if __name__ == "__main__":
     metadata_widget.ValueChangedInside[str].connect(
         lambda value, dev=metadata_class, widget=metadata_widget,: widget_property_changed(value, dev, widget))
 
-    # setattr(metadata_widget, 'experimenter_name', ['hello', 'world'])
-    # setattr(metadata_widget, 'immersion', {
-    #     'medium': '0.05XSSC',
-    #     'refractive_index': 2})
     sys.exit(app.exec_())

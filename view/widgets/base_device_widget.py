@@ -10,7 +10,7 @@ import logging
 import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 import inspect
-
+from schema import Schema, SchemaError
 
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
@@ -48,6 +48,7 @@ class BaseDeviceWidget(QMainWindow):
             input_widgets = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name
+            schema = Schema(type(value))    # create schema validator so entries must adhere to specific format
 
             # Create combo boxes if there are preset options
             if input_specs := self.check_driver_variables(search_name):
@@ -61,8 +62,10 @@ class BaseDeviceWidget(QMainWindow):
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
 
             elif hasattr(value, 'keys') or type(value) == list:  # deal with dict like variables or lists
+                schema = create_dict_schema(input_specs) if hasattr(value, 'keys') else create_list_schema(
+                    input_specs)
                 for i, item in enumerate(input_specs):
-                    k = item if hasattr(value, 'keys') else i   # key is index if list
+                    k = item if hasattr(value, 'keys') else i  # key is index if list
                     v = input_specs[item] if hasattr(value, 'keys') else item
 
                     # create attribute
@@ -72,17 +75,24 @@ class BaseDeviceWidget(QMainWindow):
                     # if value has an item that is a dictionary but the widget type is not a combo box,
                     # unique widgets should be made for this dictionary
                     if hasattr(v, 'keys') and widget_type != 'combo':
+                        setattr(self, f"{name}.{k}_schema", Schema(create_dict_schema(v)))
                         box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
+                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()},
+                            f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
                     elif type(v) == list:
+                        setattr(self, f"{name}.{k}_schema", Schema(create_list_schema(v)))
                         box = create_widget('V', **self.create_property_widgets(
                             {f'{name}.{k}.{i}': vv for i, vv in enumerate(v)},
                             f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
                     else:
+                        setattr(self, f"{name}.{k}_schema", Schema(type(v)))
                         box = self.create_attribute_widget(f"{name}.{k}", widget_type, v)
 
                     boxes[str(k)] = create_widget('V', label, box)
 
+            # create schema validator so entries must adhere to specific format
+            print(name, schema)
+            setattr(self, f"{name}_schema", Schema(schema))
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
 
@@ -203,12 +213,61 @@ class BaseDeviceWidget(QMainWindow):
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""
 
+        # if attribute is list or dict, check that they adhere to schema
+        if f'{name}_schema' in self.__dict__.keys():
+            schema = getattr(self, f'{name}_schema')
+            valid = check_if_valid(schema, value)
+            if not valid:
+                self.log.warning(f'Attribute {name} cannot be set to {value} since it does not adhere to the schema'
+                                 f' {schema}')
+                return
+
         self.__dict__[name] = value
         if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)
 
 
 # Convenience Functions
+def create_dict_schema(dictionary: dict):
+    """
+    Helper function to create a schema for a dictionary object
+    :param dictionary: dictionary to create schema from
+    :return: schema of dictionary
+    """
+    schema = {}
+    for key, value in dictionary.items():
+        if hasattr(value, 'keys'):
+            schema[key] = create_dict_schema(value)
+        elif type(value) == list:
+            schema[key] = create_list_schema(value)
+        else:
+            schema[key] = type(value)
+
+    return schema
+
+def create_list_schema(list_ob: dict):
+    """
+        Helper function to create a schema for a list object
+        :param list_ob: list to create schema from
+        :return: schema of list_ob
+        """
+    schema = []
+    for value in list_ob:
+        if hasattr(value, 'keys'):
+            schema.append(create_dict_schema(value))
+        elif type(value) == list:
+            schema.append(create_list_schema(value))
+        else:
+            schema.append(type(value))
+    return schema
+
+def check_if_valid(schema, item):
+    try:
+        schema.validate(item)
+        return True
+    except SchemaError:
+        return False
+
 def create_widget(struct: str, *args, **kwargs):
     """Creates either a horizontal or vertical layout populated with widgets
     :param struct: specifies whether the layout will be horizontal, vertical, or combo
@@ -264,7 +323,7 @@ def pathGet(iterable: dict or list, path: list):
     """Based on list of nested dictionary keys or list indices, return inner dictionary"""
 
     for k in path:
-        k = int(k) if type(iterable)==list else k
+        k = int(k) if type(iterable) == list else k
         iterable = iterable.__getitem__(k)
     return iterable
 
