@@ -60,29 +60,28 @@ class BaseDeviceWidget(QMainWindow):
             if not hasattr(value, 'keys') and type(value) != list or type(arg_type) == enum.EnumMeta:
                 boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
 
-            elif hasattr(value, 'keys'):  # deal with dict like variables
-                for k, v in input_specs.items():
+            elif hasattr(value, 'keys') or type(value) == list:  # deal with dict like variables or lists
+                for i, item in enumerate(input_specs):
+                    k = item if hasattr(value, 'keys') else i   # key is index if list
+                    v = input_specs[item] if hasattr(value, 'keys') else item
+
                     # create attribute
                     setattr(self, f"{name}.{k}", getattr(self, name)[k])
-                    label = QLabel(label_maker(k + f'_{unit}'))
+                    label = QLabel(label_maker(f'{k}_{unit}'))
 
                     # if value has an item that is a dictionary but the widget type is not a combo box,
                     # unique widgets should be made for this dictionary
                     if hasattr(v, 'keys') and widget_type != 'combo':
                         box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()},
+                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()}, f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
+                    elif type(v) == list:
+                        box = create_widget('V', **self.create_property_widgets(
+                            {f'{name}.{k}.{i}': vv for i, vv in enumerate(v)},
                             f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
-
                     else:
                         box = self.create_attribute_widget(f"{name}.{k}", widget_type, v)
 
-                    boxes[k] = create_widget('V', label, box)
-            elif type(value) == list:
-                for i, item in enumerate(input_specs):
-                    setattr(self, f"{name}.{i}", getattr(self, name)[i])
-                    label = QLabel('')
-                    box = self.create_attribute_widget(f"{name}.{i}", widget_type, item)
-                    boxes[item] = create_widget('V', label, box)
+                    boxes[str(k)] = create_widget('V', label, box)
 
             input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
             widgets[name] = create_widget(struct='H', **input_widgets)
@@ -261,12 +260,13 @@ def label_maker(string):
     return label
 
 
-def pathGet(dictionary: dict, path: list):
-    """Based on list of nested dictionary keys, return inner dictionary"""
+def pathGet(iterable: dict or list, path: list):
+    """Based on list of nested dictionary keys or list indices, return inner dictionary"""
 
     for k in path:
-        dictionary = dictionary[k]
-    return dictionary
+        k = int(k) if type(iterable)==list else k
+        iterable = iterable.__getitem__(k)
+    return iterable
 
 
 def scan_for_properties(device):

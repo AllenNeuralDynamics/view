@@ -27,7 +27,7 @@ if __name__ == "__main__":
     metadata_dictionary = {
         'instrument_type': 'simulated',
         'subject_id': 123456,
-        'experimenter_name': ['Chris P. Bacon', 'help'],
+        'experimenter_name': [{'first':'Chris P.', 'last': 'Bacon'}, 'help'],
         'immersion': {
         'medium': '0.05XSSC',
         'refractive_index': 1.33},
@@ -48,8 +48,8 @@ if __name__ == "__main__":
     metadata_widget.ValueChangedInside[str].connect(
         lambda value, dev=metadata_class, widget=metadata_widget,: widget_property_changed(value, dev, widget))
 
-    setattr(metadata_widget, 'experimenter_name', ['hello', 'world'])
-    setattr(metadata_widget, 'immersion', {
-        'medium': '0.05XSSC',
-        'refractive_index': 2})
+    # setattr(metadata_widget, 'experimenter_name', ['hello', 'world'])
+    # setattr(metadata_widget, 'immersion', {
+    #     'medium': '0.05XSSC',
+    #     'refractive_index': 2})
     sys.exit(app.exec_())
