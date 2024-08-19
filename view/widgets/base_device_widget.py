@@ -189,7 +189,7 @@ class BaseDeviceWidget(QMainWindow):
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""
 
-        # if attribute is list or dict, check that they adhere to schema
+        # check that values adhere to schema of correlating variable
         if f'{name}_schema' in self.__dict__.keys():
             schema = getattr(self, f'{name}_schema')
             valid = check_if_valid(schema, value)
