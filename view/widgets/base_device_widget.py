@@ -45,55 +45,31 @@ class BaseDeviceWidget(QMainWindow):
             setattr(self, name, value)  # Add device properties as widget properties
             attr = getattr(self.device_type, name, None)
             unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
-            input_widgets = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             arg_type = type(value)
-            search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name
+            search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name.split('.')[-1]
             schema = Schema(type(value))    # create schema validator so entries must adhere to specific format
 
-            # Create combo boxes if there are preset options
-            if input_specs := self.check_driver_variables(search_name):
-                widget_type = 'combo'
-            # If no found options, create an editable text box
-            else:
-                input_specs = value
-                widget_type = 'text'
-            boxes = {}
+            boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             if not hasattr(value, 'keys') and type(value) != list or type(arg_type) == enum.EnumMeta:
-                boxes[name] = self.create_attribute_widget(name, widget_type, input_specs)
+                # Create combo boxes if there are preset options
+                if input_specs := self.check_driver_variables(search_name):
+                    boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
+                # If no found options, create an editable text box
+                else:
+                    boxes[name] = self.create_attribute_widget(name, 'text', value)
 
-            elif hasattr(value, 'keys') or type(value) == list:  # deal with dict like variables or lists
-                schema = create_dict_schema(input_specs) if hasattr(value, 'keys') else create_list_schema(
-                    input_specs)
-                for i, item in enumerate(input_specs):
-                    k = item if hasattr(value, 'keys') else i  # key is index if list
-                    v = input_specs[item] if hasattr(value, 'keys') else item
-
-                    # create attribute
-                    setattr(self, f"{name}.{k}", getattr(self, name)[k])
-                    label = QLabel(label_maker(f'{k}_{unit}'))
-
-                    # if value has an item that is a dictionary but the widget type is not a combo box,
-                    # unique widgets should be made for this dictionary
-                    if hasattr(v, 'keys') and widget_type != 'combo':
-                        setattr(self, f"{name}.{k}_schema", Schema(create_dict_schema(v)))
-                        box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{kv}': vv for kv, vv in v.items()},
-                            f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
-                    elif type(v) == list:
-                        setattr(self, f"{name}.{k}_schema", Schema(create_list_schema(v)))
-                        box = create_widget('V', **self.create_property_widgets(
-                            {f'{name}.{k}.{i}': vv for i, vv in enumerate(v)},
-                            f'{name}.{k}'))  # creating unique keys for attributes so they don't get overwritten
-                    else:
-                        setattr(self, f"{name}.{k}_schema", Schema(type(v)))
-                        box = self.create_attribute_widget(f"{name}.{k}", widget_type, v)
-
-                    boxes[str(k)] = create_widget('V', label, box)
+            elif hasattr(value, 'keys'): # deal with dict like variables
+                schema = create_dict_schema(value)
+                boxes[name] = create_widget('H', **self.create_property_widgets(
+                                                                    {f'{name}.{k}': v for k, v in value.items()}, name))
+            elif type(value) == list: # deal with lists
+                schema = create_list_schema(value)
+                boxes[name] = create_widget('H', **self.create_property_widgets(
+                                                                {f'{name}.{i}': v for i, v in enumerate(value)}, name))
 
             # create schema validator so entries must adhere to specific format
             setattr(self, f"{name}_schema", Schema(schema))
-            input_widgets = {**input_widgets, 'widget': create_widget('H', **boxes)}
-            widgets[name] = create_widget(struct='H', **input_widgets)
+            widgets[name] = create_widget('H', **boxes) if '.' not in name else create_widget('V', **boxes)
 
             if attr is not None:  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring

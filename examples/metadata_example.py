@@ -30,7 +30,7 @@ if __name__ == "__main__":
         'subject_id': 123456,
         'experimenter_name': ['Chris P. Bacon'],
         'immersion': {
-            'medium': '0.05XSSC',
+            'medium': 'air',
             'refractive_index': 1.33},
         'x_anatomical_direction': 'Anterior to Posterior',
         'y_anatomical_direction': 'Inferior to Superior',
@@ -48,5 +48,4 @@ if __name__ == "__main__":
     metadata_widget.show()
     metadata_widget.ValueChangedInside[str].connect(
         lambda value, dev=metadata_class, widget=metadata_widget,: widget_property_changed(value, dev, widget))
-
     sys.exit(app.exec_())
