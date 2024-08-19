@@ -220,9 +220,10 @@ class NIWidget(BaseDeviceWidget):
 
         parent = self.tree if parent is None else parent
         # TODO: This is haaaaaacky. but might be good for now
-        dictionary = self.mappedpathGet(self.exposed_branches.copy(), name.split('.'))
+        iterable = self.mappedpathGet(self.exposed_branches.copy(), name.split('.'))
         items = []
-        for key, value in dictionary.items():
+        for i, item in enumerate(iterable):
+            key = item if type(iterable) == dict else str(i)
             id = f'{name}.{key}'
             if widget := getattr(self, f'{id}_widget', False):
                 item = QTreeWidgetItem(parent, [key])

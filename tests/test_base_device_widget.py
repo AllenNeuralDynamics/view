@@ -132,7 +132,7 @@ class BaseDeviceWidgetTests(unittest.TestCase):
         self.assertTrue(getattr(widget, 'test_list.0') == 'howdy')
 
     def test_dict_properties(self):
-        """Test that BaseDeviceWidget can correctly handle properties that are list"""
+        """Test that BaseDeviceWidget can correctly handle properties that are dictionaries"""
 
         properties = {'test_dict': {'greeting': 'hello', 'directed_to': 'world'}}
         widget = BaseDeviceWidget(properties, properties)
@@ -159,7 +159,7 @@ class BaseDeviceWidgetTests(unittest.TestCase):
         self.assertTrue(getattr(widget, 'test_dict.greeting') == 'howdy')
 
     def test_nested_properties(self):
-        """Test that BaseDeviceWidget can correctly handle properties that are list"""
+        """Test that BaseDeviceWidget can correctly handle properties that are nested dictionaries"""
 
         properties = {'test_nest_dict': {'greeting_options': {'formal': 'hello', 'cowboy': 'howdy'},
                                          'directed_to': 'world'}}

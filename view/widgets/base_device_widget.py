@@ -12,6 +12,7 @@ from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollabl
 import inspect
 from schema import Schema, SchemaError
 
+
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
     ValueChangedInside = Signal((str,))
@@ -47,7 +48,7 @@ class BaseDeviceWidget(QMainWindow):
             unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name.split('.')[-1]
-            schema = Schema(type(value))    # create schema validator so entries must adhere to specific format
+            schema = Schema(type(value))  # create schema validator so entries must adhere to specific format
 
             boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             if not hasattr(value, 'keys') and type(value) != list or type(arg_type) == enum.EnumMeta:
@@ -58,14 +59,14 @@ class BaseDeviceWidget(QMainWindow):
                 else:
                     boxes[name] = self.create_attribute_widget(name, 'text', value)
 
-            elif hasattr(value, 'keys'): # deal with dict like variables
+            elif hasattr(value, 'keys'):  # deal with dict like variables
                 schema = create_dict_schema(value)
                 boxes[name] = create_widget('H', **self.create_property_widgets(
-                                                                    {f'{name}.{k}': v for k, v in value.items()}, name))
-            elif type(value) == list: # deal with lists
+                    {f'{name}.{k}': v for k, v in value.items()}, name))
+            elif type(value) == list:  # deal with lists
                 schema = create_list_schema(value)
                 boxes[name] = create_widget('H', **self.create_property_widgets(
-                                                                {f'{name}.{i}': v for i, v in enumerate(value)}, name))
+                    {f'{name}.{i}': v for i, v in enumerate(value)}, name))
 
             # create schema validator so entries must adhere to specific format
             setattr(self, f"{name}_schema", Schema(schema))
@@ -220,6 +221,7 @@ def create_dict_schema(dictionary: dict):
 
     return schema
 
+
 def create_list_schema(list_ob: dict):
     """
         Helper function to create a schema for a list object
@@ -236,12 +238,14 @@ def create_list_schema(list_ob: dict):
             schema.append(type(value))
     return schema
 
+
 def check_if_valid(schema, item):
     try:
         schema.validate(item)
         return True
     except SchemaError:
         return False
+
 
 def create_widget(struct: str, *args, **kwargs):
     """Creates either a horizontal or vertical layout populated with widgets

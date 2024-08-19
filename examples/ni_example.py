@@ -48,5 +48,3 @@ if __name__ == "__main__":
         lambda value, dev=daq_object, widget=daq_tasks,: widget_property_changed(value, dev, widget))
 
     sys.exit(app.exec_())
-
-    # sys.exit(app.exec_())

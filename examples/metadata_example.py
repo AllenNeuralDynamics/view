@@ -12,10 +12,10 @@ def widget_property_changed(name, device, widget):
     :param name: name of attribute and widget"""
 
     name_lst = name.split('.')
-    print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
+    print('widget',  name_lst[0], ' changed to ', getattr(widget, name_lst[0]))
     value = getattr(widget, name_lst[0])
     setattr(device, name_lst[0], value)
-    print('Device', name, ' changed to ', getattr(device, name_lst[0]))
+    print('Device',  name_lst[0], ' changed to ', getattr(device, name_lst[0]))
     for k, v in widget.property_widgets.items():
         instrument_value = getattr(device, k)
         # print(k, instrument_value)
