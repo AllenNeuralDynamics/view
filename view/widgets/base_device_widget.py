@@ -51,7 +51,7 @@ class BaseDeviceWidget(QMainWindow):
             schema = Schema(type(value))  # create schema validator so entries must adhere to specific format
 
             boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
-            if not hasattr(value, 'keys') and type(value) != list or type(arg_type) == enum.EnumMeta:
+            if dict not in type(value).__mro__ and list not in type(value).__mro__ or type(arg_type) == enum.EnumMeta:
                 # Create combo boxes if there are preset options
                 if input_specs := self.check_driver_variables(search_name):
                     boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
@@ -59,15 +59,15 @@ class BaseDeviceWidget(QMainWindow):
                 else:
                     boxes[name] = self.create_attribute_widget(name, 'text', value)
 
-            elif hasattr(value, 'keys'):  # deal with dict like variables
+            elif dict in type(value).__mro__:  # deal with dict like variables
                 schema = create_dict_schema(value)
                 boxes[name] = create_widget('H', **self.create_property_widgets(
                     {f'{name}.{k}': v for k, v in value.items()}, name))
-            elif type(value) == list:  # deal with lists
+            elif list in type(value).__mro__:  # deal with list like variables
                 schema = create_list_schema(value)
                 boxes[name] = create_widget('H', **self.create_property_widgets(
                     {f'{name}.{i}': v for i, v in enumerate(value)}, name))
-
+                
             # create schema validator so entries must adhere to specific format
             setattr(self, f"{name}_schema", Schema(schema))
             widgets[name] = create_widget('H', **boxes) if '.' not in name else create_widget('V', **boxes)
@@ -158,9 +158,9 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name of attribute and widget"""
 
         value = getattr(self, name, None)
-        if not hasattr(value, 'keys') and type(value) != list:  # not a dictionary or list like value
+        if dict not in type(value).__mro__ and list not in type(value).__mro__:  # not a dictionary or list like value
             self._set_widget_text(name, value)
-        elif hasattr(value, 'keys'):
+        elif dict in type(value).__mro__:
             for k, v in value.items():  # multiple widgets to set values for
                 setattr(self, f'{name}.{k}', v)
                 self.update_property_widget(f'{name}.{k}')
@@ -212,9 +212,9 @@ def create_dict_schema(dictionary: dict):
     """
     schema = {}
     for key, value in dictionary.items():
-        if hasattr(value, 'keys'):
+        if dict in type(value).__mro__:
             schema[key] = create_dict_schema(value)
-        elif type(value) == list:
+        elif list in type(value).__mro__:
             schema[key] = create_list_schema(value)
         else:
             schema[key] = type(value)
@@ -230,9 +230,9 @@ def create_list_schema(list_ob: dict):
         """
     schema = []
     for value in list_ob:
-        if hasattr(value, 'keys'):
+        if dict in type(value).__mro__:
             schema.append(create_dict_schema(value))
-        elif type(value) == list:
+        elif list in type(value).__mro__:
             schema.append(create_list_schema(value))
         else:
             schema.append(type(value))
