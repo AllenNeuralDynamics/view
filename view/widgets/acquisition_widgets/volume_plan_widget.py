@@ -1,4 +1,4 @@
-#from pymmcore_widgets.useq_widgets._grid import
+# from pymmcore_widgets.useq_widgets._grid import
 import useq
 from view.widgets.base_device_widget import create_widget
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
@@ -205,7 +205,7 @@ class VolumePlanWidget(QMainWindow):
 
         # create table portion
         self.table_columns = ['row, column', *[f'{x} [{unit}]' for x in self.coordinate_plane],
-                        f'{self.coordinate_plane[2]} max [{unit}]', 'visibility']
+                              f'{self.coordinate_plane[2]} max [{unit}]', 'visibility']
         self.tile_table = QTableWidget()
         self.tile_table.setColumnCount(len(self.table_columns))
         self.tile_table.setHorizontalHeaderLabels(self.table_columns)
@@ -300,14 +300,14 @@ class VolumePlanWidget(QMainWindow):
         """
 
         row, column = [int(x) for x in self.tile_table.item(item.row(), 0).text() if x.isdigit()]
-        column_title = self.table_columns[item.row()]
-
+        column_title = self.table_columns[item.column()]
         if column_title == f'{self.coordinate_plane[2]} [{self.unit}]':
             self._scan_starts[row, column] = item.data(Qt.EditRole)
             self.valueChanged.emit(self.value())
         elif column_title == f'{self.coordinate_plane[2]} max [{self.unit}]':
             self._scan_ends[row, column] = item.data(Qt.EditRole)
             self.valueChanged.emit(self.value())
+
     def toggle_grid_position(self, enable, index):
         """If grid is anchored, allow user to input grid position"""
 
@@ -315,6 +315,7 @@ class VolumePlanWidget(QMainWindow):
         if not enable:  # Graph is not anchored
             self.grid_offset_widgets[index].setValue(self.fov_position[index])
         self._on_change()
+
     @property
     def apply_all(self):
         return self._apply_all
