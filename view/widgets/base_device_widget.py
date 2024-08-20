@@ -195,7 +195,8 @@ class BaseDeviceWidget(QMainWindow):
 def create_widget(struct: str, *args, **kwargs):
     """Creates either a horizontal or vertical layout populated with widgets
     :param struct: specifies whether the layout will be horizontal, vertical, or combo
-    :param kwargs: all widgets contained in layout"""
+    :param kwargs: all widgets contained in layout
+    :return QWidget()"""
 
     layouts = {'H': QHBoxLayout(), 'V': QVBoxLayout()}
     widget = QWidget()

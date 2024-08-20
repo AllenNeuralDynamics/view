@@ -3,7 +3,7 @@ from qtpy.QtWidgets import QWidget, QCheckBox, QHBoxLayout, QLabel, QButtonGroup
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
 from view.widgets.acquisition_widgets.scan_plan_widget import ScanPlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
-from view.widgets.acquisition_widgets.tile_plan_widget import TilePlanWidget
+from view.widgets.acquisition_widgets.volume_plan_widget import TilePlanWidget
 from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidget
 from view.widgets.base_device_widget import create_widget
 from qtpy.QtCore import Qt
@@ -70,16 +70,11 @@ class VolumeWidget(QWidget):
         self.tile_starts = self.tile_plan_widget.grid_position_widgets  # expose for ease of access
         self.anchor_widgets = self.tile_plan_widget.anchor_widgets  # expose for ease of access
 
-        # create scan widgets
-        self.scan_plan_widget = ScanPlanWidget(limits[2], unit)
-
         # create widget containing volume model, scan plan, and tile plan
         top_widget = QWidget()
         layout = QGridLayout()
         layout.addWidget(self.tile_plan_widget, 0, 0)
         layout.addWidget(extended_model, 0, 2, 3, 2)
-        layout.addWidget(self.scan_plan_widget, 1, 0)
-        layout.addWidget(self.scan_plan_widget.group_box, 2, 0)
         top_widget.setLayout(layout)
 
         # create splitter for model and table
@@ -145,23 +140,12 @@ class VolumeWidget(QWidget):
         # hook up tile_plan_widget signals for scan_plan_constructions, volume_model path, and tile start
         self.tile_plan_widget.valueChanged.connect(self.tile_plan_changed)
         self.tile_starts[2].disconnect()  # disconnect to only trigger update graph once
-        self.tile_starts[2].valueChanged.connect(
-            lambda value: self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value))
         self.anchor_widgets[2].toggled.connect(lambda checked: self.disable_scan_start_widgets(not checked))
         self.disable_scan_start_widgets(True)
-
-        # hook up scan_plan_widget signals to update grid and channel plan when tiles are changed
-        self.scan_plan_widget.scanChanged.connect(self.update_model)
-        self.scan_plan_widget.apply_all.toggled.connect(self.toggle_apply_all)
-        self.scan_plan_widget.tileAdded.connect(self.tile_added)
 
         self.limits = limits
         self.fov_dimensions = fov_dimensions[:2] + [0]  # add 0 if not already included
         self.fov_position = fov_position
-
-        # initialize first tile and add to layout
-        self.scan_plan_widget.scan_plan_construction(self.tile_plan_widget.value())
-        self.scan_plan_widget.z_plan_widgets[0, 0].start.valueChanged.connect(self.update_scan_start)
 
         self.setLayout(self.layout)
         self.show()
@@ -178,8 +162,6 @@ class VolumeWidget(QWidget):
         self.tile_plan_widget.fov_position = value
         # update scan plan
         tile_anchor = self.tile_plan_widget.anchor_widgets[2]
-        if not tile_anchor.isChecked() and tile_anchor.isEnabled():
-            self.scan_plan_widget.z_plan_widgets[0, 0].start.setValue(value[2])
         # update model
         self.volume_model.fov_position = value
 
@@ -201,8 +183,7 @@ class VolumeWidget(QWidget):
         """When tile plan has been changed, trigger scan plan construction and update volume model path
         :param value: latest tile plan value"""
 
-        self.scan_plan_widget.scan_plan_construction(value)
-        print(self.volume_model.grid_coords)
+
         self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
 
         # update scanning coords of table
