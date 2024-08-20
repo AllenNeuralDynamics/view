@@ -48,10 +48,10 @@ class BaseDeviceWidget(QMainWindow):
             unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
             arg_type = type(value)
             search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name.split('.')[-1]
-            schema = Schema(type(value))  # create schema validator so entries must adhere to specific format
 
             boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             if dict not in type(value).__mro__ and list not in type(value).__mro__ or type(arg_type) == enum.EnumMeta:
+                setattr(self, f"{name}_schema", Schema(type(value))) # create schema validator so entries must adhere to specific format
                 # Create combo boxes if there are preset options
                 if input_specs := self.check_driver_variables(search_name):
                     boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
@@ -60,16 +60,14 @@ class BaseDeviceWidget(QMainWindow):
                     boxes[name] = self.create_attribute_widget(name, 'text', value)
 
             elif dict in type(value).__mro__:  # deal with dict like variables
-                schema = create_dict_schema(value)
+                setattr(self, f"{name}_schema", Schema(create_dict_schema(value)))
                 boxes[name] = create_widget('H', **self.create_property_widgets(
                     {f'{name}.{k}': v for k, v in value.items()}, name))
             elif list in type(value).__mro__:  # deal with list like variables
-                schema = create_list_schema(value)
+                setattr(self, f"{name}_schema", Schema(create_list_schema(value)))
                 boxes[name] = create_widget('H', **self.create_property_widgets(
                     {f'{name}.{i}': v for i, v in enumerate(value)}, name))
-                
-            # create schema validator so entries must adhere to specific format
-            setattr(self, f"{name}_schema", Schema(schema))
+
             widgets[name] = create_widget('H', **boxes) if '.' not in name else create_widget('V', **boxes)
 
             if attr is not None:  # if name is attribute of device
@@ -116,23 +114,28 @@ class BaseDeviceWidget(QMainWindow):
         # TODO: better way to handle weird types that will crash QT?
         value_type = type(value)
         textbox = QScrollableLineEdit(str(value))
-        name_lst = name.split('.')
-        parent_attr = pathGet(self.__dict__, name_lst[0:-1])
-        if hasattr(parent_attr, 'keys'):  # name is a dictionary and key pair split by .
-            # Must find dictionary each editing finish
-            textbox.editingFinished.connect(lambda:
-                                            pathGet(self.__dict__, name_lst[0:-1]).
-                                            __setitem__(name_lst[-1], value_type(textbox.text())))
-        elif type(parent_attr) == list:
-            textbox.editingFinished.connect(lambda: parent_attr.__setitem__(int(name_lst[-1]),
-                                                                            value_type(textbox.text())))
-        textbox.editingFinished.connect(lambda: setattr(self, name, value_type(textbox.text())))
-        textbox.editingFinished.connect(lambda: self.ValueChangedInside.emit(name))
-        if issubclass(value_type, float) or issubclass(value_type, int):
-            validator = QIntValidator() if issubclass(value_type, int) else QDoubleValidator()
+        textbox.editingFinished.connect(lambda: self.textbox_edited(name))
+        if float in value_type.__mro__ or int in value_type.__mro__:
+            validator = QIntValidator() if int in value_type.__mro__ else QDoubleValidator()
             textbox.setValidator(validator)
 
         return textbox
+
+    def textbox_edited(self, name):
+        """
+        Correctly set attribute after textbox has been edited
+        :param name: name of property that was edited
+        :return:
+        """
+
+        name_lst = name.split('.')
+        parent_attr = pathGet(self.__dict__, name_lst[0:-1])
+        value = getattr(self, name+'_widget').text()
+        value_type = type(getattr(self, name + '_schema').schema())
+        if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
+            parent_attr[name_lst[-1]] = value_type(value)
+        setattr(self, name, value_type(value))
+        self.ValueChangedInside.emit(name)
 
     def create_combo_box(self, name, items):
         """Convenience function to build combo boxes and add items
@@ -142,15 +145,26 @@ class BaseDeviceWidget(QMainWindow):
         options = items.keys() if hasattr(items, 'keys') else items
         box = QComboBox()
         box.addItems([str(x) for x in options])
-        name_lst = name.split('.')
-        if len(name_lst) != 1:  # name is a dictionary and key pair split by .
-            box.currentTextChanged.connect(lambda value:
-                                           pathGet(self.__dict__, name_lst[0:-1]).__setitem__(name_lst[-1], value))
-        box.currentTextChanged.connect(lambda value: setattr(self, name, value))
+        box.currentTextChanged.connect(lambda value: self.combo_box_changed(value, name))
         box.setCurrentText(str(getattr(self, name)))
-        # emit signal when changed so outside listener can update. needs to be after changing attribute
-        box.currentTextChanged.connect(lambda: self.ValueChangedInside.emit(name))
         return box
+
+    def combo_box_changed(self, value, name):
+        """
+        Correctly set attribute after combobox index has been changed
+        :param value: new value combobox has been changed to
+        :param name: name of property that was edited
+        :return:
+        """
+
+        name_lst = name.split('.')
+        parent_attr = pathGet(self.__dict__, name_lst[0:-1])
+        value_type = type(getattr(self, name + '_schema').schema())
+        if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
+            parent_attr[name_lst[-1]] = value_type(value)
+        setattr(self, name, value_type(value))
+        self.ValueChangedInside.emit(name)
+
 
     @Slot(str)
     def update_property_widget(self, name):
