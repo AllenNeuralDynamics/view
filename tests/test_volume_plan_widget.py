@@ -13,6 +13,8 @@ app = QApplication(sys.argv)
 class VolumePlanWidgetTests(unittest.TestCase):
     """Tests for VolumePlanWidget"""
 
+    # TODO: Test overlap, relative_to, order, apply_all
+
     def test_toggle_mode(self):
         """Test functionality of number mode"""
 
@@ -240,7 +242,47 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertEqual(plan.grid_offset_widgets[1].value(), 2)
         self.assertEqual(plan.grid_offset_widgets[2].value(), 3)
         self.assertEqual(plan.grid_offset, [1, 2, 3])
-        
+
+
+
+    def test_grid_offset_widgets(self):
+        """Test functionality of grid_offset_widgets"""
+
+        plan = VolumePlanWidget()
+        plan.show()
+        valueChanged_spy = QSignalSpy(plan.valueChanged)
+
+        # test dimension 0
+        plan.grid_offset_widgets[0].setValue(1)
+
+        self.assertEqual(len(valueChanged_spy), 1)  # triggered once
+        self.assertTrue(valueChanged_spy.isValid())
+        self.assertEqual(plan.grid_offset, [1, 0, 0])
+        expected_tiles = [[1, 0, 0]]
+        actual_tiles = plan.tile_positions
+        self.assertEqual(expected_tiles, actual_tiles)
+
+        # test dimension 1
+        plan.grid_offset_widgets[1].setValue(2)
+
+        self.assertEqual(len(valueChanged_spy), 2)  # triggered twice
+        self.assertTrue(valueChanged_spy.isValid())
+        self.assertEqual(plan.grid_offset, [1, 2, 0])
+        expected_tiles = [[1, 2, 0]]
+        actual_tiles = plan.tile_positions
+        self.assertEqual(expected_tiles, actual_tiles)
+
+        # test dimension 2
+        plan.grid_offset_widgets[2].setValue(2)
+
+        self.assertEqual(len(valueChanged_spy), 3)  # triggered thrice
+        self.assertTrue(valueChanged_spy.isValid())
+        self.assertEqual(plan.grid_offset, [1, 2, 3])
+        expected_tiles = [[1, 2, 3]]
+        actual_tiles = plan.tile_positions
+        self.assertEqual(expected_tiles, actual_tiles)
+
+
 
 if __name__ == "__main__":
     unittest.main()

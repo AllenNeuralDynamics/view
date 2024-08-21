@@ -8,6 +8,6 @@ if __name__ == "__main__":
     plan = VolumePlanWidget()
     plan.show()
 
-    plan.valueChanged.connect(lambda val: print(val, plan.tile_positions))
+    #plan.valueChanged.connect(lambda val: print(val, plan.tile_positions))
 
     sys.exit(app.exec_())

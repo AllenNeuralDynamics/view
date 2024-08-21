@@ -174,8 +174,8 @@ class VolumePlanWidget(QMainWindow):
             box.setRange(*self.limits[i])
             box.setSuffix(f" {unit}")
             box.valueChanged.connect(lambda: setattr(self, 'grid_offset', [self.grid_offset_widgets[0].value(),
-                                                                             self.grid_offset_widgets[1].value(),
-                                                                             self.grid_offset_widgets[2].value()]))
+                                                                           self.grid_offset_widgets[1].value(),
+                                                                           self.grid_offset_widgets[2].value()]))
             box.setDisabled(True)
 
             self.anchor_widgets[i].toggled.connect(lambda enable, index=i: self.toggle_grid_position(enable, index))
@@ -304,7 +304,7 @@ class VolumePlanWidget(QMainWindow):
         disable = list(kwargs.keys())
         if not self.apply_all or (row, column) == (0, 0):
             disable.remove(f'{self.coordinate_plane[2]} max [{self.unit}]')
-            if self.anchor_widgets[2].isChecked():
+            if self.anchor_widgets[2].isChecked() or not self.apply_all:
                 disable.remove(f'{self.coordinate_plane[2]} [{self.unit}]')
         flags = QTableWidgetItem().flags()
         flags &= ~Qt.ItemIsEditable
@@ -314,12 +314,29 @@ class VolumePlanWidget(QMainWindow):
         # add in QCheckbox for visibility
         visible = QCheckBox('Visible')
         visible.setChecked(bool(self._tile_visibility[row, column]))
-        visible.toggled.connect(lambda checked: self._tile_visibility.itemset((row, column), checked))
-        visible.toggled.connect(lambda checked, val=self.value(): self.valueChanged.emit(val))
+        visible.toggled.connect(lambda checked: self.toggle_visibility(checked, row, column))
         visible.setEnabled(not all([self.apply_all, (row, column) != (0, 0)]))
         self.tile_table.setCellWidget(table_row, self.table_columns.index('visibility'), visible)
 
         self.tile_table.blockSignals(False)
+
+    def toggle_visibility(self, checked, row, column):
+        """
+        Handle visibility checkbox being toggled
+        :param checked: check state of checkbox
+        :param row: row of tile
+        :param column: column of tile
+        :return:
+        """
+
+        self._tile_visibility[row, column] = checked
+        if self.apply_all and [row, column] == [0, 0]:  # trigger update of all subsequent checkboxes
+            for r in range(self.tile_table.rowCount()):
+                self.tile_table.cellWidget(r, self.table_columns.index('visibility')).setChecked(checked)
+            self.valueChanged.emit(self.value())  # emit value changes at end of changes
+
+        elif not self.apply_all:
+            self.valueChanged.emit(self.value())
 
     def tile_table_changed(self, item):
         """
@@ -329,13 +346,20 @@ class VolumePlanWidget(QMainWindow):
         """
 
         row, column = [int(x) for x in self.tile_table.item(item.row(), 0).text() if x.isdigit()]
-        column_title = self.table_columns[item.column()]
-        if column_title == f'{self.coordinate_plane[2]} [{self.unit}]':
-            self._scan_starts[row, column] = item.data(Qt.EditRole)
-            self.valueChanged.emit(self.value())
-        elif column_title == f'{self.coordinate_plane[2]} max [{self.unit}]':
-            self._scan_ends[row, column] = item.data(Qt.EditRole)
-            self.valueChanged.emit(self.value())
+        col_title = self.table_columns[item.column()]
+        titles = [f'{self.coordinate_plane[2]} [{self.unit}]', f'{self.coordinate_plane[2]} max [{self.unit}]']
+        if col_title in titles:
+            value = item.data(Qt.EditRole)
+            array = self._scan_starts if col_title == titles[0] else self._scan_ends
+            array[row, column] = value
+
+            if self.apply_all and [row, column] == [0, 0]:  # trigger update of all subsequent tiles
+                for r in range(self.tile_table.rowCount()):
+                    self.tile_table.item(r, item.column()).setData(Qt.EditRole, value)
+                self.valueChanged.emit(self.value())  # emit value changes at end of changes
+
+            elif not self.apply_all:
+                self.valueChanged.emit(self.value())
 
     def toggle_grid_position(self, enable, index):
         """If grid is anchored, allow user to input grid position"""
@@ -354,8 +378,22 @@ class VolumePlanWidget(QMainWindow):
     @apply_all.setter
     def apply_all(self, value: bool):
         self._apply_all = value
+
+        # correctly configure anchor and grid_offset_widget
         self.anchor_widgets[2].setEnabled(value)
-        self.grid_offset_widgets[2].setEnabled(value)
+        self.grid_offset_widgets[2].setEnabled(value and self.anchor_widgets[2].isChecked())
+
+        # update values if apply_all applied
+        if value:
+            self.blockSignals(True)  # emit signal only once
+            self.toggle_visibility(self.tile_visibility[0, 0], 0, 0)
+            tile_zero_row = self.tile_table.findItems('[0, 0]', Qt.MatchExactly)[0].row()
+            start_i = self.table_columns.index(f'{self.coordinate_plane[2]} [{self.unit}]')
+            end_i = self.table_columns.index(f'{self.coordinate_plane[2]} max [{self.unit}]')
+            self.tile_table_changed(self.tile_table.item(tile_zero_row, start_i))
+            self.tile_table_changed(self.tile_table.item(tile_zero_row, end_i))
+            self.blockSignals(False)
+
         self._on_change()
         self.refill_table()  # order, pos, and visibilty doesn't change, so update table to reconfigure editablility
 
@@ -376,6 +414,7 @@ class VolumePlanWidget(QMainWindow):
                     self.blockSignals(False)
 
             self._on_change()
+
     @property
     def fov_dimensions(self):
         return self._fov_dimensions
@@ -397,6 +436,7 @@ class VolumePlanWidget(QMainWindow):
         if type(value) is not list and len(value) != 3:
             raise ValueError
         self._grid_offset = value
+        self._scan_starts[:, :] = value[2]
         self._on_change()
 
     @property
@@ -459,11 +499,12 @@ class VolumePlanWidget(QMainWindow):
         for mode in ['number', 'area', 'bounds']:
             getattr(self, f'{mode}_widget').setEnabled(value == mode)
 
-        for anchor, pos in zip(self.anchor_widgets[:2], self.grid_offset_widgets[:2]):
-            anchor.setEnabled(value != 'bounds')
-            pos.setEnabled(value != 'bounds')
-        self.anchor_widgets[2].setEnabled(value != 'bounds' and self.apply_all_box.isChecked())
-        self.grid_offset_widgets[2].setEnabled(value != 'bounds' and self.apply_all_box.isChecked())
+        for i in range(3):
+            anchor, pos = self.anchor_widgets[i], self.grid_offset_widgets[i]
+            anchor_enable = value != 'bounds' if i != 2 else value != 'bounds' and self.apply_all
+            anchor.setEnabled(anchor_enable)
+            pos_enable = anchor_enable and anchor.isChecked()
+            pos.setEnabled(pos_enable)
 
         self._on_change()
 
