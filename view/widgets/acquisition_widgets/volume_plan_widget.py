@@ -54,11 +54,11 @@ class VolumePlanWidget(QMainWindow):
 
         # initialize property values
         self._grid_offset = [0, 0]
-        self._mode = 'number'
+        self._mode = None
         self._apply_all = True
         self._tile_visibility = np.ones([1, 1], dtype=bool)  # init as True
-        self._scan_starts = np.zeros([0, 1], dtype=float)
-        self._scan_ends = np.zeros([0, 1], dtype=float)
+        self._scan_starts = np.zeros([1, 1], dtype=float)
+        self._scan_ends = np.zeros([1, 1], dtype=float)
 
         self.rows = QSpinBox()
         self.rows.setSizePolicy(7, 0)
@@ -71,39 +71,40 @@ class VolumePlanWidget(QMainWindow):
         self.columns.setValue(1)
         self.columns.setSuffix(" fields")
         # add to layout
-        number_button = QRadioButton()
-        number_button.clicked.connect(lambda: setattr(self, 'mode', 'number'))
-        number_button.setChecked(True)
-        self.button_group.addButton(number_button)
-        number_widget = create_widget('H', number_button,
-                                      QLabel('Rows:'), self.rows,
-                                      QLabel('Cols:'), self.columns)
-        number_widget.layout().setAlignment(Qt.AlignLeft)
-        layout.addWidget(number_widget)
+        self.number_button = QRadioButton()
+        self.number_button.clicked.connect(lambda: setattr(self, 'mode', 'number'))
+        self.button_group.addButton(self.number_button)
+        self.number_widget = create_widget('H',
+                                           QLabel('Rows:'), self.rows,
+                                           QLabel('Cols:'), self.columns)
+        self.number_widget.layout().setAlignment(Qt.AlignLeft)
+        layout.addWidget(create_widget('H', self.number_button, self.number_widget))
         layout.addWidget(line())
 
         self.area_width = QDoubleSpinBox()
         self.area_width.setSizePolicy(7, 0)
-        self.area_width.setRange(*self.limits[0])
+        self.area_width.setRange(.01, self.limits[0][1] - self.limits[0][0])
+        self.area_width.setValue(.01)  # width can't be zero
         self.area_width.setDecimals(2)
         self.area_width.setSuffix(f" {self.unit}")
         self.area_width.setSingleStep(0.1)
 
         self.area_height = QDoubleSpinBox()
+        self.area_height.setValue(.01)  # height can't be zero
         self.area_height.setSizePolicy(7, 0)
-        self.area_height.setRange(*self.limits[1])
+        self.area_width.setRange(.01, self.limits[1][1] - self.limits[1][0])
         self.area_height.setDecimals(2)
         self.area_height.setSuffix(f" {self.unit}")
         self.area_height.setSingleStep(0.1)
         # add to layout
-        area_button = QRadioButton()
-        area_button.clicked.connect(lambda: setattr(self, 'mode', 'area'))
-        self.button_group.addButton(area_button)
-        area_widget = create_widget('H', area_button,
-                                    QLabel('Width:'), self.area_width,
-                                    QLabel('Height:'), self.area_height)
-        area_widget.layout().setAlignment(Qt.AlignLeft)
-        layout.addWidget(area_widget)
+        self.area_button = QRadioButton()
+        self.area_button.clicked.connect(lambda: setattr(self, 'mode', 'area'))
+        self.button_group.addButton(self.area_button)
+        self.area_widget = create_widget('H',
+                                         QLabel('Width:'), self.area_width,
+                                         QLabel('Height:'), self.area_height)
+        self.area_widget.layout().setAlignment(Qt.AlignLeft)
+        layout.addWidget(create_widget('H', self.area_button, self.area_widget))
         layout.addWidget(line())
 
         for i in range(2):
@@ -130,14 +131,14 @@ class VolumePlanWidget(QMainWindow):
         dim_1_high_label = QLabel('Top: ') if polarity[0] == 1 else QLabel('Bottom: ')
 
         # add to layout
-        bound_button = QRadioButton()
-        bound_button.clicked.connect(lambda: setattr(self, 'mode', 'bounds'))
-        self.button_group.addButton(bound_button)
-        bound_widget = create_widget('VH', bound_button, QWidget(),
-                                     dim_0_low_label, dim_0_high_label, self.dim_0_low, self.dim_0_high,
-                                     dim_1_low_label, dim_1_high_label, self.dim_1_low, self.dim_1_high)
-        bound_widget.layout().setAlignment(Qt.AlignLeft)
-        layout.addWidget(bound_widget)
+        self.bounds_button = QRadioButton()
+        self.bounds_button.clicked.connect(lambda: setattr(self, 'mode', 'bounds'))
+        self.button_group.addButton(self.bounds_button)
+        self.bounds_widget = create_widget('VH',
+                                           dim_0_low_label, dim_0_high_label, self.dim_0_low, self.dim_0_high,
+                                           dim_1_low_label, dim_1_high_label, self.dim_1_low, self.dim_1_high)
+        self.bounds_widget.layout().setAlignment(Qt.AlignLeft)
+        layout.addWidget(create_widget('H', self.bounds_button, self.bounds_widget))
         layout.addWidget(line())
 
         self.overlap = QDoubleSpinBox()
@@ -172,7 +173,7 @@ class VolumePlanWidget(QMainWindow):
             box.setDecimals(6)
             box.setRange(*self.limits[i])
             box.setSuffix(f" {unit}")
-            box.valueChanged.connect(lambda: setattr(self, 'grid_position', [self.grid_offset_widgets[0].value(),
+            box.valueChanged.connect(lambda: setattr(self, 'grid_offset', [self.grid_offset_widgets[0].value(),
                                                                              self.grid_offset_widgets[1].value(),
                                                                              self.grid_offset_widgets[2].value()]))
             box.setDisabled(True)
@@ -202,6 +203,7 @@ class VolumePlanWidget(QMainWindow):
         self.overlap.valueChanged.connect(self._on_change)
         self.order.currentIndexChanged.connect(self._on_change)
         self.relative_to.currentIndexChanged.connect(self._on_change)
+        self.reverse.toggled.connect(self._on_change)
 
         # create table portion
         self.table_columns = ['row, column', *[f'{x} [{unit}]' for x in self.coordinate_plane],
@@ -226,17 +228,44 @@ class VolumePlanWidget(QMainWindow):
 
         self.setCentralWidget(widget)
 
+        self.mode = 'number'  # initialize mode
+        self.update_tile_table(self.value())  # initialize table
+
     def update_tile_table(self, value):
         """Update tile table when value changes
         ":param value: new value
         """
 
-        # update table
-        # table_order = [[int(x) for x in self.tile_table.item(i, 0).text() if x.isdigit()] for i in
-        #                range(self.tile_table.rowCount())]
-        # value_order = [[t.row, t.col] for t in value]
-        # if table_order != value_order and len(value_order) != 0:
-        # clear table and add back tiles in the correct order if
+        # check if order changed
+        table_order = [[int(x) for x in self.tile_table.item(i, 0).text() if x.isdigit()] for i in
+                       range(self.tile_table.rowCount())]
+        value_order = [[t.row, t.col] for t in value]
+        order_matches = table_order == value_order
+        if not order_matches:
+            self.refill_table()
+            return
+
+        # check if tile positions match
+        table_pos = [[self.tile_table.item(j, i).data(Qt.EditRole) for i in range(1, 4)] for j in
+                     range(self.tile_table.rowCount())]
+        value_pos = self.tile_positions
+        pos_matches = table_pos == value_pos
+        if not pos_matches:
+            self.refill_table()
+            return
+
+        # check if visibility matches
+        table_vis = [self.tile_table.item(i, self.table_columns.index('visibility')).data(Qt.EditRole) for i in
+                     range(self.tile_table.rowCount())]
+        value_vis = [self._tile_visibility[t.row, t.col] for t in value]
+        vis_matches = table_vis == value_vis
+        if not vis_matches:
+            self.refill_table()
+            return
+
+    def refill_table(self):
+        """Function to clear and populate tile table with current tile configuration"""
+        value = self.value()
         self.tile_table.clearContents()
         self.tile_table.setRowCount(0)
         for tile in value:
@@ -284,7 +313,7 @@ class VolumePlanWidget(QMainWindow):
 
         # add in QCheckbox for visibility
         visible = QCheckBox('Visible')
-        visible.setChecked(self._tile_visibility[row, column])
+        visible.setChecked(bool(self._tile_visibility[row, column]))
         visible.toggled.connect(lambda checked: self._tile_visibility.itemset((row, column), checked))
         visible.toggled.connect(lambda checked, val=self.value(): self.valueChanged.emit(val))
         visible.setEnabled(not all([self.apply_all, (row, column) != (0, 0)]))
@@ -315,6 +344,8 @@ class VolumePlanWidget(QMainWindow):
         if not enable:  # Graph is not anchored
             self.grid_offset_widgets[index].setValue(self.fov_position[index])
         self._on_change()
+        if not enable:
+            self.refill_table()  # order, pos, and visibilty doesn't change, so update table to reconfigure editablility
 
     @property
     def apply_all(self):
@@ -323,7 +354,10 @@ class VolumePlanWidget(QMainWindow):
     @apply_all.setter
     def apply_all(self, value: bool):
         self._apply_all = value
+        self.anchor_widgets[2].setEnabled(value)
+        self.grid_offset_widgets[2].setEnabled(value)
         self._on_change()
+        self.refill_table()  # order, pos, and visibilty doesn't change, so update table to reconfigure editablility
 
     @property
     def fov_position(self):
@@ -331,11 +365,17 @@ class VolumePlanWidget(QMainWindow):
 
     @fov_position.setter
     def fov_position(self, value):
-        self._fov_position = value
-        for i, anchor in enumerate(self.anchor_widgets):
-            if not anchor.isChecked() and anchor.isEnabled():
-                self.grid_offset_widgets[i].setValue(value[i])
+        if type(value) is not list and len(value) != 3:
+            raise ValueError
+        elif value != self._fov_position:
+            self._fov_position = value
+            for anchor, pos, val in zip(self.anchor_widgets, self.grid_offset_widgets, value):
+                if not anchor.isChecked() and anchor.isEnabled():
+                    self.blockSignals(True)  # only emit valueChanged once at end
+                    pos.setValue(val)
+                    self.blockSignals(False)
 
+            self._on_change()
     @property
     def fov_dimensions(self):
         return self._fov_dimensions
@@ -349,6 +389,7 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def grid_offset(self):
+        """Returns off set from 0 of tile positions"""
         return self._grid_offset
 
     @grid_offset.setter
@@ -360,38 +401,70 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def tile_positions(self):
-        """Returns 2d list of tile positions based on widget values"""
-
-        coords = [[None] * self.value().columns for _ in range(self.value().rows)]
+        """Returns 3d list of tile positions based on widget values"""
+        # TODO: Why not make this a numpy array?
+        value = self.value()
+        coords = [[None] * value.columns for _ in range(value.rows)]
         if self._mode != "bounds":
-            for tile in self.value():
-                coords[tile.row][tile.col] = [tile.x + self.grid_offset[0], tile.y + self.grid_offset[1]]
+            for tile in value:
+                coords[tile.row][tile.col] = [tile.x + self.grid_offset[0],
+                                              tile.y + self.grid_offset[1],
+                                              self._scan_starts[tile.row][tile.col]]
         else:
-            for tile in self.value():
-                coords[tile.row][tile.col] = [tile.x, tile.y]
+            for tile in value:
+                coords[tile.row][tile.col] = [tile.x, tile.y, self._scan_starts[tile.row][tile.col]]
         return coords
+
+    @property
+    def tile_visibility(self):
+        """2d matrix of boolean value if tile should be visible or not"""
+        return self._tile_visibility
+
+    @property
+    def scan_starts(self):
+        """2d matrix of tile start position in scan dimension"""
+        return self._scan_starts
+
+    @property
+    def scan_ends(self):
+        """2d matrix of tile start position in scan dimension"""
+        return self._scan_ends
 
     def _on_change(self) -> None:
 
         if (val := self.value()) is None:
             return  # pragma: no cover
         # update sizes of arrays
-        if [val.rows, val.rows] != self._scan_starts.shape[:2]:
-            self._tile_visibility = np.resize(self._tile_visibility, [val.rows, val.rows])
-            self._scan_starts = np.resize(self._scan_starts, [val.rows, val.rows])
-            self._scan_ends = np.resize(self._scan_ends, [val.rows, val.rows])
+        if (val.rows, val.columns) != self._scan_starts.shape:
+            self._tile_visibility = np.resize(self._tile_visibility, [val.rows, val.columns])
+            self._scan_starts = np.resize(self._scan_starts, [val.rows, val.columns])
+            self._scan_ends = np.resize(self._scan_ends, [val.rows, val.columns])
         self.update_tile_table(val)
         self.valueChanged.emit(val)
 
     @property
     def mode(self):
+        """Mode used to calculate tile position"""
         return self._mode
 
     @mode.setter
     def mode(self, value):
+
         if value not in ['number', 'area', 'bounds']:
             raise ValueError
         self._mode = value
+
+        getattr(self, f'{value}_button').setChecked(True)
+
+        for mode in ['number', 'area', 'bounds']:
+            getattr(self, f'{mode}_widget').setEnabled(value == mode)
+
+        for anchor, pos in zip(self.anchor_widgets[:2], self.grid_offset_widgets[:2]):
+            anchor.setEnabled(value != 'bounds')
+            pos.setEnabled(value != 'bounds')
+        self.anchor_widgets[2].setEnabled(value != 'bounds' and self.apply_all_box.isChecked())
+        self.grid_offset_widgets[2].setEnabled(value != 'bounds' and self.apply_all_box.isChecked())
+
         self._on_change()
 
     def value(self):
@@ -410,7 +483,7 @@ class VolumePlanWidget(QMainWindow):
             return GridRowsColumns(
                 rows=self.rows.value(),
                 columns=self.columns.value(),
-                relative_to='center' if self.relative_to.currentText() else "top_left",
+                relative_to='center' if self.relative_to.currentText() == 'center' else "top_left",
                 **common,
             )
         elif self._mode == 'bounds':
@@ -425,7 +498,7 @@ class VolumePlanWidget(QMainWindow):
             return GridWidthHeight(
                 width=self.area_width.value(),
                 height=self.area_height.value(),
-                relative_to='center' if self.relative_to.currentText() else "top_left",
+                relative_to='center' if self.relative_to.currentText() == 'center' else "top_left",
                 **common,
             )
         raise NotImplementedError
