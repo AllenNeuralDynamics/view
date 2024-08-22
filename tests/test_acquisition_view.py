@@ -21,6 +21,8 @@ app = QApplication(sys.argv)
 class AcquisitionViewTests(unittest.TestCase):
     """Tests for AcquisitionView"""
 
+    # TODO: A lot more to test for
+
     def test_update_tiles(self):
         """test update_tiles functions"""
 

@@ -103,20 +103,25 @@ class ChannelPlanWidget(QTabWidget):
                             self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
                             setattr(self, column_name, {})
                             columns.append(column_name)
-                            if type(getattr(device_widget, f'{prop}_widget')) in [QScrollableLineEdit, QSpinBox]:
+                            prop_widget = getattr(device_widget, f'{prop}_widget')
+                            if type(prop_widget) in [QScrollableLineEdit, QSpinBox]:
                                 minimum = getattr(descriptor, 'minimum', float('-inf'))
                                 maximum = getattr(descriptor, 'maximum', float('inf'))
                                 step = getattr(descriptor, 'step', .1)
                                 delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
+                                setattr(self, column_name + '_initial_value', prop_widget.value())
                             elif type(getattr(device_widget, f'{prop}_widget')) == QComboBox:
                                 widget = getattr(device_widget, f'{prop}_widget')
                                 items = [widget.itemText(i) for i in range(widget.count())]
                                 delegates.append(QComboItemDelegate(items=items))
+                                setattr(self, column_name + '_initial_value', prop_widget.currentText())
                             else:  # TODO: How to handle dictionary values
                                 delegates.append(QTextItemDelegate())
+                                setattr(self, column_name + '_initial_value', prop_widget.text())
                 elif type(properties) == dict:     # TODO: how to validate the GUI yaml?
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
+                    setattr(self, column_name + '_initial_value', properties.get('initial_value', None))
                     columns.append(column_name)
                     if properties['delegate'] == 'spin':
                         minimum = properties.get('minimum', None)
@@ -210,13 +215,16 @@ class ChannelPlanWidget(QTabWidget):
             column_name = table.horizontalHeaderItem(i).text()
             delegate = getattr(self, f'{column_name}_{channel}_delegate', None)
             if delegate is not None:  # Skip if prop did not have setter
+                array = getattr(self, f'{column_name}')
                 if type(delegate) == QSpinItemDelegate:
-                    getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
+                    array[channel] = np.zeros(self._tile_volumes.shape)
                 elif type(delegate) == QComboItemDelegate:
-                    getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
-                    getattr(self, f'{column_name}')[channel][:, :] = delegate.items[0]
+                    array[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
                 else:
-                    getattr(self, f'{column_name}')[channel] = np.empty(self._tile_volumes.shape)
+                    array[channel] = np.empty(self._tile_volumes.shape)
+
+                if getattr(self, column_name + '_initial_value') is not None:
+                    array[channel][:, :] = getattr(self, column_name + '_initial_value')
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
