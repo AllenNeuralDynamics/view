@@ -9,6 +9,7 @@ import numpy as np
 from unittest.mock import MagicMock
 from pathlib import Path
 import os
+from view.widgets.device_widgets.stage_widget import StageWidget
 from voxel.devices.lasers.simulated import SimulatedLaser
 from voxel.devices.stage.simulated import Stage
 from view.widgets.device_widgets.laser_widget import LaserWidget
@@ -39,6 +40,24 @@ class AcquisitionViewTests(unittest.TestCase):
 
         properties = {
             'lasers': ['power_setpoint_mw'],
+            'focusing_stages': ['position_mm'],
+            'start_delay_time': {
+                'delegate': 'spin',
+                'type': 'float',
+                'minimum': 0,
+                'initial_value': 15,
+            },
+            'repeats': {
+                'delegate': 'spin',
+                'type': 'int',
+                'minimum': 0,
+            },
+            'example': {
+                'delegate': 'combo',
+                'type': 'str',
+                'items': ['this', 'is', 'an', 'example'],
+                'initial_value': 'example'
+            }
         }
 
         lasers = {
@@ -55,14 +74,17 @@ class AcquisitionViewTests(unittest.TestCase):
             'z': Stage(hardware_axis='z', instrument_axis='z')
         }
 
+        focusing_stages = {
+            'n': Stage(hardware_axis='n', instrument_axis='n')
+        }
+
+        focusing_stage_widgets = {
+            'n': StageWidget(focusing_stages['n']),
+        }
+
         laser_widgets = {
             '488nm': LaserWidget(lasers['488nm']),
             '639nm': LaserWidget(lasers['639nm'])
-        }
-
-        laser_widget_locks = {
-            '488nm': Lock(),
-            '639nm': Lock()
         }
 
         gui_config = {
@@ -97,11 +119,12 @@ class AcquisitionViewTests(unittest.TestCase):
         mocked_instrument.configure_mock(config=instrument_config,
                                          lasers=lasers,
                                          tiling_stages=tiling_stages,
-                                         scanning_stages=scanning_stages)
+                                         scanning_stages=scanning_stages,
+                                         focusing_stages=focusing_stages)
         mocked_instrument_view = MagicMock()
         mocked_instrument_view.configure_mock(instrument=mocked_instrument,
                                               laser_widgets=laser_widgets,
-                                              laser_widget_locks=laser_widget_locks,
+                                              focusing_stage_widgets=focusing_stage_widgets,
                                               config=gui_config)
 
         mocked_acquisition = MagicMock()
@@ -133,8 +156,11 @@ class AcquisitionViewTests(unittest.TestCase):
             },
             'tile_number': 0,
             '488nm': {
-                'power_setpoint_mw': 0.0
+                'power_setpoint_mw': 10.0
             },
+            'start_delay_time': 15.0,
+            'repeats': 0,
+            'example': 'example',
             'steps': 0,
             'step_size': 0.0,
             'prefix': ''},
@@ -144,13 +170,18 @@ class AcquisitionViewTests(unittest.TestCase):
                     'x': 0.0,
                     'y': -0.5,
                     'z': 0.0
-                }, 'tile_number': 1,
-                '488nm': {
-                    'power_setpoint_mw': 0.0
                 },
+                'tile_number': 1,
+                '488nm': {
+                    'power_setpoint_mw': 10.0
+                },
+                'start_delay_time': 15.0,
+                'repeats': 0,
+                'example': 'example',
                 'steps': 0,
                 'step_size': 0.0,
                 'prefix': ''}]
+
         actual_tiles = mocked_acquisition.config['acquisition']['tiles']
         self.assertEqual(expected_tiles, actual_tiles)
 
@@ -170,8 +201,11 @@ class AcquisitionViewTests(unittest.TestCase):
             },
             'tile_number': 0,
             '488nm': {
-                'power_setpoint_mw': 0.0
+                'power_setpoint_mw': 10.0
             },
+            'start_delay_time': 15.0,
+            'repeats': 0,
+            'example': 'example',
             'steps': 0,
             'step_size': 0.0,
             'prefix': 'tile_prefix'},
@@ -181,10 +215,14 @@ class AcquisitionViewTests(unittest.TestCase):
                     'x': 0.0,
                     'y': -0.5,
                     'z': 0.0
-                }, 'tile_number': 1,
-                '488nm': {
-                    'power_setpoint_mw': 0.0
                 },
+                'tile_number': 1,
+                '488nm': {
+                    'power_setpoint_mw': 10.0
+                },
+                'start_delay_time': 15.0,
+                'repeats': 0,
+                'example': 'example',
                 'steps': 0,
                 'step_size': 0.0,
                 'prefix': 'tile_prefix'}]

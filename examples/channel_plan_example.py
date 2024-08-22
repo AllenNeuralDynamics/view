@@ -60,7 +60,7 @@ if __name__ == "__main__":
         '639nm': LaserWidget(lasers['639nm'])
     }
 
-    stage_widgets = {
+    focusing_stage_widgets = {
         'n': StageWidget(focusing_stages['n']),
     }
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     mocked_instrument_view = MagicMock()
     mocked_instrument_view.configure_mock(instrument=mocked_instrument,
                                           laser_widgets=laser_widgets,
-                                          stage_widgets=stage_widgets
+                                          focusing_stage_widgets=focusing_stage_widgets
                                           )
 
     plan = ChannelPlanWidget(mocked_instrument_view,
