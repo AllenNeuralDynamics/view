@@ -18,6 +18,7 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QTableWidget,
     QTableWidgetItem,
+    QSizePolicy
 )
 
 
@@ -61,12 +62,12 @@ class VolumePlanWidget(QMainWindow):
         self._scan_ends = np.zeros([1, 1], dtype=float)
 
         self.rows = QSpinBox()
-        self.rows.setSizePolicy(7, 0)
+        self.rows.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
         self.rows.setRange(1, 1000)
         self.rows.setValue(1)
         self.rows.setSuffix(" fields")
         self.columns = QSpinBox()
-        self.columns.setSizePolicy(7, 0)
+        self.columns.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
         self.columns.setRange(1, 1000)
         self.columns.setValue(1)
         self.columns.setSuffix(" fields")
@@ -82,7 +83,7 @@ class VolumePlanWidget(QMainWindow):
         layout.addWidget(line())
 
         self.area_width = QDoubleSpinBox()
-        self.area_width.setSizePolicy(7, 0)
+        self.area_width.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
         self.area_width.setRange(.01, self.limits[0][1] - self.limits[0][0])
         self.area_width.setValue(.01)  # width can't be zero
         self.area_width.setDecimals(2)
@@ -91,7 +92,7 @@ class VolumePlanWidget(QMainWindow):
 
         self.area_height = QDoubleSpinBox()
         self.area_height.setValue(.01)  # height can't be zero
-        self.area_height.setSizePolicy(7, 0)
+        self.area_height.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
         self.area_width.setRange(.01, self.limits[1][1] - self.limits[1][0])
         self.area_height.setDecimals(2)
         self.area_height.setSuffix(f" {self.unit}")
@@ -109,14 +110,14 @@ class VolumePlanWidget(QMainWindow):
 
         for i in range(2):
             low = QDoubleSpinBox()
-            low.setSizePolicy(7, 0)
+            low.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
             low.setSuffix(f" {self.unit}")
             low.setRange(*self.limits[i])
             low.setDecimals(3)
             low.setValue(0)
             setattr(self, f'dim_{i}_low', low)
             high = QDoubleSpinBox()
-            high.setSizePolicy(7, 0)
+            high.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
             high.setSuffix(f" {self.unit}")
             high.setRange(*self.limits[i])
             high.setDecimals(3)
@@ -168,7 +169,7 @@ class VolumePlanWidget(QMainWindow):
         self.grid_offset_widgets = [QDoubleSpinBox(), QDoubleSpinBox(), QDoubleSpinBox()]
         for i in range(3):
             box = self.grid_offset_widgets[i]
-            box.setSizePolicy(7, 0)
+            box.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
             box.setValue(fov_position[i])
             box.setDecimals(6)
             box.setRange(*self.limits[i])
@@ -254,6 +255,7 @@ class VolumePlanWidget(QMainWindow):
             self.refill_table()
             return
 
+        # TODO: Fix this?
         # # check if visibility matches
         # table_vis = [self.tile_table.item(i, self.table_columns.index('visibility')).data(Qt.EditRole) for i in
         #              range(self.tile_table.rowCount())]

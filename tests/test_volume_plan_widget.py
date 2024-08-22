@@ -6,6 +6,7 @@ from qtpy.QtTest import QTest, QSignalSpy
 from qtpy.QtWidgets import QApplication, QWidget
 from qtpy.QtCore import Qt
 import sys
+import numpy as np
 
 app = QApplication(sys.argv)
 
@@ -92,12 +93,12 @@ class VolumePlanWidgetTests(unittest.TestCase):
         # check tile pos is as expected
         expected_tile_pos = [[[-0.5, 0.5, 0.0], [0.5, 0.5, 0.0]], [[-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]]]
         actual_tile_pos = plan.tile_positions
-        self.assertEqual(expected_tile_pos, actual_tile_pos)
+        self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
         plan.relative_to.setCurrentIndex(1)
         expected_tile_pos = [[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], [[0.0, -1.0, 0.0], [1.0, -1.0, 0.0]]]
         actual_tile_pos = plan.tile_positions
-        self.assertEqual(expected_tile_pos, actual_tile_pos)
+        self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
     def test_area_mode(self):
         """Test functionality of area mode"""
@@ -141,12 +142,12 @@ class VolumePlanWidgetTests(unittest.TestCase):
         # check tile pos is as expected
         expected_tile_pos = [[[-0.5, 0.5, 0.0], [0.5, 0.5, 0.0]], [[-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]]]
         actual_tile_pos = plan.tile_positions
-        self.assertEqual(expected_tile_pos, actual_tile_pos)
+        self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
         plan.relative_to.setCurrentIndex(1)
         expected_tile_pos = [[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], [[0.0, -1.0, 0.0], [1.0, -1.0, 0.0]]]
         actual_tile_pos = plan.tile_positions
-        self.assertEqual(expected_tile_pos, actual_tile_pos)
+        self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
         # check if height and width are non-integer multiple values of fov
         plan.area_height.setValue(1.5)
@@ -204,7 +205,7 @@ class VolumePlanWidgetTests(unittest.TestCase):
         # check tile pos is as expected
         expected_tile_pos = [[[0.0, 1.0, 0.0], [1.0, 1.0, 0.0]], [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]]
         actual_tile_pos = plan.tile_positions
-        self.assertEqual(expected_tile_pos, actual_tile_pos)
+        self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
     def test_update_fov_position(self):
         """Test functionality of moving fov mode"""
@@ -258,9 +259,10 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertEqual(len(valueChanged_spy), 1)  # triggered once
         self.assertTrue(valueChanged_spy.isValid())
         self.assertEqual(plan.grid_offset, [1, 0, 0])
-        expected_tiles = [[1, 0, 0]]
+        expected_tiles = np.array([[[1, 0, 0]]])
         actual_tiles = plan.tile_positions
-        self.assertEqual(expected_tiles, actual_tiles)
+
+        self.assertTrue(np.array_equal(expected_tiles, actual_tiles))
 
         # test dimension 1
         plan.grid_offset_widgets[1].setValue(2)
@@ -268,19 +270,19 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertEqual(len(valueChanged_spy), 2)  # triggered twice
         self.assertTrue(valueChanged_spy.isValid())
         self.assertEqual(plan.grid_offset, [1, 2, 0])
-        expected_tiles = [[1, 2, 0]]
+        expected_tiles = [[[1, 2, 0]]]
         actual_tiles = plan.tile_positions
-        self.assertEqual(expected_tiles, actual_tiles)
+        self.assertTrue(np.array_equal(expected_tiles, actual_tiles))
 
         # test dimension 2
-        plan.grid_offset_widgets[2].setValue(2)
+        plan.grid_offset_widgets[2].setValue(3)
 
         self.assertEqual(len(valueChanged_spy), 3)  # triggered thrice
         self.assertTrue(valueChanged_spy.isValid())
         self.assertEqual(plan.grid_offset, [1, 2, 3])
-        expected_tiles = [[1, 2, 3]]
+        expected_tiles = [[[1, 2, 3]]]
         actual_tiles = plan.tile_positions
-        self.assertEqual(expected_tiles, actual_tiles)
+        self.assertTrue(np.array_equal(expected_tiles, actual_tiles))
 
 
 

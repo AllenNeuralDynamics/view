@@ -10,13 +10,13 @@ import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QDockWidget, \
     QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication, \
-    QHBoxLayout, QFrame
+    QHBoxLayout, QFrame, QFileDialog, QMessageBox
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
-
+from pathlib import Path
 
 class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -30,7 +30,6 @@ class AcquisitionView(QWidget):
         """
 
         super().__init__()
-
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
 
@@ -115,6 +114,8 @@ class AcquisitionView(QWidget):
 
         # Set app events
         app = QApplication.instance()
+        app.aboutToQuit.connect(self.update_config_on_quit)  # query if config should be saved and where
+        self.config_save_to = self.acquisition.config_path
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
     def create_start_button(self):
@@ -139,7 +140,7 @@ class AcquisitionView(QWidget):
         """Start acquisition"""
 
         # add tiles to acquisition config
-        self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
+        self.update_tiles()
 
         if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
             self.instrument_view.dismantle_live()
@@ -151,13 +152,10 @@ class AcquisitionView(QWidget):
                 # Tasks should be added and written in acquisition?
 
         # anchor grid in volume widget
-        for anchor in self.acquisition_widget.anchor_widgets:
+        for anchor in self.volume_plan.anchor_widgets:
             anchor.setChecked(True)
-        self.acquisition_widget.table.setDisabled(True)
-        self.acquisition_widget.channel_plan.setDisabled(True)
-        self.acquisition_widget.scan_plan_widget.setDisabled(True)
-        self.acquisition_widget.scan_plan_widget.stacked_widget.setDisabled(True)
-        self.acquisition_widget.tile_plan_widget.setDisabled(True)
+        self.volume_plan.tile_table.setDisabled(True)
+        self.channel_plan.setDisabled(True)
 
         # disable acquisition view. Can't disable whole thing so stop button can be functional
         self.start_button.setEnabled(False)
@@ -189,7 +187,6 @@ class AcquisitionView(QWidget):
 
         # enable acquisition view
         self.start_button.setEnabled(True)
-        self.acquisition_widget.setEnabled(True)
         self.metadata_widget.setEnabled(True)
         for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
             if hasattr(self, f'{operation}_widgets'):
@@ -200,13 +197,10 @@ class AcquisitionView(QWidget):
         self.stop_button.setEnabled(False)
 
         # unanchor grid in volume widget
-        for anchor in self.acquisition_widget.anchor_widgets:
+        for anchor in self.volume_plan.anchor_widgets:
             anchor.setChecked(False)
-        self.acquisition_widget.table.setEnabled(True)
-        self.acquisition_widget.channel_plan.setEnabled(True)
-        self.acquisition_widget.scan_plan_widget.setEnabled(True)
-        self.acquisition_widget.scan_plan_widget.stacked_widget.setEnabled(True)
-        self.acquisition_widget.tile_plan_widget.setEnabled(True)
+        self.volume_plan.tile_table.setDisabled(True)
+        self.channel_plan.setDisabled(True)
 
         # enable instrument view
         self.instrument_view.setDisabled(False)
@@ -297,7 +291,7 @@ class AcquisitionView(QWidget):
                                         fov_dimensions=fov_dimensions,
                                         coordinate_plane=self.coordinate_plane,
                                         unit=self.unit,
-                                        **self.config['acquisition_view'].get('channel_plan', {}).get('init', {}))
+                                        **self.config['acquisition_view']['acquisition_widgets'].get('volume_model', {}).get('init', {}))
         # combine floating volume_model widget with glwindow
         combined_layout = QGridLayout()
         combined_layout.addWidget(self.volume_model, 0, 0, 3, 1)
@@ -310,7 +304,7 @@ class AcquisitionView(QWidget):
         self.channel_plan = ChannelPlanWidget(instrument_view=self.instrument_view,
                                               channels=self.instrument.config['instrument']['channels'],
                                               unit=self.unit,
-                                              **self.config['acquisition_view'].get('channel_plan', {}).get('init', {}))
+                                              **self.config['acquisition_view']['acquisition_widgets'].get('channel_plan', {}).get('init', {}))
         # place volume_plan.tile_table and channel plan table side by side
         table_splitter = QSplitter(Qt.Horizontal)
         table_splitter.setChildrenCollapsible(False)
@@ -341,6 +335,7 @@ class AcquisitionView(QWidget):
         self.volume_model.fovMove.connect(self.move_stage)  # move stage to clicked coords
         self.volume_plan.valueChanged.connect(self.volume_plan_changed)
         self.channel_plan.channelAdded.connect(self.channel_plan_changed)
+        self.channel_plan.channelChanged.connect(self.update_tiles)
 
         return acquisition_widget
     def channel_plan_changed(self, channel):
@@ -353,6 +348,7 @@ class AcquisitionView(QWidget):
         tile_order = [[t.row, t.col] for t in self.volume_plan.value()]
         if len(tile_order) != 0:
             self.channel_plan.add_channel_rows(channel, tile_order)
+        self.update_tiles()
 
     def volume_plan_changed(self, value):
         """
@@ -377,6 +373,13 @@ class AcquisitionView(QWidget):
         self.channel_plan.tile_volumes = tile_volumes
         for ch in self.channel_plan.channels:
             self.channel_plan.add_channel_rows(ch, [[t.row, t.col] for t in value])
+
+        self.update_tiles()
+
+    def update_tiles(self):
+        """Update config with the latest tiles"""
+        print('update_tiles')
+        self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
@@ -610,6 +613,39 @@ class AcquisitionView(QWidget):
             array = getattr(self.channel_plan, name)[channel]
             tile_dict[name] = array[row, column]
         return tile_dict
+
+    def update_config_on_quit(self):
+        """Add functionality to close function to save device properties to instrument config"""
+
+        return_value = self.update_config_query()
+        if return_value == QMessageBox.Ok:
+            self.acquisition.update_current_state_config()
+            self.acquisition.save_config(self.config_save_to)
+
+    def update_config_query(self):
+        """Pop up message asking if configuration would like to be saved"""
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setText(f"Do you want to update the acquisition configuration file at {self.config_save_to} "
+                       f"to current acquisition state?")
+        msgBox.setWindowTitle("Updating Configuration")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        save_elsewhere = QPushButton('Change Directory')
+        msgBox.addButton(save_elsewhere, QMessageBox.DestructiveRole)
+
+        save_elsewhere.pressed.connect(lambda: self.select_directory(True, msgBox))
+
+        return msgBox.exec()
+
+    def select_directory(self, pressed, msgBox):
+        """Select directory"""
+
+        fname = QFileDialog()
+        folder = fname.getSaveFileName(directory=str(self.acquisition.config_path))
+        if folder[0] != '':  # user pressed cancel
+            msgBox.setText(f"Do you want to update the instrument configuration file at {folder[0]} "
+                           f"to current instrument state?")
+            self.config_save_to = Path(folder[0])
 
     def close(self):
         """Close operations and end threads"""
