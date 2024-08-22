@@ -378,7 +378,7 @@ class AcquisitionView(QWidget):
 
     def update_tiles(self):
         """Update config with the latest tiles"""
-        
+
         self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
 
     def move_stage(self, fov_position):
