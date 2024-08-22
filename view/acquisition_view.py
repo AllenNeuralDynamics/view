@@ -1,18 +1,22 @@
 import logging
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
-from view.widgets.acquisition_widgets.volume_widget import VolumeWidget
 from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
+from view.widgets.acquisition_widgets.volume_plan_widget import VolumePlanWidget
+from view.widgets.acquisition_widgets.volume_model import VolumeModel
+from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidget
 from qtpy.QtCore import Slot, Qt
 import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QDockWidget, \
-    QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication
+    QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication, \
+    QHBoxLayout, QFrame
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+
 
 class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -34,6 +38,7 @@ class AcquisitionView(QWidget):
         self.acquisition = acquisition
         self.instrument = self.acquisition.instrument
         self.config = instrument_view.config
+        self.coordinate_plane = self.config['acquisition_view']['coordinate_plane']
 
         # Eventual threads
         self.grab_fov_positions_worker = None
@@ -53,7 +58,7 @@ class AcquisitionView(QWidget):
 
         # setup additional widgets
         self.metadata_widget = self.create_metadata_widget()
-        self.volume_widget = self.create_volume_widget()
+        self.acquisition_widget = self.create_acquisition_widget()
         self.start_button = self.create_start_button()
         self.stop_button = self.create_stop_button()
 
@@ -68,7 +73,7 @@ class AcquisitionView(QWidget):
         self.main_layout.addWidget(self.stop_button, 0, 2, 1, 2)
 
         # add volume widget
-        self.main_layout.addWidget(self.volume_widget, 1, 0, 5, 3)
+        self.main_layout.addWidget(self.acquisition_widget, 1, 0, 5, 3)
 
         # splitter for operation widgets
         splitter = QSplitter(Qt.Vertical)
@@ -102,7 +107,7 @@ class AcquisitionView(QWidget):
                 dock.setWidget(scroll)
                 dock.setMinimumHeight(25)
                 splitter.addWidget(dock)
-        self.main_layout.addWidget(splitter, 1,  3)
+        self.main_layout.addWidget(splitter, 1, 3)
         self.setLayout(self.main_layout)
         self.setWindowTitle('Acquisition View')
         self.show()
@@ -133,7 +138,7 @@ class AcquisitionView(QWidget):
         """Start acquisition"""
 
         # add tiles to acquisition config
-        self.acquisition.config['acquisition']['tiles'] = self.volume_widget.create_tile_list()
+        self.acquisition.config['acquisition']['tiles'] = self.acquisition_widget.create_tile_list()
 
         if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
             self.instrument_view.dismantle_live()
@@ -145,13 +150,13 @@ class AcquisitionView(QWidget):
                 # Tasks should be added and written in acquisition?
 
         # anchor grid in volume widget
-        for anchor in self.volume_widget.anchor_widgets:
+        for anchor in self.acquisition_widget.anchor_widgets:
             anchor.setChecked(True)
-        self.volume_widget.table.setDisabled(True)
-        self.volume_widget.channel_plan.setDisabled(True)
-        self.volume_widget.scan_plan_widget.setDisabled(True)
-        self.volume_widget.scan_plan_widget.stacked_widget.setDisabled(True)
-        self.volume_widget.tile_plan_widget.setDisabled(True)
+        self.acquisition_widget.table.setDisabled(True)
+        self.acquisition_widget.channel_plan.setDisabled(True)
+        self.acquisition_widget.scan_plan_widget.setDisabled(True)
+        self.acquisition_widget.scan_plan_widget.stacked_widget.setDisabled(True)
+        self.acquisition_widget.tile_plan_widget.setDisabled(True)
 
         # disable acquisition view. Can't disable whole thing so stop button can be functional
         self.start_button.setEnabled(False)
@@ -183,7 +188,7 @@ class AcquisitionView(QWidget):
 
         # enable acquisition view
         self.start_button.setEnabled(True)
-        self.volume_widget.setEnabled(True)
+        self.acquisition_widget.setEnabled(True)
         self.metadata_widget.setEnabled(True)
         for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
             if hasattr(self, f'{operation}_widgets'):
@@ -194,13 +199,13 @@ class AcquisitionView(QWidget):
         self.stop_button.setEnabled(False)
 
         # unanchor grid in volume widget
-        for anchor in self.volume_widget.anchor_widgets:
+        for anchor in self.acquisition_widget.anchor_widgets:
             anchor.setChecked(False)
-        self.volume_widget.table.setEnabled(True)
-        self.volume_widget.channel_plan.setEnabled(True)
-        self.volume_widget.scan_plan_widget.setEnabled(True)
-        self.volume_widget.scan_plan_widget.stacked_widget.setEnabled(True)
-        self.volume_widget.tile_plan_widget.setEnabled(True)
+        self.acquisition_widget.table.setEnabled(True)
+        self.acquisition_widget.channel_plan.setEnabled(True)
+        self.acquisition_widget.scan_plan_widget.setEnabled(True)
+        self.acquisition_widget.scan_plan_widget.stacked_widget.setEnabled(True)
+        self.acquisition_widget.tile_plan_widget.setEnabled(True)
 
         # enable instrument view
         self.instrument_view.setDisabled(False)
@@ -258,45 +263,127 @@ class AcquisitionView(QWidget):
         metadata_widget.setWindowTitle(f'Metadata')
         return metadata_widget
 
-    def create_volume_widget(self):
+    def create_acquisition_widget(self):
         """Create widget to visualize acquisition grid"""
 
-        kwds = {
-            'fov_dimensions': self.config['acquisition_view']['fov_dimensions'],
-            'coordinate_plane': self.config['acquisition_view'].get('coordinate_plane', ['x', 'y', 'z']),
-            'unit': self.config['acquisition_view'].get('unit', 'mm'),
-            'settings': self.config['acquisition_view'].get('settings', {})
-
-        }
-
-        # Populate limits
-        coordinate_plane = [x.replace('-', '') for x in kwds['coordinate_plane']]  # remove polarity
-        limits = {}
+        # find limits of all axes
+        lim_dict = {}
         # add tiling stages
         for name, stage in self.instrument.tiling_stages.items():
-            if stage.instrument_axis in coordinate_plane:
-                limits.update({f'{stage.instrument_axis}': stage.limits_mm})
+            lim_dict.update({f'{stage.instrument_axis}': stage.limits_mm})
         # last axis should be scanning axis
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
-        limits.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
-        if len([i for i in limits.keys() if i in coordinate_plane]) != 3:
-            raise ValueError('Coordinate plane must match instrument axes in tiling_stages')
-        kwds['limits'] = [limits[coordinate_plane[0]], limits[coordinate_plane[1]], limits[coordinate_plane[2]]]
-        kwds['channels'] = self.instrument.config['instrument']['channels']
+        lim_dict.update({f'{scan_stage.instrument_axis}': scan_stage.limits_mm})
+        try:
+            limits = [lim_dict[x.strip('-')] for x in self.coordinate_plane]
+        except KeyError:
+            raise KeyError('Coordinate plane must match instrument axes in tiling_stages')
 
-        volume_widget = VolumeWidget(self.instrument_view, **kwds)
-        volume_widget.fovMoved.connect(self.move_stage)
-        volume_widget.fovStop.connect(self.stop_stage)
-        self.instrument_view.snapshotTaken.connect(volume_widget.handle_snapshot)  # connect snapshot signal
-        self.instrument_view.contrastChanged.connect(volume_widget.adjust_contrast)
-        return volume_widget
+        unit = self.config['acquisition_view'].get('unit', 'mm')
+        fov_dimensions = self.config['acquisition_view']['fov_dimensions']
+
+        acquisition_widget = QSplitter(Qt.Vertical)
+        acquisition_widget.setChildrenCollapsible(False)
+
+        # create volume plan
+        self.volume_plan = VolumePlanWidget(limits=limits,
+                                            fov_dimensions=fov_dimensions,
+                                            coordinate_plane=self.coordinate_plane,
+                                            unit=unit)
+        self.volume_plan.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
+
+        # create volume model
+        self.volume_model = VolumeModel(limits=limits,
+                                        fov_dimensions=fov_dimensions,
+                                        coordinate_plane=self.coordinate_plane,
+                                        unit=unit,
+                                        **self.config['acquisition_view'].get('channel_plan', {}).get('init', {}))
+        # combine floating volume_model widget with glwindow
+        combined_layout = QGridLayout()
+        combined_layout.addWidget(self.volume_model, 0, 0, 3, 1)
+        combined_layout.addWidget(self.volume_model.widgets, 3, 0, 1, 1)
+        combined = QWidget()
+        combined.setLayout(combined_layout)
+        acquisition_widget.addWidget(create_widget('H', self.volume_plan, combined))
+
+        # create channel plan
+        self.channel_plan = ChannelPlanWidget(instrument_view=self.instrument_view,
+                                              channels=self.instrument.config['instrument']['channels'],
+                                              unit=unit,
+                                              **self.config['acquisition_view'].get('channel_plan', {}).get('init', {}))
+        # place volume_plan.tile_table and channel plan table side by side
+        table_splitter = QSplitter(Qt.Horizontal)
+        table_splitter.setChildrenCollapsible(False)
+        table_splitter.setHandleWidth(20)
+
+        widget = QWidget()  # dummy widget to move tile_table down in layout
+        widget.setMinimumHeight(25)
+        table_splitter.addWidget(create_widget('V', widget, self.volume_plan.tile_table))
+        table_splitter.addWidget(self.channel_plan)
+
+        # format splitter handle. Must do after all widgets are added
+        handle = table_splitter.handle(1)
+        handle_layout = QHBoxLayout(handle)
+        line = QFrame(handle)
+        line.setStyleSheet('QFrame {border: 1px dotted grey;}')
+        line.setFixedHeight(50)
+        line.setFrameShape(QFrame.VLine)
+        handle_layout.addWidget(line)
+
+        # add tables to layout
+        acquisition_widget.addWidget(table_splitter)
+
+        # connect signals
+        self.instrument_view.snapshotTaken.connect(self.volume_model.add_fov_image)  # connect snapshot signal
+        self.instrument_view.contrastChanged.connect(
+            self.volume_model.adjust_glimage_contrast)  # connect snapshot adjusted
+        self.volume_model.fovHalt.connect(self.stop_stage)  # stop stage if halt button is pressed
+        self.volume_model.fovMove.connect(self.move_stage)  # move stage to clicked coords
+        self.volume_plan.valueChanged.connect(self.volume_plan_changed)
+        self.channel_plan.channelAdded.connect(self.channel_plan_changed)
+
+        return acquisition_widget
+    def channel_plan_changed(self, channel):
+        """
+        Handle channel being added to scan
+        :param channel: channel added
+        :return:
+        """
+
+        tile_order = [[t.row, t.col] for t in self.volume_plan.value()]
+        if len(tile_order) != 0:
+            self.channel_plan.add_channel_rows(channel, tile_order)
+
+    def volume_plan_changed(self, value):
+        """
+        Update channel plan and volume model when volume plan is changed
+        :param value: new value from volume_plan
+        :return:
+        """
+
+        tile_volumes = self.volume_plan.scan_ends - self.volume_plan.scan_starts
+
+        # update volume model
+        self.volume_model.blockSignals(True)  # only trigger update once
+        self.volume_model.fov_dimensions = self.volume_plan.fov_dimensions
+        self.volume_model.grid_coords = self.volume_plan.tile_positions
+        self.volume_model.scan_volumes = tile_volumes
+        self.volume_model.blockSignals(False)
+        self.volume_model.tile_visibility = self.volume_plan.tile_visibility
+        self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
+
+        # update channel plan
+        self.channel_plan.apply_all = self.volume_plan.apply_all
+        self.channel_plan.tile_volumes = tile_volumes
+        for ch in self.channel_plan.channels:
+            self.channel_plan.add_channel_rows(ch, [[t.row, t.col] for t in value])
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
 
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
-        for axis, position in zip(self.volume_widget.coordinate_plane[:2], fov_position[:2]):
+        for axis, position in zip(self.acquisition_widget.coordinate_plane[:2], fov_position[:2]):
             self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
         scan_stage.move_absolute_mm(fov_position[2], wait=False)
@@ -312,23 +399,24 @@ class AcquisitionView(QWidget):
         """Set up live position thread"""
 
         self.grab_fov_positions_worker = self.grab_fov_positions()
-        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_widget, 'fov_position', pos))
+        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_plan, 'fov_position', pos))
+        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_model, 'fov_position', pos))
         self.grab_fov_positions_worker.start()
 
     @thread_worker
     def grab_fov_positions(self):
         """Grab stage position from all stage objects and yield positions"""
-
+        scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         while True:  # best way to do this or have some sort of break?
-            fov_pos = self.volume_widget.fov_position
+            fov_pos = self.volume_plan.fov_position
             for name, stage in {**self.instrument.tiling_stages, **self.instrument.scanning_stages}.items():
-                if stage.instrument_axis in self.volume_widget.coordinate_plane:
-                    index = self.volume_widget.coordinate_plane.index(stage.instrument_axis)
+                if stage.instrument_axis in scalar_coord_plane:
+                    index = scalar_coord_plane.index(stage.instrument_axis)
                     try:
                         pos = stage.position_mm
                         fov_pos[index] = pos if pos is not None else fov_pos[index]
                     except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
-                       pass
+                        pass
                     sleep(.1)
             yield fov_pos
 
@@ -406,7 +494,7 @@ class AcquisitionView(QWidget):
         if image is not None:
             # TODO: How to get current channel
             layer_name = f"{camera_name}"
-            if layer_name in self.instrument_view.viewer.layers :
+            if layer_name in self.instrument_view.viewer.layers:
                 layer = self.instrument_view.viewer.layers[layer_name]
                 layer.data = image
             else:

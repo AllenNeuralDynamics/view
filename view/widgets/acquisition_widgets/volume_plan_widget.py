@@ -240,7 +240,7 @@ class VolumePlanWidget(QMainWindow):
         table_order = [[int(x) for x in self.tile_table.item(i, 0).text() if x.isdigit()] for i in
                        range(self.tile_table.rowCount())]
         value_order = [[t.row, t.col] for t in value]
-        order_matches = table_order == value_order
+        order_matches = np.array_equal(table_order, value_order)
         if not order_matches:
             self.refill_table()
             return
@@ -249,19 +249,19 @@ class VolumePlanWidget(QMainWindow):
         table_pos = [[self.tile_table.item(j, i).data(Qt.EditRole) for i in range(1, 4)] for j in
                      range(self.tile_table.rowCount())]
         value_pos = self.tile_positions
-        pos_matches = table_pos == value_pos
+        pos_matches = np.array_equal(table_pos, value_pos)
         if not pos_matches:
             self.refill_table()
             return
 
-        # check if visibility matches
-        table_vis = [self.tile_table.item(i, self.table_columns.index('visibility')).data(Qt.EditRole) for i in
-                     range(self.tile_table.rowCount())]
-        value_vis = [self._tile_visibility[t.row, t.col] for t in value]
-        vis_matches = table_vis == value_vis
-        if not vis_matches:
-            self.refill_table()
-            return
+        # # check if visibility matches
+        # table_vis = [self.tile_table.item(i, self.table_columns.index('visibility')).data(Qt.EditRole) for i in
+        #              range(self.tile_table.rowCount())]
+        # value_vis = [self._tile_visibility[t.row, t.col] for t in value]
+        # vis_matches = (table_vis == value_vis).all()
+        # if not vis_matches:
+        #     self.refill_table()
+        #     return
 
     def refill_table(self):
         """Function to clear and populate tile table with current tile configuration"""
@@ -285,8 +285,8 @@ class VolumePlanWidget(QMainWindow):
         self.tile_table.insertRow(table_row)
 
         kwargs = {'row, column': [row, column],
-                  f'{self.coordinate_plane[0]} [{self.unit}]': self.tile_positions[row][column][0],
-                  f'{self.coordinate_plane[1]} [{self.unit}]': self.tile_positions[row][column][1],
+                  f'{self.coordinate_plane[0]} [{self.unit}]': self.tile_positions[row, column][0],
+                  f'{self.coordinate_plane[1]} [{self.unit}]': self.tile_positions[row, column][1],
                   f'{self.coordinate_plane[2]} [{self.unit}]': self._scan_starts[row, column],
                   f'{self.coordinate_plane[2]} max [{self.unit}]': self._scan_ends[row, column]}
         items = {}
@@ -442,17 +442,17 @@ class VolumePlanWidget(QMainWindow):
     @property
     def tile_positions(self):
         """Returns 3d list of tile positions based on widget values"""
-        # TODO: Why not make this a numpy array?
+
         value = self.value()
-        coords = [[None] * value.columns for _ in range(value.rows)]
+        coords = np.zeros((value.rows, value.columns, 3))
         if self._mode != "bounds":
             for tile in value:
-                coords[tile.row][tile.col] = [tile.x + self.grid_offset[0],
+                coords[tile.row, tile.col, :] = [tile.x + self.grid_offset[0],
                                               tile.y + self.grid_offset[1],
                                               self._scan_starts[tile.row][tile.col]]
         else:
             for tile in value:
-                coords[tile.row][tile.col] = [tile.x, tile.y, self._scan_starts[tile.row][tile.col]]
+                coords[tile.row, tile.col, :] = [tile.x, tile.y, self._scan_starts[tile.row][tile.col]]
         return coords
 
     @property

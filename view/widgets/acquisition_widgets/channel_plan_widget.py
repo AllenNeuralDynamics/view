@@ -14,10 +14,12 @@ class ChannelPlanWidget(QTabWidget):
 
     channelAdded = Signal([str])
 
-    def __init__(self, instrument_view, channels: dict, settings: dict, unit: str = 'um'):
+    def __init__(self, instrument_view, channels: dict, settings: dict = {}, unit: str = 'um'):
         """
+        :param instrument_view: view associated with instrument
         :param channels: dictionary defining channels for instrument
         :param settings: allowed setting for devices
+        :param unit: unit of all values
         """
 
         super().__init__()
@@ -36,7 +38,7 @@ class ChannelPlanWidget(QTabWidget):
         self.step_size = {}  # dictionary of step size for each tile in each channel
         self.prefix = {}  # dictionary of prefix for each tile in each channel
 
-        self._tile_volumes = np.zeros([0, 0], dtype=float)  # array of tile starts and ends. Constant for every channel
+        self._tile_volumes = np.zeros([1, 1], dtype=float)  # array of tile starts and ends. Constant for every channel
 
         self.tab_bar = ChannelPlanTabBar()
         self.tab_bar.setMovable(True)
@@ -67,7 +69,7 @@ class ChannelPlanWidget(QTabWidget):
         # reorder channels if tabbar moved
         self.tab_bar.tabMoved.connect(lambda:
                                       setattr(self, 'channels', [self.tabText(ch) for ch in range(self.count() - 1)]))
-        self._apply_to_all = True  # external flag to dictate behaviour of added tab
+        self._apply_all = True  # external flag to dictate behaviour of added tab
 
     def initialize_tables(self, instrument_view):
         """Initialize table for all channels with proper columns and delegates"""
@@ -145,14 +147,14 @@ class ChannelPlanWidget(QTabWidget):
             table.verticalHeader().hide()
 
     @property
-    def apply_to_all(self):
-        return self._apply_to_all
+    def apply_all(self):
+        return self._apply_all
 
-    @apply_to_all.setter
-    def apply_to_all(self, value):
+    @apply_all.setter
+    def apply_all(self, value):
         """When apply all is toggled, update existing channels"""
 
-        if self._apply_to_all != value:
+        if self._apply_all != value:
             for channel in self.channels:
                 table = getattr(self, f'{channel}_table')
 
@@ -162,7 +164,7 @@ class ChannelPlanWidget(QTabWidget):
                         self.enable_item(item, not value)
                         if value:
                             item.setData(Qt.EditRole, table.item(0, j).data(Qt.EditRole))
-        self._apply_to_all = value
+        self._apply_all = value
 
     @property
     def tile_volumes(self):
@@ -270,7 +272,7 @@ class ChannelPlanWidget(QTabWidget):
                     item.setData(Qt.EditRole, str(array[*tile]))
                 table.setItem(table_row, column, item)
                 if table_row != 0:  # first row/tile always enabled
-                    self.enable_item(item, not self.apply_to_all)
+                    self.enable_item(item, not self.apply_all)
         table.blockSignals(False)
 
     def remove_channel(self, channel):
@@ -316,7 +318,7 @@ class ChannelPlanWidget(QTabWidget):
         # FIXME: I think this is would be considered unexpected behavior
         array = getattr(self, table.horizontalHeaderItem(column).text(), self.step_size)[channel]
         value = table.item(row, column).data(Qt.EditRole)
-        if self.apply_to_all:
+        if self.apply_all:
             array[:, :] = value
             for i in range(1, table.rowCount()):
                 item_0 = table.item(0, column)
@@ -333,7 +335,7 @@ class ChannelPlanWidget(QTabWidget):
         """Update number of steps based on volume"""
 
         volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
-        index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
+        index = tile_index if not self.apply_all else [slice(None), slice(None)]
         steps = volume_um / (float(getattr(self, f'{channel}_table').item(row, 0).data(Qt.EditRole))*self.micron)
         if steps != 0 and not isnan(steps) and steps not in [float('inf'), float('-inf')]:
             step_size = float(round(volume_um / steps, 4)/self.micron)  # make dimensionless again for simplicity in code
@@ -349,7 +351,7 @@ class ChannelPlanWidget(QTabWidget):
         """Update step size based on volume"""
 
         volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
-        index = tile_index if not self.apply_to_all else [slice(None), slice(None)]
+        index = tile_index if not self.apply_all else [slice(None), slice(None)]
         # make dimensionless again for simplicity in code
         step_size = (volume_um / float(getattr(self, f'{channel}_table').item(row, 1).data(Qt.EditRole)))/self.micron
         if step_size != 0 and not isnan(step_size) and step_size not in [float('inf'), float('-inf')]:
