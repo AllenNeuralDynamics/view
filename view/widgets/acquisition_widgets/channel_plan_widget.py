@@ -14,11 +14,11 @@ class ChannelPlanWidget(QTabWidget):
 
     channelAdded = Signal([str])
 
-    def __init__(self, instrument_view, channels: dict, settings: dict = {}, unit: str = 'um'):
+    def __init__(self, instrument_view, channels: dict, properties: dict = {}, unit: str = 'um'):
         """
         :param instrument_view: view associated with instrument
         :param channels: dictionary defining channels for instrument
-        :param settings: allowed setting for devices
+        :param properties: allowed prop for devices
         :param unit: unit of all values
         """
 
@@ -26,7 +26,7 @@ class ChannelPlanWidget(QTabWidget):
 
         self.possible_channels = channels
         self.channels = []
-        self.settings = settings
+        self.properties = properties
         self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
 
         # setup units for step size and step calculation
@@ -74,7 +74,7 @@ class ChannelPlanWidget(QTabWidget):
     def initialize_tables(self, instrument_view):
         """Initialize table for all channels with proper columns and delegates"""
 
-        # TODO: Checks here if setting or device isn't part of the instrument? Or go in instrument validation?
+        # TODO: Checks here if prop or device isn't part of the instrument? Or go in instrument validation?
 
         for channel in self.possible_channels:
 
@@ -83,51 +83,51 @@ class ChannelPlanWidget(QTabWidget):
             table.cellChanged.connect(self.cell_edited)
 
             columns = ['step size [um]', 'steps', 'prefix']
-            delegates = [QSpinItemDelegate(minimum=0), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
-            for device_type, settings in self.settings.items():
+            delegates = [QSpinItemDelegate(), QSpinItemDelegate(minimum=0, step=1), QTextItemDelegate()]
+            for device_type, properties in self.properties.items():
                 if device_type in self.possible_channels[channel].keys():
                     for device_name in self.possible_channels[channel][device_type]:
                         device_widget = getattr(instrument_view, f'{singularize(device_type)}_widgets')[device_name]
                         device_object = getattr(instrument_view.instrument, device_type)[device_name]
-                        for setting in settings:
+                        for prop in properties:
                             # select delegate to use based on type
-                            column_name = label_maker(f'{device_name}_{setting}')
-                            descriptor = getattr(type(device_object), setting)
+                            column_name = label_maker(f'{device_name}_{prop}')
+                            descriptor = getattr(type(device_object), prop)
                             if not isinstance(descriptor, property) or getattr(descriptor, 'fset', None) is None:
                                 self.column_data_types[column_name] = None
                                 continue
-                            # try and correctly type settings based on setter
+                            # try and correctly type properties based on setter
                             fset = getattr(descriptor, 'fset')
                             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
                             self.column_data_types[column_name] = input_type if input_type != inspect._empty else None
                             setattr(self, column_name, {})
                             columns.append(column_name)
-                            if type(getattr(device_widget, f'{setting}_widget')) in [QScrollableLineEdit, QSpinBox]:
+                            if type(getattr(device_widget, f'{prop}_widget')) in [QScrollableLineEdit, QSpinBox]:
                                 minimum = getattr(descriptor, 'minimum', float('-inf'))
                                 maximum = getattr(descriptor, 'maximum', float('inf'))
                                 step = getattr(descriptor, 'step', .1)
                                 delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                            elif type(getattr(device_widget, f'{setting}_widget')) == QComboBox:
-                                widget = getattr(device_widget, f'{setting}_widget')
+                            elif type(getattr(device_widget, f'{prop}_widget')) == QComboBox:
+                                widget = getattr(device_widget, f'{prop}_widget')
                                 items = [widget.itemText(i) for i in range(widget.count())]
                                 delegates.append(QComboItemDelegate(items=items))
                             else:  # TODO: How to handle dictionary values
                                 delegates.append(QTextItemDelegate())
-                elif type(settings) == dict:     # TODO: how to validate the GUI yaml?
+                elif type(properties) == dict:     # TODO: how to validate the GUI yaml?
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
                     columns.append(column_name)
-                    if settings['delegate'] == 'spin':
-                        minimum = settings.get('minimum', None)
-                        maximum = settings.get('maximum', None)
-                        step = settings.get('step', .1 if settings['type'] == 'float' else 1 )
+                    if properties['delegate'] == 'spin':
+                        minimum = properties.get('minimum', None)
+                        maximum = properties.get('maximum', None)
+                        step = properties.get('step', .1 if properties['type'] == 'float' else 1 )
                         delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                        self.column_data_types[column_name] = float if settings['type'] == 'float' else int
-                    elif settings['delegate'] == 'combo':
-                        items = settings['items']
+                        self.column_data_types[column_name] = float if properties['type'] == 'float' else int
+                    elif properties['delegate'] == 'combo':
+                        items = properties['items']
                         delegates.append(QComboItemDelegate(items=items))
                         type_mapping = {'int':int, 'float':float, 'str': str}
-                        self.column_data_types[column_name] = type_mapping[settings['type']]
+                        self.column_data_types[column_name] = type_mapping[properties['type']]
                     else:
                         delegates.append(QTextItemDelegate())
                         self.column_data_types[column_name] = str
@@ -209,7 +209,7 @@ class ChannelPlanWidget(QTabWidget):
         for i in range(3, table.columnCount()-1):  # skip steps, step_size, prefix, row/col
             column_name = table.horizontalHeaderItem(i).text()
             delegate = getattr(self, f'{column_name}_{channel}_delegate', None)
-            if delegate is not None:  # Skip if setting did not have setter
+            if delegate is not None:  # Skip if prop did not have setter
                 if type(delegate) == QSpinItemDelegate:
                     getattr(self, f'{column_name}')[channel] = np.zeros(self._tile_volumes.shape)
                 elif type(delegate) == QComboItemDelegate:

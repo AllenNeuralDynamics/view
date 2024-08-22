@@ -1,6 +1,6 @@
 import logging
 import importlib
-from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget
+from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget, label_maker
 from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
 from view.widgets.acquisition_widgets.volume_plan_widget import VolumePlanWidget
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
@@ -39,6 +39,7 @@ class AcquisitionView(QWidget):
         self.instrument = self.acquisition.instrument
         self.config = instrument_view.config
         self.coordinate_plane = self.config['acquisition_view']['coordinate_plane']
+        self.unit = self.config['acquisition_view']['unit']
 
         # Eventual threads
         self.grab_fov_positions_worker = None
@@ -138,7 +139,7 @@ class AcquisitionView(QWidget):
         """Start acquisition"""
 
         # add tiles to acquisition config
-        self.acquisition.config['acquisition']['tiles'] = self.acquisition_widget.create_tile_list()
+        self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
 
         if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
             self.instrument_view.dismantle_live()
@@ -279,7 +280,6 @@ class AcquisitionView(QWidget):
         except KeyError:
             raise KeyError('Coordinate plane must match instrument axes in tiling_stages')
 
-        unit = self.config['acquisition_view'].get('unit', 'mm')
         fov_dimensions = self.config['acquisition_view']['fov_dimensions']
 
         acquisition_widget = QSplitter(Qt.Vertical)
@@ -289,14 +289,14 @@ class AcquisitionView(QWidget):
         self.volume_plan = VolumePlanWidget(limits=limits,
                                             fov_dimensions=fov_dimensions,
                                             coordinate_plane=self.coordinate_plane,
-                                            unit=unit)
+                                            unit=self.unit)
         self.volume_plan.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
 
         # create volume model
         self.volume_model = VolumeModel(limits=limits,
                                         fov_dimensions=fov_dimensions,
                                         coordinate_plane=self.coordinate_plane,
-                                        unit=unit,
+                                        unit=self.unit,
                                         **self.config['acquisition_view'].get('channel_plan', {}).get('init', {}))
         # combine floating volume_model widget with glwindow
         combined_layout = QGridLayout()
@@ -309,7 +309,7 @@ class AcquisitionView(QWidget):
         # create channel plan
         self.channel_plan = ChannelPlanWidget(instrument_view=self.instrument_view,
                                               channels=self.instrument.config['instrument']['channels'],
-                                              unit=unit,
+                                              unit=self.unit,
                                               **self.config['acquisition_view'].get('channel_plan', {}).get('init', {}))
         # place volume_plan.tile_table and channel plan table side by side
         table_splitter = QSplitter(Qt.Horizontal)
@@ -553,6 +553,63 @@ class AcquisitionView(QWidget):
         except (KeyError, TypeError) as e:
             self.log.warning(f"{attr_name} can't be mapped into operation properties due to {e}")
             pass
+
+    def create_tile_list(self):
+        """Return a list of tiles for a scan"""
+
+        tiles = []
+        value = self.volume_plan.value()
+        if self.channel_plan.channel_order.currentText() == 'per Tile':
+            for tile in value:
+                for ch in self.channel_plan.channels:
+                    tiles.append(self.write_tile(ch, tile))
+        elif self.channel_plan.channel_order.currentText() == 'per Volume':
+            for ch in self.channel_plan.channels:
+                for tile in value:
+                    tiles.append(self.write_tile(ch, tile))
+        return tiles
+
+    def write_tile(self, channel, tile):
+        """Write dictionary describing tile parameters"""
+
+        row, column = tile.row, tile.col
+        table_row = self.volume_plan.tile_table.findItems(str([row, column]), Qt.MatchExactly)[0].row()
+
+        tile_dict = {
+            'channel': channel,
+            f'position_{self.unit}': {k[0]: self.volume_plan.tile_table.item(table_row, j + 1).data(Qt.EditRole)
+                                      for j, k in enumerate(self.volume_plan.table_columns[1:-1])},
+            'tile_number': table_row,
+        }
+
+        # load channel plan values
+        for device_type, properties in self.channel_plan.properties.items():
+            if device_type in self.channel_plan.possible_channels[channel].keys():
+                for device_name in self.channel_plan.possible_channels[channel][device_type]:
+                    tile_dict[device_name] = {}
+                    for prop in properties:
+                        column_name = label_maker(f'{device_name}_{prop}')
+                        if getattr(self.channel_plan, column_name, None) is not None:
+                            array = getattr(self.channel_plan, column_name)[channel]
+                            input_type = self.channel_plan.column_data_types[column_name]
+                            if input_type is not None:
+                                tile_dict[device_name][prop] = input_type(array[row, column])
+                            else:
+                                tile_dict[device_name][prop] = array[row, column]
+            else:
+                column_name = label_maker(f'{device_type}')
+                if getattr(self.channel_plan, column_name, None) is not None:
+                    array = getattr(self.channel_plan, column_name)[channel]
+                    input_type = self.channel_plan.column_data_types[column_name]
+                    if input_type is not None:
+                        tile_dict[device_type] = input_type(array[row, column])
+                    else:
+                        tile_dict[device_type] = array[row, column]
+
+        for name in ['steps', 'step_size', 'prefix']:
+            array = getattr(self.channel_plan, name)[channel]
+            tile_dict[name] = array[row, column]
+        return tile_dict
 
     def close(self):
         """Close operations and end threads"""
