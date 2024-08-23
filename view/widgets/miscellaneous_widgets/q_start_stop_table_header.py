@@ -7,6 +7,8 @@ class QStartStopTableHeader(QHeaderView):
     """QTableWidgetItem to be used to select certain tiles to start at"""
 
     sectionRightClicked = Signal(QMouseEvent)
+    startChanged = Signal(int)
+    stopChanged = Signal(int)
 
     def __init__(self, parent):
         super().__init__(Qt.Vertical, parent)
@@ -68,6 +70,8 @@ class QStartStopTableHeader(QHeaderView):
         self.parent().setVerticalHeaderItem(index, item)
         self.start = index
 
+        self.startChanged(index)
+
     def set_stop(self, index: int):
         """
         Set stop tile
@@ -83,6 +87,8 @@ class QStartStopTableHeader(QHeaderView):
         item.setIcon(icon)
         self.parent().setVerticalHeaderItem(index, item)
         self.stop = index
+
+        self.stopChanged(index)
 
     def clear(self, index: int):
         """

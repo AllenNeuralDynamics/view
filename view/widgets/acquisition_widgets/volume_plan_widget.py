@@ -1,7 +1,7 @@
-# from pymmcore_widgets.useq_widgets._grid import
 import useq
 from view.widgets.base_device_widget import create_widget
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
+from view.widgets.miscellaneous_widgets.q_start_stop_table_header import QStartStopTableHeader
 import numpy as np
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
@@ -60,6 +60,8 @@ class VolumePlanWidget(QMainWindow):
         self._tile_visibility = np.ones([1, 1], dtype=bool)  # init as True
         self._scan_starts = np.zeros([1, 1], dtype=float)
         self._scan_ends = np.zeros([1, 1], dtype=float)
+        self.start = None   # tile to start at. If none, then default is first tile
+        self.stop = None    # tile to end at. If none, then default is last tile
 
         self.rows = QSpinBox()
         self.rows.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
@@ -210,6 +212,15 @@ class VolumePlanWidget(QMainWindow):
         self.table_columns = ['row, column', *[f'{x} [{unit}]' for x in self.coordinate_plane],
                               f'{self.coordinate_plane[2]} max [{unit}]', 'visibility']
         self.tile_table = QTableWidget()
+        # configure and set header
+        header = QStartStopTableHeader(self.tile_table)     # header object that allows user to specify start/stop tile
+        header.startChanged.connect(lambda index: setattr(self, 'start', index))
+        header.startChanged.connect(lambda index: self.valueChanged.emit())
+        header.stopChanged.connect(lambda index: setattr(self, 'stop', index))
+        header.startChanged.connect(lambda index: self.valueChanged.emit())
+
+        self.tile_table.setVerticalHeader(header)
+
         self.tile_table.setColumnCount(len(self.table_columns))
         self.tile_table.setHorizontalHeaderLabels(self.table_columns)
         self.tile_table.resizeColumnsToContents()

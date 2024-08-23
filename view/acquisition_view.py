@@ -561,14 +561,16 @@ class AcquisitionView(QWidget):
         """Return a list of tiles for a scan"""
 
         tiles = []
+        tile_slice = slice(self.volume_plan.start, self.volume_plan.stop)
         value = self.volume_plan.value()
+        sliced_value = [tile for tile in value][tile_slice]
         if self.channel_plan.channel_order.currentText() == 'per Tile':
-            for tile in value:
+            for tile in sliced_value:
                 for ch in self.channel_plan.channels:
                     tiles.append(self.write_tile(ch, tile))
         elif self.channel_plan.channel_order.currentText() == 'per Volume':
             for ch in self.channel_plan.channels:
-                for tile in value:
+                for tile in sliced_value:
                     tiles.append(self.write_tile(ch, tile))
         return tiles
 
