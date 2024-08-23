@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QAction, QStyle
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QMouseEvent, QIcon
+from qtpy.QtGui import QMouseEvent
 
 
 class QStartStopTableHeader(QHeaderView):
@@ -8,8 +8,8 @@ class QStartStopTableHeader(QHeaderView):
 
     sectionRightClicked = Signal(QMouseEvent)
 
-    def __init__(self, orientation, parent):
-        super().__init__(orientation, parent)
+    def __init__(self, parent):
+        super().__init__(Qt.Vertical, parent)
 
         self.start = None
         self.stop = None
