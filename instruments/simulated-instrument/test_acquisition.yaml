@@ -6,7 +6,7 @@ acquisition:
       metadata_dictionary:
         instrument_type: exaspim
         subject_id: 123456
-        experimenter_name: adam glaser
+        experimenter_name: [adam glaser]
         immersion_medium: 0.05X SSC
         immersion_medium_refractive_index: 1.33
         x_anatomical_direction: Anterior_to_posterior

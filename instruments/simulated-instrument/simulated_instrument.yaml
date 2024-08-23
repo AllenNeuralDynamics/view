@@ -33,6 +33,7 @@ instrument:
       driver: voxel.devices.lasers.simulated
       init:
         id: COM5
+        wavelength: 639
       module: SimulatedLaser
       type: laser
     ASI FW-1000:
@@ -263,6 +264,7 @@ instrument:
       color: purple
       driver: voxel.devices.lasers.simulated
       init:
+        wavelength: 488
         coefficients:
           0: -57.515
           1: 3.218
@@ -279,6 +281,7 @@ instrument:
       driver: voxel.devices.lasers.simulated
       init:
         id : COM5
+        wavelength: 561
         prefix: L3
       module: SimulatedLaser
       type: laser

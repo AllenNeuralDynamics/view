@@ -51,7 +51,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     simulated_laser = SimulatedLaser(port='COM3')
     laser_properties = scan_for_properties(simulated_laser)
-    base = BaseDeviceWidget(SimulatedLaser, laser_properties)
+    base = BaseDeviceWidget(laser_properties, laser_properties)
     base.ValueChangedInside[str].connect(widget_property_changed)
     base.show()
     t1 = threading.Thread(target=device_change, args=())
