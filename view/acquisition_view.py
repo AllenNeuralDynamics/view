@@ -11,7 +11,7 @@ from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScroll
     QMessageBox, QPushButton, QFileDialog
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
-from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
+from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 from pathlib import Path
