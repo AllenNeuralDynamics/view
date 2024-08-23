@@ -92,24 +92,27 @@ acquisition_view:
   fov_dimensions: [ 10.672384, 8.00128 ]
   coordinate_plane: [ '-x', 'y', 'z' ]
   unit: 'mm'
-  properties:
-    cameras: [ binning ]
-    lasers: [ power_setpoint_mw ]
-    focusing_stages: [position_mm]
-    start_delay_time:
-      delegate: spin
-      type: float
-      minimum: 0
-      initial_value: 10
-    repeats:
-      delegate: spin
-      type: int
-      minimum: 0
-    example:
-      delegate: combo
-      type: str
-      items: [ 'this', 'is', 'an', 'example' ]
-      initial_value: example
+  acquisition_widgets:
+  channel_plan:
+    init:
+      properties:
+        cameras: [ binning ]
+        lasers: [ power_setpoint_mw ]
+        focusing_stages: [position_mm]
+        start_delay_time:
+          delegate: spin
+          type: float
+          minimum: 0
+          initial_value: 10
+        repeats:
+          delegate: spin
+          type: int
+          minimum: 0
+        example:
+          delegate: combo
+          type: str
+          items: [ 'this', 'is', 'an', 'example' ]
+          initial_value: example
   operation_widgets:
     vp-151mx:
       imaris:
