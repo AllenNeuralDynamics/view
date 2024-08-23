@@ -70,7 +70,7 @@ class QStartStopTableHeader(QHeaderView):
         self.parent().setVerticalHeaderItem(index, item)
         self.start = index
 
-        self.startChanged(index)
+        self.startChanged.emit(index)
 
     def set_stop(self, index: int):
         """
@@ -88,7 +88,7 @@ class QStartStopTableHeader(QHeaderView):
         self.parent().setVerticalHeaderItem(index, item)
         self.stop = index
 
-        self.stopChanged(index)
+        self.stopChanged.emit(index)
 
     def clear(self, index: int):
         """

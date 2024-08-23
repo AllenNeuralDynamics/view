@@ -215,9 +215,7 @@ class VolumePlanWidget(QMainWindow):
         # configure and set header
         header = QStartStopTableHeader(self.tile_table)     # header object that allows user to specify start/stop tile
         header.startChanged.connect(lambda index: setattr(self, 'start', index))
-        header.startChanged.connect(lambda index: self.valueChanged.emit())
         header.stopChanged.connect(lambda index: setattr(self, 'stop', index))
-        header.startChanged.connect(lambda index: self.valueChanged.emit())
 
         self.tile_table.setVerticalHeader(header)
 

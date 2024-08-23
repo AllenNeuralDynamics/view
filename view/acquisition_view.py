@@ -334,6 +334,8 @@ class AcquisitionView(QWidget):
         self.volume_model.fovHalt.connect(self.stop_stage)  # stop stage if halt button is pressed
         self.volume_model.fovMove.connect(self.move_stage)  # move stage to clicked coords
         self.volume_plan.valueChanged.connect(self.volume_plan_changed)
+        self.volume_plan.tile_table.verticalHeader().startChanged.connect(lambda i: self.create_tile_list())
+        self.volume_plan.tile_table.verticalHeader().stopChanged.connect(lambda i: self.create_tile_list())
         self.channel_plan.channelAdded.connect(self.channel_plan_changed)
         self.channel_plan.channelChanged.connect(self.update_tiles)
 
