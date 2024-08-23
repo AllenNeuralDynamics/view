@@ -100,7 +100,6 @@ acquisition_view:
       delegate: spin
       type: float
       minimum: 0
-      initial_value: 10
     repeats:
       delegate: spin
       type: int
@@ -109,7 +108,6 @@ acquisition_view:
       delegate: combo
       type: str
       items: [ 'this', 'is', 'an', 'example' ]
-      initial_value: example
   operation_widgets:
     vp-151mx:
       imaris:

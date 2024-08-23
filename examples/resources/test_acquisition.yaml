@@ -1,107 +1,712 @@
 acquisition:
   metadata:
-    subject_id: 123456
-    experimenter_name: adam glaser
-    immersion_medium: 0.05X SSC
-    immersion_medium_refractive_index: 1.33
-    x_anatomical_direction: Anterior_to_posterior
-    y_anatomical_direction: Inferior_to_superior
-    z_anatomical_direction: Left_to_right
+    driver: voxel.metadata.metadata_class
+    module: MetadataClass
+    init:
+      metadata_dictionary:
+        instrument_type: exaspim
+        subject_id: 123456
+        experimenter_name: adam glaser
+        immersion_medium: 0.05X SSC
+        immersion_medium_refractive_index: 1.33
+        x_anatomical_direction: Anterior_to_posterior
+        y_anatomical_direction: Inferior_to_superior
+        z_anatomical_direction: Left_to_right
+      date_format: Year/Month/Day/Hour/Minute/Second
+      name_specs:
+        deliminator: _
+        format: &id001 [instrument_type, subject_id]
+    properties:
+      acquisition_name: exaspim_123456_2024-08-08_15-48-13
+      acquisition_name_format: *id001
+      date_format: '%Y-%m-%d_%H-%M-%S'
+      delimiter: _
+      experimenter_name: adam glaser
+      immersion_medium: 0.05X SSC
+      immersion_medium_refractive_index: 1.33
+      instrument_type: exaspim
+      subject_id: 123456
+      x_anatomical_direction: Anterior_to_posterior
+      y_anatomical_direction: Inferior_to_superior
+      z_anatomical_direction: Left_to_right
   operations:
     vp-151mx:
-      bdv:
-        type: writer
-        driver: voxel.writers.bdv
-        module: Writer
-        init:
-          path: ./local_test
-        settings:
-          compression: none
-          data_type: uint16
+#      bdv:
+
+#        type: writer
+
+#        driver: voxel.writers.bdv
+
+#        module: Writer
+
+#        init:
+
+#          path: ./local_test
+
+#        properties:
+
+#          compression: none
+
+#          data_type: uint16
+
       imaris:
         type: writer
         driver: voxel.writers.imaris
-        module: Writer
+        module: ImarisWriter
         init:
-          path: ./local_test_1
-        settings:
-          compression: none
+          path: C:\local_test
+        properties:
+          acquisition_name:
+          channel:
+          chunk_count_px: 64
+          color: '#ffffff'
+          column_count_px:
+          compression: lz4shuffle
           data_type: uint16
+          filename:
+          frame_count_px:
+          path: C:\local_test
+          row_count_px:
+          shm_name: ''
+          signal_progress_percent: 0.0
+          theta_deg:
+          x_position_mm:
+          x_voxel_size_um:
+          y_position_mm:
+          y_voxel_size_um:
+          z_position_mm:
+          z_voxel_size_um:
+      robocopy:
+        type: transfer
+        driver: voxel.file_transfers.robocopy
+        module: RobocopyFileTransfer
+        init:
+          external_path: C:\external_test
+          local_path: C:\local_test
+        properties:
+          acquisition_name: .
+          external_path: C:\external_test
+          filename:
+          local_path: C:\local_test
+          max_retry: 0
+          signal_process_percent:
+            Transfer Progress [%]: 0
+          timeout_s: 60
+          verify_transfer: false
       rsync:
         type: transfer
-        driver: voxel.transfers.rsync
-        module: FileTransfer
+        driver: voxel.file_transfers.rsync
+        module: RsyncFileTransfer
         init:
-          external_directory: ./external_test
-          local_directory: ./local_test
+          external_path: C:\external_test_1
+          local_path: C:\local_test
+        properties:
+          acquisition_name: .
+          external_path: C:\external_test_1
+          filename:
+          local_path: C:\local_test
+          max_retry: 0
+          signal_process_percent:
+            Transfer Progress [%]: 0
+          timeout_s: 60
+          verify_transfer: false
       max_projection:
         type: process
-        driver: voxel.processes.cpu.max_projection
-        module: MaxProjection
+        driver: voxel.processes.max_projection.cpu.numpy
+        module: CPUMaxProjection
         init:
-          path: ./local_test
-        settings:
+          path: C:\local_test
+        properties:
+          acquisition_name: .
+          column_count_px:
           data_type: uint16
-          projection_count_px: 32
-      mean_projection:
-        type: process
-        driver: voxel.processes.cpu.mean_projection
-        module: MeanProjection
-        init:
-          path: ./local_test
-        settings:
-          data_type: uint16
-          projection_count_px: 32
+          filename:
+          frame_count_px:
+          path: C:\local_test
+          row_count_px:
+          x_projection_count_px:
+          y_projection_count_px:
+          z_projection_count_px:
       background_collection:
         type: routine
         driver: voxel.routines.background_collection
         module: BackgroundCollection
         init:
-          path: ./local_test
-        settings:
+          path: C:\local_test
+        properties:
+          acquisition_name: .
           data_type: uint16
+          filename:
           frame_count_px: 10
-    vnp-604mx:
-        bvd:
-          type: writer
-          driver: voxel.writers.bdv
-          module: Writer
-          init:
-            path: ./local_test
-          settings:
-            compression: none
-            data_type: uint16
-        rsync:
-          type: transfer
-          driver: voxel.transfers.rsync
-          module: FileTransfer
-          init:
-            external_directory: ./external_test
-            local_directory: ./local_test
-        max_projection:
-          type: process
-          driver: voxel.processes.cpu.max_projection
-          module: MaxProjection
-          init:
-            path: ./local_test
-          settings:
-            data_type: uint16
-            projection_count_px: 32
-        mean_projection:
-          type: process
-          driver: voxel.processes.cpu.mean_projection
-          module: MeanProjection
-          init:
-            path: ./local_test
-          settings:
-            data_type: uint16
-            projection_count_px: 32
-        background_collection:
-          type: routine
-          driver: voxel.routines.background_collection
-          module: BackgroundCollection
-          init:
-            path: ./local_test
-          settings:
-            data_type: uint16
-            frame_count_px: 10
+          path: C:\local_test
+  tiles:
+  - channel: CH639
+    position_mm:
+      x: -4.537907199999999
+      y: 11.601536
+      z: 12.0
+    tile_number: 0
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: -4.537907199999999
+      y: 11.601536
+      z: 12.0
+    tile_number: 0
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: -4.537907199999999
+      y: 11.601536
+      z: 12.0
+    tile_number: 0
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 4.0
+      y: 11.601536
+      z: 12.0
+    tile_number: 1
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 4.0
+      y: 11.601536
+      z: 12.0
+    tile_number: 1
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 4.0
+      y: 11.601536
+      z: 12.0
+    tile_number: 1
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 12.5379072
+      y: 11.601536
+      z: 12.0
+    tile_number: 2
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 12.5379072
+      y: 11.601536
+      z: 12.0
+    tile_number: 2
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 12.5379072
+      y: 11.601536
+      z: 12.0
+    tile_number: 2
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 12.5379072
+      y: 5.200512
+      z: 12.0
+    tile_number: 3
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 12.5379072
+      y: 5.200512
+      z: 12.0
+    tile_number: 3
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 12.5379072
+      y: 5.200512
+      z: 12.0
+    tile_number: 3
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 4.0
+      y: 5.200512
+      z: 12.0
+    tile_number: 4
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 4.0
+      y: 5.200512
+      z: 12.0
+    tile_number: 4
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 4.0
+      y: 5.200512
+      z: 12.0
+    tile_number: 4
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: -4.537907199999999
+      y: 5.200512
+      z: 12.0
+    tile_number: 5
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: -4.537907199999999
+      y: 5.200512
+      z: 12.0
+    tile_number: 5
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: -4.537907199999999
+      y: 5.200512
+      z: 12.0
+    tile_number: 5
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: -4.537907199999999
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 6
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: -4.537907199999999
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 6
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: -4.537907199999999
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 6
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 4.0
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 7
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 4.0
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 7
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 4.0
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 7
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 12.5379072
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 8
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 12.5379072
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 8
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 12.5379072
+      y: -1.2005119999999998
+      z: 12.0
+    tile_number: 8
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 12.5379072
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 9
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 12.5379072
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 9
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 12.5379072
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 9
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: 4.0
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 10
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: 4.0
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 10
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: 4.0
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 10
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH639
+    position_mm:
+      x: -4.537907199999999
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 11
+    vp-151mx:
+      binning: 1
+    639nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH561
+    position_mm:
+      x: -4.537907199999999
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 11
+    vp-151mx:
+      binning: 1
+    561nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+  - channel: CH488
+    position_mm:
+      x: -4.537907199999999
+      y: -7.601535999999999
+      z: 12.0
+    tile_number: 11
+    vp-151mx:
+      binning: 1
+    488nm:
+      power_setpoint_mw: 0.0
+    n stage axis:
+      position_mm: 0.0
+    steps: 0
+    step_size: 0.0
+    prefix: ''
+#    - channel: 'CH488'
+
+#      position_mm:
+
+#        x: -0.0053
+
+#        y: 0.001
+
+#        z: 0.0
+
+#      tile_number: 0
+
+#      488 nm:
+
+#        power_setpoint_mw: 0.0
+
+#      vp-151mx:
+
+#        binning: 1.0
+
+#      n stage axis:
+
+#        position_mm: -2.35
+
+#      steps: 66
+
+#      step_size: 0.0152
+
+#      prefix: ''
+

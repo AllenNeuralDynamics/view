@@ -124,6 +124,7 @@ instrument:
             color: blue
             init:
               id : 488nm
+              wavelength: 488
               prefix: L5
               coefficients:
                 1: 2.3125

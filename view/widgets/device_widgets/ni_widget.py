@@ -24,10 +24,10 @@ class NIWidget(BaseDeviceWidget):
         """
 
         self.advanced_user = advanced_user
-        self.exposed_branches = {'tasks':daq.tasks} if exposed_branches is None else exposed_branches
+        self.exposed_branches = {'tasks': daq.tasks} if exposed_branches is None else exposed_branches
 
         # initialize base widget to create convenient widgets and signals
-        super().__init__(daq, {'tasks':daq.tasks})
+        super().__init__(daq, {'tasks': daq.tasks})
         del self.property_widgets['tasks']  # delete so view won't confuse and try and update. Hacky?
         # available channels    #TODO: this seems pretty hard coded?  A way to avoid this?
         self.ao_physical_chans = [x.replace(f'{daq.id}/', '') for x in daq.ao_physical_chans]
@@ -38,7 +38,7 @@ class NIWidget(BaseDeviceWidget):
         # create waveform widget
         if advanced_user:
             self.waveform_widget = WaveformWidget()
-            #self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
+            # self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
 
         # create tree widget and format configured widgets into tree
         self.tree = QTreeWidget()
@@ -137,7 +137,7 @@ class NIWidget(BaseDeviceWidget):
     def waveform_value_changed(self, value, name):
         """Update textbox if waveform is changed"""
 
-        if hasattr(self, f'{name}_slider'): # value is included in exposed branches
+        if hasattr(self, f'{name}_slider'):  # value is included in exposed branches
             name_lst = name.split('.')
             textbox = getattr(self, f'{name}_widget')
             slider = getattr(self, f'{name}_slider')
@@ -192,7 +192,8 @@ class NIWidget(BaseDeviceWidget):
             port = '.'.join(path[:path.index("ports") + 2]) if 'ports' in path else 0
             # Triangle and sawtooths max amplitude can be less than max volts due to offset so force fixup check
             maximum = getattr(self, f'{port}.device_max_volts', 5)
-            minimum = getattr(self, f'{port}.device_min_volts', 0) if 'amplitude' not in name else -maximum     # allow for negative amplitude
+            minimum = getattr(self, f'{port}.device_min_volts',
+                              0) if 'amplitude' not in name else -maximum  # allow for negative amplitude
             slider.setMaximum(maximum)
             slider.setMinimum(minimum)
             textbox.validator().setRange(minimum, maximum, decimals=3)
@@ -220,9 +221,10 @@ class NIWidget(BaseDeviceWidget):
 
         parent = self.tree if parent is None else parent
         # TODO: This is haaaaaacky. but might be good for now
-        dictionary = self.mappedpathGet(self.exposed_branches.copy(), name.split('.'))
+        iterable = self.mappedpathGet(self.exposed_branches.copy(), name.split('.'))
         items = []
-        for key, value in dictionary.items():
+        for i, item in enumerate(iterable):
+            key = item if hasattr(iterable, 'keys') else str(i)  # account for yaml typed
             id = f'{name}.{key}'
             if widget := getattr(self, f'{id}_widget', False):
                 item = QTreeWidgetItem(parent, [key])
