@@ -213,11 +213,11 @@ class VolumePlanWidget(QMainWindow):
                               f'{self.coordinate_plane[2]} max [{unit}]', 'visibility']
         self.tile_table = QTableWidget()
         # configure and set header
-        header = QStartStopTableHeader(self.tile_table)     # header object that allows user to specify start/stop tile
-        header.startChanged.connect(lambda index: setattr(self, 'start', index))
-        header.stopChanged.connect(lambda index: setattr(self, 'stop', index))
+        self.header = QStartStopTableHeader(self.tile_table)     # header object that allows user to specify start/stop tile
+        self.header.startChanged.connect(lambda index: setattr(self, 'start', index))
+        self.header.stopChanged.connect(lambda index: setattr(self, 'stop', index))
 
-        self.tile_table.setVerticalHeader(header)
+        self.tile_table.setVerticalHeader(self.header)
 
         self.tile_table.setColumnCount(len(self.table_columns))
         self.tile_table.setHorizontalHeaderLabels(self.table_columns)
@@ -281,6 +281,12 @@ class VolumePlanWidget(QMainWindow):
         self.tile_table.setRowCount(0)
         for tile in value:
             self.add_tile_to_table(tile.row, tile.col)
+        self.header.blockSignals(True)   # don't trigger update
+        if self.start is not None:
+            self.header.set_start(self.start)
+        if self.stop is not None:
+            self.header.set_stop(self.stop)
+        self.header.blockSignals(False)
 
     def add_tile_to_table(self, row, column):
         """
