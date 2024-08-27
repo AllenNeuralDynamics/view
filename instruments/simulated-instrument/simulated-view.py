@@ -12,8 +12,8 @@ import inflection
 from qtpy.QtCore import Qt
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
-ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
-INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
+ACQUISITION_YAML = r'C:\Users\micah.woodard\Downloads\config_acquisition.yaml' #RESOURCES_DIR / 'test_acquisition.yaml'
+INSTRUMENT_YAML = r'C:\Users\micah.woodard\Downloads\config_instrument.yaml' #RESOURCES_DIR / 'simulated_instrument.yaml'
 GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 
 
@@ -46,10 +46,8 @@ class SimulatedInstrumentView(InstrumentView):
 
         return_value = self.update_config_query()
         if return_value == QMessageBox.Ok:
-            for device_name, device_specs in self.instrument.config['instrument']['devices'].items():
-                self.update_config(device_name, device_specs)
-            with open(self.config_save_to, 'w') as outfile:
-                yaml.dump(self.instrument.config, outfile)
+            self.instrument.update_current_state_config()
+            self.instrument.save_config(self.config_save_to)
 
     def update_config(self, device_name, device_specs):
         """Update setting in instrument config if already there

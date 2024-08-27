@@ -37,7 +37,7 @@ def widget_property_changed(name, device, widget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    laser_object = SimulatedLaser('')
+    laser_object = SimulatedLaser(id='', wavelength=488)
     laser = LaserWidget(laser_object)
     laser.show()
 

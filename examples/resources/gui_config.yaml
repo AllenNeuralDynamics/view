@@ -89,30 +89,25 @@ instrument_view:
                       "488": 2.5
                       "561": 2.5
 acquisition_view:
-  fov_dimensions: [ 10.672384, 8.00128, 0 ]
+  fov_dimensions: [ 10.672384, 8.00128 ]
   coordinate_plane: [ '-x', 'y', 'z' ]
   unit: 'mm'
-  acquisition_widgets:
-    channel_plan:
-      init:
-        properties:
-          cameras: [ binning ]
-          lasers: [ power_setpoint_mw ]
-          focusing_stages: [position_mm]
-          start_delay_time:
-            delegate: spin
-            type: float
-            minimum: 0
-            initial_value: 10
-          repeats:
-            delegate: spin
-            type: int
-            minimum: 0
-          example:
-            delegate: combo
-            type: str
-            items: [ 'this', 'is', 'an', 'example' ]
-            initial_value: example
+  properties:
+    cameras: [ binning ]
+    lasers: [ power_setpoint_mw ]
+    focusing_stages: [position_mm]
+    start_delay_time:
+      delegate: spin
+      type: float
+      minimum: 0
+    repeats:
+      delegate: spin
+      type: int
+      minimum: 0
+    example:
+      delegate: combo
+      type: str
+      items: [ 'this', 'is', 'an', 'example' ]
   operation_widgets:
     vp-151mx:
       imaris:
