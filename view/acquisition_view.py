@@ -13,7 +13,7 @@ from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScroll
     QHBoxLayout, QFrame, QFileDialog, QMessageBox
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
-from view.widgets.miscellaneous_widgets.q__dock_widget_title_bar import QDockWidgetTitleBar
+from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 from pathlib import Path
@@ -337,6 +337,10 @@ class AcquisitionView(QWidget):
         self.channel_plan.channelAdded.connect(self.channel_plan_changed)
         self.channel_plan.channelChanged.connect(self.update_tiles)
 
+        # TODO: This feels like a clunky connection. Works for now but could probably be improved
+        self.volume_plan.header.startChanged.connect(lambda i: self.create_tile_list())
+        self.volume_plan.header.stopChanged.connect(lambda i: self.create_tile_list())
+
         return acquisition_widget
     def channel_plan_changed(self, channel):
         """
@@ -561,14 +565,16 @@ class AcquisitionView(QWidget):
         """Return a list of tiles for a scan"""
 
         tiles = []
+        tile_slice = slice(self.volume_plan.start, self.volume_plan.stop)
         value = self.volume_plan.value()
+        sliced_value = [tile for tile in value][tile_slice]
         if self.channel_plan.channel_order.currentText() == 'per Tile':
-            for tile in value:
+            for tile in sliced_value:
                 for ch in self.channel_plan.channels:
                     tiles.append(self.write_tile(ch, tile))
         elif self.channel_plan.channel_order.currentText() == 'per Volume':
             for ch in self.channel_plan.channels:
-                for tile in value:
+                for tile in sliced_value:
                     tiles.append(self.write_tile(ch, tile))
         return tiles
 
