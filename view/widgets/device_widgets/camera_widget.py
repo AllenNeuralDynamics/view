@@ -1,5 +1,5 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, scan_for_properties
-from qtpy.QtWidgets import QPushButton, QStyle, QWidget
+from qtpy.QtWidgets import QPushButton, QStyle, QWidget, QHBoxLayout
 from qtpy.QtCore import Qt
 
 

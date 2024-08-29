@@ -21,7 +21,7 @@ acquisition:
       imaris:
         type: writer
         driver: voxel.writers.imaris
-        module: Writer
+        module: ImarisWriter
         init:
           path: C:\local_test
         properties:
