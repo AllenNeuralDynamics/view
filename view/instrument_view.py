@@ -55,7 +55,8 @@ class InstrumentView(QWidget):
         self.snapshot = False  # flag to signal snapshot has been taken
 
         self.instrument = instrument
-        self.config = YAML().load(config_path)  # TODO: maybe bulldozing comments but easier
+        self.config_path = config_path
+        self.config = YAML().load(config_path)
 
         # Convenient config maps
         self.channels = self.instrument.config['instrument']['channels']
@@ -83,6 +84,8 @@ class InstrumentView(QWidget):
 
         # Set app events
         app = QApplication.instance()
+        app.aboutToQuit.connect(self.update_config_on_quit)  # query if config should be saved and where
+        self.config_save_to = self.config_path
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
 
@@ -503,7 +506,6 @@ class InstrumentView(QWidget):
         :param widget: widget object relating to device
         :param device: device object
         :param attr_name: name of attribute"""
-
 
         name_lst = attr_name.split('.')
         self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')

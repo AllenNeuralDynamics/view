@@ -14,6 +14,7 @@ class FilterWheelWidget(BaseDeviceWidget):
                  colors: dict = {},
                  advanced_user: bool = True):
         """Simple scroll widget for filter wheel
+        :param colors: colors for filters
         :param filter_wheel: filter wheel device"""
 
         properties = scan_for_properties(filter_wheel)

@@ -51,7 +51,8 @@ class BaseDeviceWidget(QMainWindow):
 
             boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             if dict not in type(value).__mro__ and list not in type(value).__mro__ or type(arg_type) == enum.EnumMeta:
-                setattr(self, f"{name}_schema", Schema(type(value))) # create schema validator so entries must adhere to specific format
+                setattr(self, f"{name}_schema",
+                        Schema(type(value)))  # create schema validator so entries must adhere to specific format
                 # Create combo boxes if there are preset options
                 if input_specs := self.check_driver_variables(search_name):
                     boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
@@ -115,10 +116,13 @@ class BaseDeviceWidget(QMainWindow):
         value_type = type(value)
         textbox = QScrollableLineEdit(str(value))
         textbox.editingFinished.connect(lambda: self.textbox_edited(name))
-        if float in value_type.__mro__ or int in value_type.__mro__:
-            validator = QIntValidator() if int in value_type.__mro__ else QDoubleValidator()
+        if float in value_type.__mro__:
+            validator = QDoubleValidator()
+            validator.setNotation(QDoubleValidator.StandardNotation)
             textbox.setValidator(validator)
-
+        elif int in value_type.__mro__:
+            validator = QIntValidator()
+            textbox.setValidator(validator)
         return textbox
 
     def textbox_edited(self, name):
@@ -130,7 +134,7 @@ class BaseDeviceWidget(QMainWindow):
 
         name_lst = name.split('.')
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
-        value = getattr(self, name+'_widget').text()
+        value = getattr(self, name + '_widget').text()
         value_type = type(getattr(self, name + '_schema').schema())
         if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
             parent_attr[name_lst[-1]] = value_type(value)
@@ -165,7 +169,6 @@ class BaseDeviceWidget(QMainWindow):
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
 
-
     @Slot(str)
     def update_property_widget(self, name):
         """Update property widget. Triggers when attribute has been changed outside of widget
@@ -193,7 +196,12 @@ class BaseDeviceWidget(QMainWindow):
             widget = getattr(self, f'{name}_widget')
             widget.blockSignals(True)  # block signal indicating change since changing internally
             if hasattr(widget, 'setText'):
-                widget.setText(str(value))
+                if widget.validator() is None:
+                    widget.setText(str(value))
+                elif type(widget.validator()) == QIntValidator:
+                    widget.setText(str(round(value)))
+                elif type(widget.validator()) == QDoubleValidator:
+                    widget.setText(str(round(value, widget.validator().decimals())))
             elif hasattr(widget, 'setCurrentText'):
                 widget.setCurrentText(str(value))
             widget.blockSignals(False)

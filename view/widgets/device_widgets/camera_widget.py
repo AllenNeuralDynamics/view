@@ -1,5 +1,5 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, scan_for_properties
-from qtpy.QtWidgets import QPushButton, QStyle, QWidget
+from qtpy.QtWidgets import QPushButton, QStyle, QWidget, QHBoxLayout
 from qtpy.QtCore import Qt
 
 
@@ -98,6 +98,11 @@ class CameraWidget(BaseDeviceWidget):
             central_widget = self.centralWidget()
             central_widget.layout().setSpacing(0)  # remove space between central widget and newly formatted widgets
             self.setCentralWidget(create_widget('H',self.live_button, self.snapshot_button))
+
+        if hasattr(self, 'frame_time_ms_widget'):
+            self.frame_time_ms_widget.validator().setDecimals(2)  # set frame time decimals to 2
+        if hasattr(self, 'exposure_time_ms_widget'):
+            self.exposure_time_ms_widget.validator().setDecimals(2)  # set exposure time decimals to 2
 
     def create_live_button(self):
         """Add live button"""
