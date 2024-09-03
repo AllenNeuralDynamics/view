@@ -365,7 +365,7 @@ class AcquisitionView(QWidget):
 
         # update volume model
         self.volume_model.blockSignals(True)  # only trigger update once
-        self.volume_model.fov_dimensions = self.volume_plan.fov_dimensions
+        #self.volume_model.fov_dimensions = self.volume_plan.fov_dimensions
         self.volume_model.grid_coords = self.volume_plan.tile_positions
         self.volume_model.scan_volumes = tile_volumes
         self.volume_model.blockSignals(False)

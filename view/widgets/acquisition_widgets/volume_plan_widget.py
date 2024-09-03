@@ -526,9 +526,9 @@ class VolumePlanWidget(QMainWindow):
         self._on_change()
 
     def value(self):
-        """Overwriting value so Area mode doesn't multiply width and height by 1000,
-        pass in reverse variable, and have a customized relative enum value"""
-
+        """
+        Value based on widget values
+        """
         over = self.overlap.value()
         common = {
             "reverse": self.reverse.isChecked(),

@@ -339,6 +339,7 @@ class VolumeModel(GLOrthoViewWidget):
         extrema = {'x_min': min(coords[:, 0]), 'x_max': max(coords[:, 0]),
                    'y_min': min(coords[:, 1]), 'y_max': max(coords[:, 1]),
                    'z_min': min(coords[:, 2]), 'z_max': max(coords[:, 2])}
+
         fov = {**{axis: dim for axis, dim in zip(['x', 'y'], self.fov_dimensions)}, 'z': 0}
         pos = {axis: dim for axis, dim in zip(['x', 'y', 'z'], self.fov_position)}
 
