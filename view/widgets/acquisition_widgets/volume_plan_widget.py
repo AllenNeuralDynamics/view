@@ -231,6 +231,7 @@ class VolumePlanWidget(QMainWindow):
             self.tile_table.setItemDelegateForColumn(i, delegate)
 
         self.tile_table.itemChanged.connect(self.tile_table_changed)
+
         layout.addWidget(self.tile_table)
 
         widget = QWidget()
