@@ -420,6 +420,7 @@ class VolumePlanWidget(QMainWindow):
 
     @fov_position.setter
     def fov_position(self, value):
+
         if type(value) is not list and len(value) != 3:
             raise ValueError
         elif value != self._fov_position:

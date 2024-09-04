@@ -415,13 +415,13 @@ class AcquisitionView(QWidget):
         """Grab stage position from all stage objects and yield positions"""
         scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         while True:  # best way to do this or have some sort of break?
-            fov_pos = self.volume_plan.fov_position
+            fov_pos = [None]*3
             for name, stage in {**self.instrument.tiling_stages, **self.instrument.scanning_stages}.items():
                 if stage.instrument_axis in scalar_coord_plane:
                     index = scalar_coord_plane.index(stage.instrument_axis)
                     try:
                         pos = stage.position_mm
-                        fov_pos[index] = pos if pos is not None else fov_pos[index]
+                        fov_pos[index] = pos if pos is not None else self.volume_plan.fov_position[index]
                     except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
                         pass
                     sleep(.1)
