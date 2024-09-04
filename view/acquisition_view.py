@@ -383,7 +383,7 @@ class AcquisitionView(QWidget):
         """Update config with the latest tiles"""
 
         self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
-
+        print(self.acquisition.config['acquisition']['tiles'])
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
         scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
@@ -586,10 +586,9 @@ class AcquisitionView(QWidget):
         tile_dict = {
             'channel': channel,
             f'position_{self.unit}': {k[0]: self.volume_plan.tile_table.item(table_row, j + 1).data(Qt.EditRole)
-                                      for j, k in enumerate(self.volume_plan.table_columns[1:-1])},
+                                      for j, k in enumerate(self.volume_plan.table_columns[1:-2])},
             'tile_number': table_row,
         }
-
         # load channel plan values
         for device_type, properties in self.channel_plan.properties.items():
             if device_type in self.channel_plan.possible_channels[channel].keys():

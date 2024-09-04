@@ -379,6 +379,9 @@ class VolumePlanWidget(QMainWindow):
             elif not self.apply_all:
                 self.valueChanged.emit(self.value())
 
+            if col_title == f'{self.coordinate_plane[2]} [{self.unit}]':
+                self.grid_offset_widgets[2].setValue(value)
+
     def toggle_grid_position(self, enable, index):
         """If grid is anchored, allow user to input grid position"""
 
