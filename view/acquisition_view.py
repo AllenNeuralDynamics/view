@@ -377,7 +377,6 @@ class AcquisitionView(QWidget):
         self.channel_plan.tile_volumes = tile_volumes
         for ch in self.channel_plan.channels:
             self.channel_plan.add_channel_rows(ch, [[t.row, t.col] for t in value])
-
         self.update_tiles()
 
     def update_tiles(self):

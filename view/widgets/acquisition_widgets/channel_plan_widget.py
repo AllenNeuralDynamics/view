@@ -195,7 +195,9 @@ class ChannelPlanWidget(QTabWidget):
             self._tile_volumes = value
             for row in range(table.rowCount()):
                 tile_index = [int(x) for x in table.item(row, table.columnCount() - 1).text() if x.isdigit()]
-                self.update_steps(tile_index, row, channel)
+                if tile_index[0] < value.shape[0] and tile_index[1] < value.shape[1]:
+                    self.update_steps(tile_index, row, channel)
+
 
 
     def enable_item(self, item, enable):
