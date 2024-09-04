@@ -118,7 +118,7 @@ class ChannelPlanWidget(QTabWidget):
                             else:  # TODO: How to handle dictionary values
                                 delegates.append(QTextItemDelegate())
                                 setattr(self, column_name + '_initial_value', prop_widget.text())
-                elif type(properties) == dict:     # TODO: how to validate the GUI yaml?
+                elif dict in type(properties).__mro__:     # TODO: how to validate the GUI yaml?
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
                     setattr(self, column_name + '_initial_value', properties.get('initial_value', None))

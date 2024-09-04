@@ -387,10 +387,10 @@ class AcquisitionView(QWidget):
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
-
+        scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
-        for axis, position in zip(self.acquisition_widget.coordinate_plane[:2], fov_position[:2]):
+        for axis, position in zip(scalar_coord_plane[:2], fov_position[:2]):
             self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
         scan_stage.move_absolute_mm(fov_position[2], wait=False)
