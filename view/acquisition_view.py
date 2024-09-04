@@ -383,7 +383,7 @@ class AcquisitionView(QWidget):
         """Update config with the latest tiles"""
 
         self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
-        print(self.acquisition.config['acquisition']['tiles'])
+
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
         scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
