@@ -28,7 +28,7 @@ class BaseDeviceWidget(QMainWindow):
 
         super().__init__()
         self.device_type = device_type
-        self.device_driver = import_module(self.device_type.__module__) if not hasattr(self.device_type, 'keys') \
+        self.device_driver = import_module(self.device_type.__module__) if not dict not in type(device_type).__mro__ \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
         self.create_property_widgets(properties, 'property')
 
@@ -62,14 +62,18 @@ class BaseDeviceWidget(QMainWindow):
 
             elif dict in type(value).__mro__:  # deal with dict like variables
                 setattr(self, f"{name}_schema", Schema(create_dict_schema(value)))
-                boxes[name] = create_widget('H', **self.create_property_widgets(
+                boxes[name] = create_widget('V', **self.create_property_widgets(
                     {f'{name}.{k}': v for k, v in value.items()}, name))
             elif list in type(value).__mro__:  # deal with list like variables
                 setattr(self, f"{name}_schema", Schema(create_list_schema(value)))
                 boxes[name] = create_widget('H', **self.create_property_widgets(
                     {f'{name}.{i}': v for i, v in enumerate(value)}, name))
-
-            widgets[name] = create_widget('H', **boxes) if '.' not in name else create_widget('V', **boxes)
+            orientation = 'H'
+            if '.' in name: # see if parent list and format index label and input vertically
+                parent = pathGet(self.__dict__, name.split('.')[0:-1])
+                if list in type(parent).__mro__:
+                    orientation = 'V'
+            widgets[name] = create_widget(orientation, **boxes)
 
             if attr is not None:  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring
@@ -131,13 +135,14 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name of property that was edited
         :return:
         """
-
         name_lst = name.split('.')
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value = getattr(self, name + '_widget').text()
         value_type = type(getattr(self, name + '_schema').schema())
-        if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
+        if dict in type(parent_attr).__mro__:  # name is a dictionary
             parent_attr[name_lst[-1]] = value_type(value)
+        elif list in type(parent_attr).__mro__:
+            parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
 
