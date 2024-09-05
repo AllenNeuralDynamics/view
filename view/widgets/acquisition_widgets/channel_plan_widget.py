@@ -118,7 +118,7 @@ class ChannelPlanWidget(QTabWidget):
                             else:  # TODO: How to handle dictionary values
                                 delegates.append(QTextItemDelegate())
                                 setattr(self, column_name + '_initial_value', prop_widget.text())
-                elif type(properties) == dict:     # TODO: how to validate the GUI yaml?
+                elif dict in type(properties).__mro__:     # TODO: how to validate the GUI yaml?
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
                     setattr(self, column_name + '_initial_value', properties.get('initial_value', None))
@@ -180,6 +180,7 @@ class ChannelPlanWidget(QTabWidget):
     def tile_volumes(self, value: np.array):
         """When tile dims is updated, update size of channel arrays"""
 
+        self._tile_volumes = value
         for channel in self.channels:
             table = getattr(self, f'{channel}_table')
             for i in range(table.columnCount() - 1):  # skip row, column
@@ -191,8 +192,13 @@ class ChannelPlanWidget(QTabWidget):
             self.step_size[channel] = np.resize(self.step_size[channel], value.shape)
             self.steps[channel] = np.resize(self.steps[channel], value.shape)
             self.prefix[channel] = np.resize(self.prefix[channel], value.shape)
+            self._tile_volumes = value
+            for row in range(table.rowCount()):
+                tile_index = [int(x) for x in table.item(row, table.columnCount() - 1).text() if x.isdigit()]
+                if tile_index[0] < value.shape[0] and tile_index[1] < value.shape[1]:
+                    self.update_steps(tile_index, row, channel)
 
-        self._tile_volumes = value
+
 
     def enable_item(self, item, enable):
         """Change flags for enabling/disabling items in channel_plan table"""

@@ -231,6 +231,7 @@ class VolumePlanWidget(QMainWindow):
             self.tile_table.setItemDelegateForColumn(i, delegate)
 
         self.tile_table.itemChanged.connect(self.tile_table_changed)
+
         layout.addWidget(self.tile_table)
 
         widget = QWidget()
@@ -378,6 +379,9 @@ class VolumePlanWidget(QMainWindow):
             elif not self.apply_all:
                 self.valueChanged.emit(self.value())
 
+            if col_title == f'{self.coordinate_plane[2]} [{self.unit}]':
+                self.grid_offset_widgets[2].setValue(value)
+
     def toggle_grid_position(self, enable, index):
         """If grid is anchored, allow user to input grid position"""
 
@@ -420,6 +424,7 @@ class VolumePlanWidget(QMainWindow):
 
     @fov_position.setter
     def fov_position(self, value):
+
         if type(value) is not list and len(value) != 3:
             raise ValueError
         elif value != self._fov_position:

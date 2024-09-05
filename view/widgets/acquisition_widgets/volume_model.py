@@ -461,7 +461,7 @@ class VolumeModel(GLOrthoViewWidget):
                     distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
                     tile = flattened[index]
                     pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
-                self.fov_position = [pos['x'], pos['y'], pos['z']]
+                #self.fov_position = [pos['x'], pos['y'], pos['z']] # I don't think we should have this? Creates a jumping effect
                 self.view_plane = plane  # make sure grid plane remains the same
                 self.fovMove.emit([pos['x'], pos['y'], pos['z']])
 

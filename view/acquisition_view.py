@@ -377,7 +377,6 @@ class AcquisitionView(QWidget):
         self.channel_plan.tile_volumes = tile_volumes
         for ch in self.channel_plan.channels:
             self.channel_plan.add_channel_rows(ch, [[t.row, t.col] for t in value])
-
         self.update_tiles()
 
     def update_tiles(self):
@@ -387,10 +386,10 @@ class AcquisitionView(QWidget):
 
     def move_stage(self, fov_position):
         """Slot for moving stage when fov_position is changed internally by grid_widget"""
-
+        scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
         # Move stages
-        for axis, position in zip(self.acquisition_widget.coordinate_plane[:2], fov_position[:2]):
+        for axis, position in zip(scalar_coord_plane[:2], fov_position[:2]):
             self.instrument.tiling_stages[stage_names[axis]].move_absolute_mm(position, wait=False)
         (scan_name, scan_stage), = self.instrument.scanning_stages.items()
         scan_stage.move_absolute_mm(fov_position[2], wait=False)
@@ -415,13 +414,13 @@ class AcquisitionView(QWidget):
         """Grab stage position from all stage objects and yield positions"""
         scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         while True:  # best way to do this or have some sort of break?
-            fov_pos = self.volume_plan.fov_position
+            fov_pos = [None]*3
             for name, stage in {**self.instrument.tiling_stages, **self.instrument.scanning_stages}.items():
                 if stage.instrument_axis in scalar_coord_plane:
                     index = scalar_coord_plane.index(stage.instrument_axis)
                     try:
                         pos = stage.position_mm
-                        fov_pos[index] = pos if pos is not None else fov_pos[index]
+                        fov_pos[index] = pos if pos is not None else self.volume_plan.fov_position[index]
                     except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
                         pass
                     sleep(.1)
@@ -587,10 +586,9 @@ class AcquisitionView(QWidget):
         tile_dict = {
             'channel': channel,
             f'position_{self.unit}': {k[0]: self.volume_plan.tile_table.item(table_row, j + 1).data(Qt.EditRole)
-                                      for j, k in enumerate(self.volume_plan.table_columns[1:-1])},
+                                      for j, k in enumerate(self.volume_plan.table_columns[1:-2])},
             'tile_number': table_row,
         }
-
         # load channel plan values
         for device_type, properties in self.channel_plan.properties.items():
             if device_type in self.channel_plan.possible_channels[channel].keys():
