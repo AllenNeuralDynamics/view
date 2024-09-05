@@ -170,8 +170,10 @@ class BaseDeviceWidget(QMainWindow):
         name_lst = name.split('.')
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value_type = type(getattr(self, name + '_schema').schema())
-        if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
-            parent_attr[name_lst[-1]] = value_type(value)
+        if dict in type(parent_attr).__mro__: # name is a dict
+            parent_attr[int(name_lst[-1])] = value_type(value)
+        elif list in type(parent_attr).__mro__:  # name is a list
+            parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
 
@@ -179,10 +181,9 @@ class BaseDeviceWidget(QMainWindow):
     def update_property_widget(self, name):
         """Update property widget. Triggers when attribute has been changed outside of widget
         :param name: name of attribute and widget"""
-        print('update property widget', name)
+
         value = getattr(self, name, None)
         if dict not in type(value).__mro__ and list not in type(value).__mro__:  # not a dictionary or list like value
-            print(name, value, 'list')
             self._set_widget_text(name, value)
         elif dict in type(value).__mro__:
             for k, v in value.items():  # multiple widgets to set values for
@@ -198,7 +199,7 @@ class BaseDeviceWidget(QMainWindow):
         """Set widget text if widget is QLineEdit or QCombobox
         :param name: widget name to set text to
         :param value: value of text"""
-        print(name, value, 'set widget text')
+
         if hasattr(self, f'{name}_widget'):
             widget = getattr(self, f'{name}_widget')
             widget.blockSignals(True)  # block signal indicating change since changing internally
@@ -208,7 +209,6 @@ class BaseDeviceWidget(QMainWindow):
                 elif type(widget.validator()) == QIntValidator:
                     widget.setText(str(round(value)))
                 elif type(widget.validator()) == QDoubleValidator:
-                    print('decimals', widget.validator().decimals())
                     widget.setText(str(round(value, widget.validator().decimals())))
             elif hasattr(widget, 'setCurrentText'):
                 widget.setCurrentText(str(value))
@@ -227,7 +227,6 @@ class BaseDeviceWidget(QMainWindow):
                 self.log.warning(f'Attribute {name} cannot be set to {value} since it does not adhere to the schema'
                                  f' {schema}')
                 return
-        print(name, value)
         self.__dict__[name] = value
         if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)
