@@ -85,7 +85,7 @@ instrument:
       driver: voxel.devices.stage.simulated
       init:
         hardware_axis: x
-        instrument_axis: z
+        instrument_axis: x
       module: Stage
       properties:
         speed_mm_s: 1.0
@@ -93,8 +93,8 @@ instrument:
     ASI MS-8000 z axis:
       driver: voxel.devices.stage.simulated
       init:
-        hardware_axis: y
-        instrument_axis: x
+        hardware_axis: z
+        instrument_axis: z
       module: Stage
       properties:
         speed_mm_s: 1.0
@@ -102,7 +102,7 @@ instrument:
     ASI MS-8000 y axis:
       driver: voxel.devices.stage.simulated
       init:
-        hardware_axis: z
+        hardware_axis: y
         instrument_axis: y
       module: Stage
       properties:

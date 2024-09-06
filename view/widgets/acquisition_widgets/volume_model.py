@@ -386,7 +386,7 @@ class VolumeModel(GLOrthoViewWidget):
         # @Micah in ortho mode it seems to scale properly with x1200... not sure how to explain why though
         # not sure if this actually works, and whether it needs to be copied to other places in the fx
         self.opts['distance'] = horz_dist * 1200 if horz_dist > vert_dist else vert_dist * 1200
-        print(center)
+
         self.opts['center'] = QVector3D(
             center.get(self.coordinate_plane[0], 0),
             center.get(self.coordinate_plane[1], 0),
@@ -439,27 +439,25 @@ class VolumeModel(GLOrthoViewWidget):
         vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
 
         # create dictionaries of from fov and pos
-        fov = {'x': self.fov_dimensions[0],
-               'y': self.fov_dimensions[1],
-               'z': 0}
+        fov = {axis: fov for axis, fov in zip(self.coordinate_plane, self.fov_dimensions)}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
 
         transform_dict = {grid: stage for grid, stage in zip(['x', 'y', 'z'], self.coordinate_plane)}
         other_dim = [dim for dim in transform_dict if dim not in plane][0]
         transform = [transform_dict[plane[0]], transform_dict[plane[1]], transform_dict[other_dim]]
 
-        center = {'x': self.opts['center'].x(), 'y': self.opts['center'].y(), 'z': self.opts['center'].z()}
+        center = {self.coordinate_plane[0]: self.opts['center'].x(),
+                  self.coordinate_plane[1]: self.opts['center'].y(),
+                  self.coordinate_plane[2]: self.opts['center'].z()}
         h_ax = self.view_plane[0]
         v_ax = self.view_plane[1]
 
-        new_pos = {transform[0]: ((center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]]) * view_pol[0],
-                   transform[1]: ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]]) * view_pol[1],
-                   transform[2]: pos[transform[2]] * view_pol[2]}
+        new_pos = [((center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]]) * view_pol[0],
+                   ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]]) * view_pol[1],
+                  pos[transform[2]] * view_pol[2]]
 
         if event.button() == Qt.LeftButton:
-            return_value, checkbox = self.move_fov_query([new_pos['x'],
-                                                          new_pos['y'],
-                                                          new_pos['z']])
+            return_value, checkbox = self.move_fov_query(new_pos)
 
             if return_value == QMessageBox.Ok:
                 if not checkbox:  # Move to exact location
@@ -467,12 +465,11 @@ class VolumeModel(GLOrthoViewWidget):
                 else:  # move to the nearest tile
                     flattened = self.grid_coords.reshape([-1, 3])
                     tree = spatial.KDTree(self.grid_coords.reshape([-1, 3]))
-                    distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
+                    distance, index = tree.query(new_pos)
                     tile = flattened[index]
-                    pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
                 # self.fov_position = [pos['x'], pos['y'], pos['z']] # I don't think we should have this? Creates a jumping effect
                 self.view_plane = plane  # make sure grid plane remains the same
-                self.fovMove.emit([pos['x'], pos['y'], pos['z']])
+                self.fovMove.emit(tile)
 
             else:
                 return
