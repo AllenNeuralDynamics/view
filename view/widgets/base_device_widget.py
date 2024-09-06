@@ -28,7 +28,7 @@ class BaseDeviceWidget(QMainWindow):
 
         super().__init__()
         self.device_type = device_type
-        self.device_driver = import_module(self.device_type.__module__) if not dict not in type(device_type).__mro__ \
+        self.device_driver = import_module(self.device_type.__module__) if dict not in type(device_type).__mro__ \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
         self.create_property_widgets(properties, 'property')
 
@@ -100,7 +100,6 @@ class BaseDeviceWidget(QMainWindow):
         """Check if there is variable in device driver that has name of
         property to inform input widget type and values
         :param name: name of property to search for"""
-
         driver_vars = self.device_driver.__dict__
         for variable in driver_vars:
             x = re.search(variable, fr'\b{inflection.pluralize(name.replace(".", "_"))}?\b', re.IGNORECASE)
@@ -136,6 +135,7 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name of property that was edited
         :return:
         """
+
         name_lst = name.split('.')
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value = getattr(self, name + '_widget').text()
@@ -156,7 +156,8 @@ class BaseDeviceWidget(QMainWindow):
         box = QComboBox()
         box.addItems([str(x) for x in options])
         box.currentTextChanged.connect(lambda value: self.combo_box_changed(value, name))
-        box.setCurrentText(str(getattr(self, name)))
+        #box.setCurrentText(str(getattr(self, name)))
+
         return box
 
     def combo_box_changed(self, value, name):

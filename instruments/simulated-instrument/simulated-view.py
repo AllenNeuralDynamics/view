@@ -12,8 +12,8 @@ import inflection
 from qtpy.QtCore import Qt
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
-ACQUISITION_YAML = r'C:\Users\micah.woodard\Downloads\config_acquisition.yaml' #RESOURCES_DIR / 'test_acquisition.yaml'
-INSTRUMENT_YAML = r'C:\Users\micah.woodard\Downloads\config_instrument.yaml' #RESOURCES_DIR / 'simulated_instrument.yaml'
+ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'
+INSTRUMENT_YAML = RESOURCES_DIR / 'simulated_instrument.yaml'
 GUI_YAML = RESOURCES_DIR / 'gui_config.yaml'
 
 

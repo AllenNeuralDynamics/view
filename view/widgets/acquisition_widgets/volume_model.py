@@ -12,6 +12,7 @@ from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
 from view.widgets.base_device_widget import create_widget
 
+
 class SignalChangeVar:
 
     def __set_name__(self, owner, name):
@@ -23,6 +24,7 @@ class SignalChangeVar:
 
     def __get__(self, instance, value):
         return getattr(instance, self.name)
+
 
 class VolumeModel(GLOrthoViewWidget):
     """Widget to display configured acquisition grid.  Note that the x and y refer to the tiling
@@ -176,7 +178,7 @@ class VolumeModel(GLOrthoViewWidget):
             button.clicked.connect(lambda clicked, b=button: self.toggle_view_plane(b))
             view_plane.addButton(button)
             button.setChecked(True)
-            layout.addWidget(button, 0, i+2)
+            layout.addWidget(button, 0, i + 2)
 
         halt = QPushButton('HALT STAGE')
         halt.pressed.connect(self.fovHalt.emit)
@@ -336,20 +338,26 @@ class VolumeModel(GLOrthoViewWidget):
                                                y,
                                                (z + sz)] for (x, y, z), sz in zip(coords, dimensions)]))
 
-        extrema = {'x_min': min(coords[:, 0]), 'x_max': max(coords[:, 0]),
-                   'y_min': min(coords[:, 1]), 'y_max': max(coords[:, 1]),
-                   'z_min': min(coords[:, 2]), 'z_max': max(coords[:, 2])}
+        extrema = {f'{self.coordinate_plane[0]}_min': min(coords[:, 0]),
+                   f'{self.coordinate_plane[0]}_max': max(coords[:, 0]),
+                   f'{self.coordinate_plane[1]}_min': min(coords[:, 1]),
+                   f'{self.coordinate_plane[1]}_max': max(coords[:, 1]),
+                   f'{self.coordinate_plane[2]}_min': min(coords[:, 2]),
+                   f'{self.coordinate_plane[2]}_max': max(coords[:, 2])}
 
-        fov = {**{axis: dim for axis, dim in zip(['x', 'y'], self.fov_dimensions)}, 'z': 0}
-        pos = {axis: dim for axis, dim in zip(['x', 'y', 'z'], self.fov_position)}
+        fov = {plane: fov for plane, fov in zip(self.coordinate_plane, self.fov_dimensions)}
+        pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
 
-        distances = {'xy': [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords],
-                     'xz': [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - z) ** 2) for x, y, z in coords],
-                     'zy': [sqrt((pos[view_plane[0]] - z) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords]}
+        distances = {self.coordinate_plane[0] + self.coordinate_plane[1]:
+                         [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords],
+                     self.coordinate_plane[0] + self.coordinate_plane[2]:
+                         [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - z) ** 2) for x, y, z in coords],
+                     self.coordinate_plane[2] + self.coordinate_plane[1]:
+                         [sqrt((pos[view_plane[0]] - z) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords]}
         max_index = distances[''.join(view_plane)].index(max(distances[''.join(view_plane)], key=abs))
-        furthest_tile = {'x': coords[max_index][0],
-                         'y': coords[max_index][1],
-                         'z': coords[max_index][2]}
+        furthest_tile = {self.coordinate_plane[0]: coords[max_index][0],
+                         self.coordinate_plane[1]: coords[max_index][1],
+                         self.coordinate_plane[2]: coords[max_index][2]}
         center = {}
 
         # Horizontal sizing, if fov_position is within grid or farthest distance is between grid tiles
@@ -378,10 +386,11 @@ class VolumeModel(GLOrthoViewWidget):
         # @Micah in ortho mode it seems to scale properly with x1200... not sure how to explain why though
         # not sure if this actually works, and whether it needs to be copied to other places in the fx
         self.opts['distance'] = horz_dist * 1200 if horz_dist > vert_dist else vert_dist * 1200
+        print(center)
         self.opts['center'] = QVector3D(
-            center.get('x', 0),
-            center.get('y', 0),
-            center.get('z', 0))
+            center.get(self.coordinate_plane[0], 0),
+            center.get(self.coordinate_plane[1], 0),
+            center.get(self.coordinate_plane[2], 0))
 
         self.update()
 
@@ -461,7 +470,7 @@ class VolumeModel(GLOrthoViewWidget):
                     distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
                     tile = flattened[index]
                     pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
-                #self.fov_position = [pos['x'], pos['y'], pos['z']] # I don't think we should have this? Creates a jumping effect
+                # self.fov_position = [pos['x'], pos['y'], pos['z']] # I don't think we should have this? Creates a jumping effect
                 self.view_plane = plane  # make sure grid plane remains the same
                 self.fovMove.emit([pos['x'], pos['y'], pos['z']])
 

@@ -1,0 +1,31 @@
+acquisition:
+  metadata:
+    driver: voxel.metadata.metadata_class
+    module: MetadataClass
+    init:
+      metadata_dictionary:
+        instrument_type: exaspim
+        subject_id: 123456
+        experimenter_name: [adam glaser]
+        immersion_medium: 0.05X SSC
+        immersion_medium_refractive_index: 1.33
+        x_anatomical_direction: Anterior_to_posterior
+        y_anatomical_direction: Inferior_to_superior
+        z_anatomical_direction: Left_to_right
+      date_format: Year/Month/Day/Hour/Minute/Second
+      name_specs:
+        deliminator: _
+        format: [instrument_type, subject_id]
+  operations:
+    vp-151mx:
+      imaris:
+        type: writer
+        driver: voxel.writers.imaris
+        module: ImarisWriter
+        init:
+          path: C:\local_test
+        properties:
+          compression: lz4shuffle
+          data_type: uint16
+
+  tiles: []

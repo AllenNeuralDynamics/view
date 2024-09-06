@@ -41,13 +41,11 @@ if __name__ == "__main__":
      'pixel_type': 'mono16',
      'width_px': 1152,
      'height_px': 1152,
-     'trigger':
-         {'mode': 'off',
-          'source': 'external',
-          'polarity': 'rising'}}
+     }
     for k, v in props.items():
         setattr(camera_object, k, v)
     camera = CameraWidget(camera_object)
+    camera.setWindowTitle('Camera')
     camera.show()
 
     camera.ValueChangedInside[str].connect(
