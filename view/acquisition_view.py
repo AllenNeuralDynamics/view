@@ -106,6 +106,7 @@ class AcquisitionView(QWidget):
                 dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
                 dock.setMinimumHeight(25)
+                setattr(self, f'{operation}_dock', dock)
                 splitter.addWidget(dock)
         self.main_layout.addWidget(splitter, 1, 3)
         self.setLayout(self.main_layout)
@@ -152,22 +153,19 @@ class AcquisitionView(QWidget):
                 # Tasks should be added and written in acquisition?
 
         # anchor grid in volume widget
-        for anchor in self.volume_plan.anchor_widgets:
+        for anchor, widget in zip(self.volume_plan.anchor_widgets, self.volume_plan.grid_offset_widgets):
             anchor.setChecked(True)
+            widget.setDisabled(True)
         self.volume_plan.tile_table.setDisabled(True)
         self.channel_plan.setDisabled(True)
 
         # disable acquisition view. Can't disable whole thing so stop button can be functional
         self.start_button.setEnabled(False)
         self.metadata_widget.setEnabled(False)
-        for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
-            if hasattr(self, f'{operation}_widgets'):
-                device_widgets = {f'{inflection.pluralize(operation)} {device_name}': create_widget('V', **widgets)
-                                  for device_name, widgets in getattr(self, f'{operation}_widgets').items()}
-                for widget in device_widgets.values():
-                    widget.setDisabled(True)
+        for operation in ['writer', 'transfer', 'process', 'routine']:
+            if hasattr(self, f'{operation}_dock'):
+                getattr(self, f'{operation}_dock').setDisabled(True)
         self.stop_button.setEnabled(True)
-
         # disable instrument view
         self.instrument_view.setDisabled(True)
 
@@ -177,7 +175,7 @@ class AcquisitionView(QWidget):
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
 
-        # start all workers
+        #start all workers
         for worker in self.property_workers:
             worker.resume()
             sleep(1)
@@ -188,19 +186,18 @@ class AcquisitionView(QWidget):
         # enable acquisition view
         self.start_button.setEnabled(True)
         self.metadata_widget.setEnabled(True)
-        for operation in enumerate(['writer', 'transfer', 'process', 'routine']):
-            if hasattr(self, f'{operation}_widgets'):
-                device_widgets = {f'{inflection.pluralize(operation)} {device_name}': create_widget('V', **widgets)
-                                  for device_name, widgets in getattr(self, f'{operation}_widgets').items()}
-                for widget in device_widgets.values():
-                    widget.setDisabled(False)
+        for operation in ['writer', 'transfer', 'process', 'routine']:
+            if hasattr(self, f'{operation}_dock'):
+                getattr(self, f'{operation}_dock').setDisabled(False)
         self.stop_button.setEnabled(False)
 
         # unanchor grid in volume widget
-        for anchor in self.volume_plan.anchor_widgets:
+        # anchor grid in volume widget
+        for anchor, widget in zip(self.volume_plan.anchor_widgets, self.volume_plan.grid_offset_widgets):
             anchor.setChecked(False)
-        self.volume_plan.tile_table.setDisabled(True)
-        self.channel_plan.setDisabled(True)
+            widget.setDisabled(False)
+        self.volume_plan.tile_table.setDisabled(False)
+        self.channel_plan.setDisabled(False)
 
         # enable instrument view
         self.instrument_view.setDisabled(False)
@@ -414,7 +411,7 @@ class AcquisitionView(QWidget):
         """Grab stage position from all stage objects and yield positions"""
         scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         while True:  # best way to do this or have some sort of break?
-            fov_pos = [None]*3
+            fov_pos = [self.volume_plan.fov_position[0], self.volume_plan.fov_position[1], self.volume_plan.fov_position[2]]
             for name, stage in {**self.instrument.tiling_stages, **self.instrument.scanning_stages}.items():
                 if stage.instrument_axis in scalar_coord_plane:
                     index = scalar_coord_plane.index(stage.instrument_axis)
