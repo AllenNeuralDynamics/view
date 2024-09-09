@@ -28,7 +28,7 @@ class BaseDeviceWidget(QMainWindow):
 
         super().__init__()
         self.device_type = device_type
-        self.device_driver = import_module(self.device_type.__module__) if not hasattr(self.device_type, 'keys') \
+        self.device_driver = import_module(self.device_type.__module__) if dict not in type(device_type).__mro__ \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
         self.create_property_widgets(properties, 'property')
 
@@ -62,14 +62,18 @@ class BaseDeviceWidget(QMainWindow):
 
             elif dict in type(value).__mro__:  # deal with dict like variables
                 setattr(self, f"{name}_schema", Schema(create_dict_schema(value)))
-                boxes[name] = create_widget('H', **self.create_property_widgets(
+                boxes[name] = create_widget('V', **self.create_property_widgets(
                     {f'{name}.{k}': v for k, v in value.items()}, name))
             elif list in type(value).__mro__:  # deal with list like variables
                 setattr(self, f"{name}_schema", Schema(create_list_schema(value)))
                 boxes[name] = create_widget('H', **self.create_property_widgets(
                     {f'{name}.{i}': v for i, v in enumerate(value)}, name))
-
-            widgets[name] = create_widget('H', **boxes) if '.' not in name else create_widget('V', **boxes)
+            orientation = 'H'
+            if '.' in name: # see if parent list and format index label and input vertically
+                parent = pathGet(self.__dict__, name.split('.')[0:-1])
+                if list in type(parent).__mro__:
+                    orientation = 'V'
+            widgets[name] = create_widget(orientation, **boxes)
 
             if attr is not None:  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring
@@ -96,7 +100,6 @@ class BaseDeviceWidget(QMainWindow):
         """Check if there is variable in device driver that has name of
         property to inform input widget type and values
         :param name: name of property to search for"""
-
         driver_vars = self.device_driver.__dict__
         for variable in driver_vars:
             x = re.search(variable, fr'\b{inflection.pluralize(name.replace(".", "_"))}?\b', re.IGNORECASE)
@@ -119,6 +122,7 @@ class BaseDeviceWidget(QMainWindow):
         if float in value_type.__mro__:
             validator = QDoubleValidator()
             validator.setNotation(QDoubleValidator.StandardNotation)
+            validator.setDecimals(2)
             textbox.setValidator(validator)
         elif int in value_type.__mro__:
             validator = QIntValidator()
@@ -136,8 +140,10 @@ class BaseDeviceWidget(QMainWindow):
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value = getattr(self, name + '_widget').text()
         value_type = type(getattr(self, name + '_schema').schema())
-        if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
+        if dict in type(parent_attr).__mro__:  # name is a dictionary
             parent_attr[name_lst[-1]] = value_type(value)
+        elif list in type(parent_attr).__mro__:
+            parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
 
@@ -150,7 +156,8 @@ class BaseDeviceWidget(QMainWindow):
         box = QComboBox()
         box.addItems([str(x) for x in options])
         box.currentTextChanged.connect(lambda value: self.combo_box_changed(value, name))
-        box.setCurrentText(str(getattr(self, name)))
+        #box.setCurrentText(str(getattr(self, name)))
+
         return box
 
     def combo_box_changed(self, value, name):
@@ -164,8 +171,10 @@ class BaseDeviceWidget(QMainWindow):
         name_lst = name.split('.')
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value_type = type(getattr(self, name + '_schema').schema())
-        if dict in type(parent_attr).__mro__ or list in type(parent_attr).__mro__:  # name is a dictionary or list
-            parent_attr[name_lst[-1]] = value_type(value)
+        if dict in type(parent_attr).__mro__: # name is a dict
+            parent_attr[int(name_lst[-1])] = value_type(value)
+        elif list in type(parent_attr).__mro__:  # name is a list
+            parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
 
@@ -219,7 +228,6 @@ class BaseDeviceWidget(QMainWindow):
                 self.log.warning(f'Attribute {name} cannot be set to {value} since it does not adhere to the schema'
                                  f' {schema}')
                 return
-
         self.__dict__[name] = value
         if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)

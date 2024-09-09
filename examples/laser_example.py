@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     laser.ValueChangedInside[str].connect(
         lambda value, dev=laser_object, widget=laser,: widget_property_changed(value, dev, widget))
-
+    laser.setWindowTitle('Laser')
     sys.exit(app.exec_())
     # app = QApplication(sys.argv)
     # simulated_camera = Camera('camera')
