@@ -347,7 +347,6 @@ class VolumeModel(GLOrthoViewWidget):
 
         fov = {plane: fov for plane, fov in zip(self.coordinate_plane, self.fov_dimensions)}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
-
         distances = {self.coordinate_plane[0] + self.coordinate_plane[1]:
                          [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords],
                      self.coordinate_plane[0] + self.coordinate_plane[2]:
@@ -379,10 +378,9 @@ class VolumeModel(GLOrthoViewWidget):
             # View doesn't scale when changing vertical size so take into account the dif between the height and width
             vert_dist = ((extrema[f'{y}_max'] - extrema[f'{y}_min']) + (fov[y] * 2)) / 2 \
                         * tan(radians(self.opts['fov'])) * scaling
-
         else:
             center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
-            vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 * scaling
+            vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 * tan(radians(self.opts['fov']))* scaling
         # @Micah in ortho mode it seems to scale properly with x1200... not sure how to explain why though
         # not sure if this actually works, and whether it needs to be copied to other places in the fx
         self.opts['distance'] = horz_dist * 1200 if horz_dist > vert_dist else vert_dist * 1200
