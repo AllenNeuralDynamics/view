@@ -13,11 +13,11 @@ class QScrollableLineEdit(QLineEdit):
                 dec = len(self.text()[self.text().index('.') + 1:]) if '.' in self.text() else 0
                 change = 10 ** (-dec) if event.angleDelta().y() > 0 else -10 ** (-dec)
                 new_value = f"%.{dec}f" % float(float(self.text()) + change)
-            elif type(self.validator()) == QIntValidator:
+            else:  # QIntValidator
                 new_value = int(self.text()) + 1 if event.angleDelta().y() > 0 else int(self.text()) - 1
-
-            self.setText(str(new_value))
-            self.editingFinished.emit()
+            if self.validator().minimum() <= new_value <= self.validator().maximum():
+                self.setText(str(new_value))
+                self.editingFinished.emit()
 
 
     def value(self):

@@ -95,7 +95,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.unit = unit
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
-        self.fov_dimensions = fov_dimensions
+        self.fov_dimensions = fov_dimensions[:2]+[0]    # add 0 in the scanning dimension to correctly draw box
         self.fov_position = fov_position
         self.view_plane = (self.coordinate_plane[0], self.coordinate_plane[1])  # plane currently being viewed
 
@@ -144,7 +144,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.addItem(self.fov_view)
 
         if limits != [[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]]:
-            size = [((max(limits[i]) - min(limits[i])) + fov_dimensions[i]) for i in range(3)]
+            size = [((max(limits[i]) - min(limits[i])) + self.fov_dimensions[i]) for i in range(3)]
             stage_limits = GLShadedBoxItem(width=self.limits_line_width,
                                            pos=np.array([[[min([x * self.polarity[0] for x in limits[0]]),
                                                            min([y * self.polarity[1] for y in limits[1]]),
@@ -425,10 +425,10 @@ class VolumeModel(GLOrthoViewWidget):
         """Override mouseMoveEvent so user can't change view
         and allow user to move fov easier"""
 
-        plane = self.view_plane
+        plane = list(self.view_plane) + [ax for ax in self.coordinate_plane if ax not in self.view_plane]
         view_pol = [self.polarity[self.coordinate_plane.index(plane[0])],
                     self.polarity[self.coordinate_plane.index(plane[1])],
-                    self.polarity[self.coordinate_plane.index(*(set(self.coordinate_plane) - set(plane)))]]
+                    self.polarity[self.coordinate_plane.index(plane[2])]]
         # Translate mouseclick x, y into view widget coordinate plane.
         horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov']))) / 1200
         vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
@@ -440,34 +440,28 @@ class VolumeModel(GLOrthoViewWidget):
         fov = {axis: fov for axis, fov in zip(self.coordinate_plane, self.fov_dimensions)}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
 
-        transform_dict = {grid: stage for grid, stage in zip(['x', 'y', 'z'], self.coordinate_plane)}
-        other_dim = [dim for dim in transform_dict if dim not in plane][0]
-        transform = [transform_dict[plane[0]], transform_dict[plane[1]], transform_dict[other_dim]]
-
         center = {self.coordinate_plane[0]: self.opts['center'].x(),
                   self.coordinate_plane[1]: self.opts['center'].y(),
                   self.coordinate_plane[2]: self.opts['center'].z()}
         h_ax = self.view_plane[0]
         v_ax = self.view_plane[1]
 
-        new_pos = [((center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]]) * view_pol[0],
-                   ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]]) * view_pol[1],
-                  pos[transform[2]] * view_pol[2]]
-
+        new_pos = {plane[0]: ((center[h_ax] - horz_dist + horz_scale) - .5 * fov[plane[0]]) * view_pol[0],
+                   plane[1]: ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[plane[1]]) * view_pol[1],
+                   plane[2]: pos[plane[2]] * view_pol[2]}
+        move_to = [new_pos[ax] for ax in self.coordinate_plane]
         if event.button() == Qt.LeftButton:
-            return_value, checkbox = self.move_fov_query(new_pos)
+            return_value, checkbox = self.move_fov_query(move_to)
 
             if return_value == QMessageBox.Ok:
                 if not checkbox:  # Move to exact location
-                    pos = new_pos
+                    pos = move_to
                 else:  # move to the nearest tile
                     flattened = self.grid_coords.reshape([-1, 3])
                     tree = spatial.KDTree(self.grid_coords.reshape([-1, 3]))
-                    distance, index = tree.query(new_pos)
+                    distance, index = tree.query(move_to)
                     tile = flattened[index]
                     pos = [tile[0], tile[1], tile[2]]
-                # self.fov_position = [pos['x'], pos['y'], pos['z']] # I don't think we should have this? Creates a jumping effect
-                self.view_plane = plane  # make sure grid plane remains the same
                 self.fovMove.emit(pos)
 
             else:

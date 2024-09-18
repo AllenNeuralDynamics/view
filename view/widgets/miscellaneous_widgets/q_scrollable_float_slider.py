@@ -21,6 +21,8 @@ class QScrollableFloatSlider(QSlider):
 
     def maximum(self):
         return super().maximum() / self.divisor
+    def minimum(self):
+        return super().minimum() / self.divisor
 
     def setSingleStep(self, value):
         return super().setSingleStep(value * self.divisor)
