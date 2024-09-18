@@ -129,7 +129,7 @@ instrument:
             ports:
               stage:
                 device_max_volts: 5.0
-                device_min_volts: 0.0
+                device_min_volts: -5.0
                 parameters:
                   end_time_ms:
                     channels:
@@ -155,7 +155,7 @@ instrument:
                 waveform: square wave
               tunable lens:
                 device_max_volts: 5.0
-                device_min_volts: 0.0
+                device_min_volts: -5.0
                 parameters:
                   amplitude_volts:
                     channels:
@@ -186,7 +186,7 @@ instrument:
                 waveform: sawtooth
               x galvo mirror:
                 device_max_volts: 5.0
-                device_min_volts: 0.0
+                device_min_volts: -5.0
                 parameters:
                   amplitude_volts:
                     channels:

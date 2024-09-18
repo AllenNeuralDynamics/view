@@ -1,8 +1,9 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, label_maker, pathGet
-from qtpy.QtWidgets import QTreeWidget, QTreeWidgetItem, QSizePolicy
+from qtpy.QtWidgets import QTreeWidgetItem, QSizePolicy, QGraphicsView
 from qtpy.QtCore import Qt
 import qtpy.QtGui as QtGui
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
+from view.widgets.miscellaneous_widgets.q_non_scrollable_tree_widget import QNonScrollableTreeWidget
 from view.widgets.device_widgets.waveform_widget import WaveformWidget
 import numpy as np
 from scipy import signal
@@ -38,10 +39,10 @@ class NIWidget(BaseDeviceWidget):
         # create waveform widget
         if advanced_user:
             self.waveform_widget = WaveformWidget()
-            # self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
+            self.waveform_widget.setYRange(daq.min_ao_volts, daq.max_ao_volts)
 
         # create tree widget and format configured widgets into tree
-        self.tree = QTreeWidget()
+        self.tree = QNonScrollableTreeWidget()
         for tasks, widgets in self.exposed_branches.items():
             header = QTreeWidgetItem(self.tree,
                                      [label_maker(tasks.split('.')[-1])])  # take last of list incase key is a map
@@ -99,14 +100,15 @@ class NIWidget(BaseDeviceWidget):
                                                     f'{port_name}.parameters.cutoff_frequency_hz.channels.{wl}')
             if waveform == 'sawtooth':
                 voltages = sawtooth(**kwargs)
-                max_point = int(kwargs['end_time_ms'] * 10)
+                max_point = int(kwargs['end_time_ms'] * 10) if kwargs['end_time_ms'] != kwargs['period_time_ms'] else -1
             else:
                 voltages = triangle_wave(**kwargs)
                 max_point = round(
                     (kwargs['start_time_ms'] + ((kwargs['period_time_ms'] - kwargs['start_time_ms']) / 2)) * 10)
 
             pre_rise_point = int(kwargs['start_time_ms'] * 10)
-            post_rise_point = int(kwargs['period_time_ms'] * 10)
+            post_rise_point = int(kwargs['period_time_ms'] * 10) if kwargs['rest_time_ms'] != 0 else -1
+
             y = [voltages[0], voltages[pre_rise_point], voltages[max_point], voltages[post_rise_point],
                  voltages[-1]]
             x = [0, pre_rise_point, max_point, post_rise_point, len(voltages)]
@@ -197,7 +199,7 @@ class NIWidget(BaseDeviceWidget):
             slider.setMaximum(maximum)
             slider.setMinimum(minimum)
             textbox.validator().setRange(minimum, maximum, decimals=3)
-
+            print(slider.minimum(), slider.maximum(), textbox.validator().bottom(), textbox.validator().top())
         slider.setValue(getattr(self, f'{name}'))
 
         if 'amplitude_volts' in name or 'offset_volts' in name:

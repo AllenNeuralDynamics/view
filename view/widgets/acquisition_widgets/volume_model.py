@@ -95,7 +95,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.unit = unit
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
-        self.fov_dimensions = fov_dimensions
+        self.fov_dimensions = fov_dimensions[:2]+[0]    # add 0 in the scanning dimension to correctly draw box
         self.fov_position = fov_position
         self.view_plane = (self.coordinate_plane[0], self.coordinate_plane[1])  # plane currently being viewed
 
@@ -144,7 +144,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.addItem(self.fov_view)
 
         if limits != [[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]]:
-            size = [((max(limits[i]) - min(limits[i])) + fov_dimensions[i]) for i in range(3)]
+            size = [((max(limits[i]) - min(limits[i])) + self.fov_dimensions[i]) for i in range(3)]
             stage_limits = GLShadedBoxItem(width=self.limits_line_width,
                                            pos=np.array([[[min([x * self.polarity[0] for x in limits[0]]),
                                                            min([y * self.polarity[1] for y in limits[1]]),

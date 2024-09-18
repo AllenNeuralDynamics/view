@@ -17,7 +17,7 @@ class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
     ValueChangedInside = Signal((str,))
 
-    def __init__(self, device_type, properties: dict):
+    def __init__(self, device_type: object = None, properties: dict = {}):
         """Base widget for devices like camera, laser, stage, ect. Widget will scan properties of
         device object and create editable inputs for each if not in device_widgets class of device. If no device_widgets
         class is provided, then all properties are exposed
@@ -28,8 +28,9 @@ class BaseDeviceWidget(QMainWindow):
 
         super().__init__()
         self.device_type = device_type
-        self.device_driver = import_module(self.device_type.__module__) if dict not in type(device_type).__mro__ \
+        self.device_driver = import_module(self.device_type.__module__) if hasattr(self.device_type, '__module__') \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
+        self.device_driver = device_type
         self.create_property_widgets(properties, 'property')
 
         widget = create_widget('V', **self.property_widgets)
@@ -107,7 +108,7 @@ class BaseDeviceWidget(QMainWindow):
                 if type(driver_vars[variable]) in [dict, list]:
                     return driver_vars[variable]
                 elif type(driver_vars[variable]) == enum.EnumMeta:  # if enum
-                    enum_class = getattr(self.device_driver, name)
+                    enum_class = driver_vars[variable]
                     return {i.name: i.value for i in enum_class}
 
     def create_text_box(self, name, value):
@@ -156,7 +157,7 @@ class BaseDeviceWidget(QMainWindow):
         box = QComboBox()
         box.addItems([str(x) for x in options])
         box.currentTextChanged.connect(lambda value: self.combo_box_changed(value, name))
-        #box.setCurrentText(str(getattr(self, name)))
+        box.setCurrentText(str(getattr(self, name)))
 
         return box
 
@@ -169,15 +170,17 @@ class BaseDeviceWidget(QMainWindow):
         """
 
         name_lst = name.split('.')
+
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value_type = type(getattr(self, name + '_schema').schema())
+
         if dict in type(parent_attr).__mro__: # name is a dict
-            parent_attr[int(name_lst[-1])] = value_type(value)
+            parent_attr[str(name_lst[-1])] = value_type(value)
         elif list in type(parent_attr).__mro__:  # name is a list
+
             parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
-
     @Slot(str)
     def update_property_widget(self, name):
         """Update property widget. Triggers when attribute has been changed outside of widget
@@ -219,7 +222,6 @@ class BaseDeviceWidget(QMainWindow):
 
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""
-
         # check that values adhere to schema of correlating variable
         if f'{name}_schema' in self.__dict__.keys():
             schema = getattr(self, f'{name}_schema')
