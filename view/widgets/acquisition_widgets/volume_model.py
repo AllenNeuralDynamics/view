@@ -426,7 +426,6 @@ class VolumeModel(GLOrthoViewWidget):
         and allow user to move fov easier"""
 
         plane = list(self.view_plane) + [ax for ax in self.coordinate_plane if ax not in self.view_plane]
-        print(plane)
         view_pol = [self.polarity[self.coordinate_plane.index(plane[0])],
                     self.polarity[self.coordinate_plane.index(plane[1])],
                     self.polarity[self.coordinate_plane.index(plane[2])]]
@@ -440,10 +439,6 @@ class VolumeModel(GLOrthoViewWidget):
         # create dictionaries of from fov and pos
         fov = {axis: fov for axis, fov in zip(self.coordinate_plane, self.fov_dimensions)}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
-
-        # transform_dict = {grid: stage for grid, stage in zip(['x', 'y', 'z'], self.coordinate_plane)}
-        # other_dim = [dim for dim in transform_dict if dim not in plane][0]
-        # transform = [transform_dict[plane[0]], transform_dict[plane[1]], transform_dict[other_dim]]
 
         center = {self.coordinate_plane[0]: self.opts['center'].x(),
                   self.coordinate_plane[1]: self.opts['center'].y(),
