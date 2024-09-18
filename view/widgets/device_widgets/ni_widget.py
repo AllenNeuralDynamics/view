@@ -199,7 +199,6 @@ class NIWidget(BaseDeviceWidget):
             slider.setMaximum(maximum)
             slider.setMinimum(minimum)
             textbox.validator().setRange(minimum, maximum, decimals=3)
-            print(slider.minimum(), slider.maximum(), textbox.validator().bottom(), textbox.validator().top())
         slider.setValue(getattr(self, f'{name}'))
 
         if 'amplitude_volts' in name or 'offset_volts' in name:
