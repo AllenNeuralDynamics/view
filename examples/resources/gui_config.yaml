@@ -75,19 +75,19 @@ instrument_view:
               tasks.ao_task.ports.tunable lens:
                 parameters.amplitude_volts.channels:
                       "488": 1.0
-                      "561": 1.0
-                      "639": 1.0
+#                      "561": 1.0
+#                      "639": 1.0
               tasks.ao_task.ports.x galvo mirror:
                 parameters:
                   amplitude_volts:
                     channels:
                       "488": 1.0
-                      "561": 1.0
-                      "639": 1.0
+#                      "561": 1.0
+#                      "639": 1.0
                   offset_volts:
                     channels:
                       "488": 2.5
-                      "561": 2.5
+#                      "561": 2.5
 acquisition_view:
   fov_dimensions: [ 10.672384, 8.00128 ]
   coordinate_plane: [ '-x', 'y', 'z' ]

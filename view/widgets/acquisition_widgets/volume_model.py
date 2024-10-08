@@ -188,7 +188,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.widgets.setMaximumHeight(70)
         self.widgets.show()
 
-    def update_model(self, attribute_name):
+    def update_model(self, attribute_name) -> None:
         """Update attributes of grid
         :param attribute_name: name of attribute to update"""
 
@@ -256,26 +256,25 @@ class VolumeModel(GLOrthoViewWidget):
 
         self._update_opts()
 
-    def toggle_view_plane(self, button):
+    def toggle_view_plane(self, button) -> None:
         """
         Update view plane optics
         :param button: button pressed to change view
-        :return:
         """
 
         view_plane = tuple(x for x in button.text() if x.isalpha())
         self.view_plane = view_plane
 
-    def set_path_pos(self, coord_order: list):
+    def set_path_pos(self, coord_order: list) -> None:
         """Set the pos of path in correct order
-        coord_order: ordered list of coords for path"""
+        :param coord_order: ordered list of coords for path"""
 
         path = np.array([[((coord[i] * pol) + (.5 * fov)) for i, fov, pol, x in
                           zip([0, 1, 2], self.fov_dimensions, self.polarity, self.coordinate_plane)] for coord in
                          coord_order])
         self.path.setData(pos=path)
 
-    def add_fov_image(self, image: np.array, levels: list):
+    def add_fov_image(self, image: np.ndarray, levels: list[float]) -> None:
         """add image to model assuming image has same fov dimensions and orientation
         :param image: numpy array of image to display in model
         :param levels: levels for passed in image"""
@@ -296,12 +295,11 @@ class VolumeModel(GLOrthoViewWidget):
         if self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
             gl_image.setVisible(False)
 
-    def adjust_glimage_contrast(self, image, contrast_levels):
+    def adjust_glimage_contrast(self, image: np.ndarray, contrast_levels: list[float]) -> None:
         """
         Adjust image in model contrast levels
         :param image: numpy array of image key in fov_images
         :param contrast_levels: levels for passed in image
-        :return:
         """
 
         if image.tobytes() in self.fov_images.keys():  # check if image has been deleted
@@ -310,14 +308,14 @@ class VolumeModel(GLOrthoViewWidget):
             self.removeItem(glimage)
             self.add_fov_image(image, coords, contrast_levels)
 
-    def toggle_fov_image_visibility(self, visible: bool):
+    def toggle_fov_image_visibility(self, visible: bool) -> None:
         """Function to hide all fov_images
         :param visible: boolean for if fov_images should be visible"""
 
         for image in self.fov_images.values():
             image.setVisible(visible)
 
-    def _update_opts(self):
+    def _update_opts(self) -> None:
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""
 
         view_plane = self.view_plane
@@ -392,8 +390,11 @@ class VolumeModel(GLOrthoViewWidget):
 
         self.update()
 
-    def move_fov_query(self, new_fov_pos):
-        """Message box asking if user wants to move fov position"""
+    def move_fov_query(self, new_fov_pos: list[float]) -> [int, bool]:
+        """Message box asking if user wants to move fov position
+        :param new_fov_pos: position to move the fov to in um
+        :return: user reply to pop up and whether to move to the tile nearest the new_fov_pos
+        """
 
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -409,9 +410,10 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec(), checkbox.isChecked()
 
-    def delete_fov_image_query(self, fov_image_pos):
+    def delete_fov_image_query(self, fov_image_pos: list[float]) -> int:
         """Message box asking if user wants to move fov position
-        :param fov_image_pos: coordinates of fov image"""
+        :param fov_image_pos: coordinates of fov image
+        :return: user reply to deleting image"""
 
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -421,9 +423,10 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
         """Override mouseMoveEvent so user can't change view
-        and allow user to move fov easier"""
+        and allow user to move fov easier
+        :param event: QMouseEvent of users mouse"""
 
         plane = list(self.view_plane) + [ax for ax in self.coordinate_plane if ax not in self.view_plane]
         view_pol = [self.polarity[self.coordinate_plane.index(plane[0])],

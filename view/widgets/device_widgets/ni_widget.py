@@ -1,15 +1,16 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, label_maker, pathGet
-from qtpy.QtWidgets import QTreeWidgetItem, QSizePolicy, QGraphicsView
+from qtpy.QtWidgets import QTreeWidgetItem, QSizePolicy, QComboBox
 from qtpy.QtCore import Qt
 import qtpy.QtGui as QtGui
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_non_scrollable_tree_widget import QNonScrollableTreeWidget
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 from view.widgets.device_widgets.waveform_widget import WaveformWidget
 import numpy as np
 from scipy import signal
 from qtpy.QtCore import Slot
 from random import randint
-
+from typing import Union
 
 class NIWidget(BaseDeviceWidget):
 
@@ -17,11 +18,12 @@ class NIWidget(BaseDeviceWidget):
                  exposed_branches: dict = None,
                  advanced_user: bool = True
                  ):
-        """Modify BaseDeviceWidget to be specifically for ni daq.
-        :param tasks: tasks for daq
+        """
+        Modify BaseDeviceWidget to be specifically for ni daq.
         :param advanced_user: flag to disable waveform widget
         :param exposed_branches: branches of tasks to be exposed in tree.
         Needs to have keys that map directly into dask
+        :param advanced_user: boolean specifying complexity of widget. If False, Waveform widget is not interactive
         """
 
         self.advanced_user = advanced_user
@@ -64,8 +66,9 @@ class NIWidget(BaseDeviceWidget):
 
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
-    def update_waveform(self, channel_name):
-        """Add waveforms to waveform widget"""
+    def update_waveform(self, channel_name: str) -> None:
+        """Add waveforms to waveform widget
+        :param channel_name: name of channel to update"""
 
         if not self.advanced_user:
             return
@@ -84,12 +87,14 @@ class NIWidget(BaseDeviceWidget):
             'rest_time_ms': getattr(self, f'{task}.timing.rest_time_ms'),
         }
 
+        scale = kwargs['sampling_frequency_hz']/1000    # account for scaling that occurs in waveform functions
+
         if waveform == 'square wave':
             kwargs['max_volts'] = getattr(self, f'{port_name}.parameters.max_volts.channels.{wl}', 5)
             kwargs['min_volts'] = getattr(self, f'{port_name}.parameters.min_volts.channels.{wl}', 0)
             voltages = square_wave(**kwargs)
-            start = int(kwargs['start_time_ms'] * 10)
-            end = int(kwargs['period_time_ms'] * 10)
+            start = int(kwargs['start_time_ms'] * scale)
+            end = int(kwargs['period_time_ms'] * scale)
             y = [kwargs['min_volts'], kwargs['min_volts'], kwargs['max_volts'],
                  kwargs['max_volts'], kwargs['min_volts'], kwargs['min_volts']]
             x = [0, start - 1, start, end, end + 1, len(voltages)]
@@ -100,14 +105,14 @@ class NIWidget(BaseDeviceWidget):
                                                     f'{port_name}.parameters.cutoff_frequency_hz.channels.{wl}')
             if waveform == 'sawtooth':
                 voltages = sawtooth(**kwargs)
-                max_point = int(kwargs['end_time_ms'] * 10) if kwargs['end_time_ms'] != kwargs['period_time_ms'] else -1
+                max_point = int(kwargs['end_time_ms'] * scale) if kwargs['end_time_ms'] != kwargs['period_time_ms'] else -1
             else:
                 voltages = triangle_wave(**kwargs)
                 max_point = round(
-                    (kwargs['start_time_ms'] + ((kwargs['period_time_ms'] - kwargs['start_time_ms']) / 2)) * 10)
+                    (kwargs['start_time_ms'] + ((kwargs['period_time_ms'] - kwargs['start_time_ms']) / 2)) * scale)
 
-            pre_rise_point = int(kwargs['start_time_ms'] * 10)
-            post_rise_point = int(kwargs['period_time_ms'] * 10) if kwargs['rest_time_ms'] != 0 else -1
+            pre_rise_point = int(kwargs['start_time_ms'] * scale)
+            post_rise_point = int(kwargs['period_time_ms'] * scale) if kwargs['rest_time_ms'] != 0 else -1
 
             y = [voltages[0], voltages[pre_rise_point], voltages[max_point], voltages[post_rise_point],
                  voltages[-1]]
@@ -136,8 +141,10 @@ class NIWidget(BaseDeviceWidget):
         setattr(self, f'{port_name}.{wl}_plot_item', item)
 
     @Slot(str, float)
-    def waveform_value_changed(self, value, name):
-        """Update textbox if waveform is changed"""
+    def waveform_value_changed(self, value: float, name: str) -> None:
+        """Update textbox if waveform is changed
+        :param value: new value to update
+        :param name: textbox name """
 
         if hasattr(self, f'{name}_slider'):  # value is included in exposed branches
             name_lst = name.split('.')
@@ -151,8 +158,14 @@ class NIWidget(BaseDeviceWidget):
             setattr(self, name, value)
             self.ValueChangedInside.emit(name)
 
-    def remodel_timing_widgets(self, name, widget):
-        """Remodel timing widget with driver options"""
+    def remodel_timing_widgets(self, name: str, widget: Union[QComboBox, QScrollableLineEdit]) \
+            -> Union[QComboBox, QScrollableLineEdit]:
+        """
+        Remodel timing widget to be combo boxes with driver specific variables like possible ports
+        :param name: name of attribute
+        :param widget: widget object
+        :return widget: updated widget corresponding to name attribute
+        """
         path = name.split('.')
         if options := self.check_driver_variables(path[-1]):
             widget = self.create_attribute_widget(name, 'combo', options)
@@ -162,8 +175,14 @@ class NIWidget(BaseDeviceWidget):
 
         return widget
 
-    def remodel_port_widgets(self, name, widget):
-        """Remodel port widgets with possible ports and waveforms"""
+    def remodel_port_widgets(self, name: str, widget: Union[QComboBox, QScrollableLineEdit]) \
+            -> Union[QComboBox, QScrollableLineEdit]:
+        """Remodel port widgets with possible ports and waveforms
+        :param name: name of attribute
+        :param widget: widget object
+        :return widget: updated widget corresponding to name attribute
+        """
+
         path = name.split('.')
         task = 'ao' if 'ao_task' in path else 'do'
 
@@ -178,8 +197,11 @@ class NIWidget(BaseDeviceWidget):
 
         return widget
 
-    def create_sliders(self, name):
-        """Create slide bars for channel widgets"""
+    def create_sliders(self, name: str) -> None:
+        """
+        Create slide bars for channel widgets
+        :param name: name of attribute
+        """
 
         textbox = getattr(self, f'{name}_widget')
         slider = QScrollableFloatSlider(orientation=Qt.Horizontal)
@@ -199,6 +221,7 @@ class NIWidget(BaseDeviceWidget):
             slider.setMaximum(maximum)
             slider.setMinimum(minimum)
             textbox.validator().setRange(minimum, maximum, decimals=3)
+
         slider.setValue(getattr(self, f'{name}'))
 
         if 'amplitude_volts' in name or 'offset_volts' in name:
@@ -217,8 +240,14 @@ class NIWidget(BaseDeviceWidget):
             slider.sliderMoved.connect(lambda: self.update_waveform(name))
         setattr(self, f'{name}_slider', slider)
 
-    def create_tree_widget(self, name, parent=None):
-        """Recursive function to format nested dictionary of ni task items"""
+    def create_tree_widget(self, name: str, parent=None) -> QTreeWidgetItem:
+        """
+        Recursive function to format nested dictionary of ni task items
+        :param name: name of attribute
+        :param parent: parent to pass into QTreeWidgetItems. Each node will pass itself down as a
+        parent so future nodes will appear underneath
+        :return items: items to add to QTreeWidget
+        """
 
         parent = self.tree if parent is None else parent
         # TODO: This is haaaaaacky. but might be good for now
@@ -246,8 +275,16 @@ class NIWidget(BaseDeviceWidget):
             self.check_to_hide(id, item)
         return items
 
-    def mappedpathGet(self, dictionary, path):
+    def mappedpathGet(self, dictionary: dict, path: list[str]) -> dict:
 
+        """
+        Recursive function to map a given path of strings into a dictionary which may contain keys that are  parts of
+        the path strung together by periods. For example, the path may be ['keys', 'to', 'value', 'I', 'would', 'like']
+        and the dictionary could resemble {'keys.to': {'value.I.would':{ 'like': value}}}
+
+         :param dictionary: dictionary which may contain keys that are parts of the path strung together by periods
+         :param path: list of strings that map a path into dictionary
+        """
         # TODO: This is haaaaaacky. but might be good for now
         try:
             dictionary = pathGet(dictionary, path)
@@ -259,8 +296,14 @@ class NIWidget(BaseDeviceWidget):
         finally:
             return dictionary
 
-    def check_to_hide(self, name, item, dictionary=None):
-
+    def check_to_hide(self, name: str, item: QTreeWidgetItem, dictionary: dict=None) -> None:
+        """
+        Check if name split by '.' maps into exposed branched. If not, hide associated items
+        :param name: name of attribute
+        :param item: item associated with attribute
+        :param dictionary: dictionary to search in
+        :return: None
+        """
         # TODO: This is haaaaaacky. but might be good for now
         dictionary = self.exposed_branches.copy() if dictionary is None else dictionary
         try:
@@ -268,9 +311,11 @@ class NIWidget(BaseDeviceWidget):
         except KeyError:
             item.setHidden(True)
 
-    def check_amplitude(self, value, name):
-        """Check if amplitude of triangle or sawtooth is below maximum"""
-
+    def check_amplitude(self, value: float, name: str) -> None:
+        """Check if amplitude of triangle or sawtooth is below maximum
+        :param value: newly input amplitude value
+        :param name: attribute name
+        """
         textbox = getattr(self, f'{name}_widget')
         slider = getattr(self, f'{name}_slider')
         maximum = slider.maximum()
@@ -290,7 +335,6 @@ class NIWidget(BaseDeviceWidget):
         elif ('amplitude_volts' in name and amplitude > offset) or \
                 ('offset_volts' in name and offset < amplitude):
             value = other_voltage
-
         textbox.setText(str(value))
         slider.setValue(float(value))
         self.ValueChangedInside.emit(name)
@@ -298,8 +342,12 @@ class NIWidget(BaseDeviceWidget):
         pathGet(self.__dict__, name_lst[0:-1]).__setitem__(name_lst[-1], value)
         self.update_waveform(name)
 
-    def textbox_fixup(self, value, name):
-        """Fix entered values that are larger than maximum"""
+    def textbox_fixup(self, value: float or str, name: str) -> None:
+        """
+        Fix entered values that are larger than maximum
+        :param value: new value entered into textbox
+        :param name: name of attribute
+        """
 
         textbox = getattr(self, f'{name}_widget')
         slider = getattr(self, f'{name}_slider')
@@ -316,7 +364,20 @@ def sawtooth(sampling_frequency_hz: float,
              amplitude_volts: float,
              offset_volts: float,
              cutoff_frequency_hz: float
-             ):
+             ) -> np.ndarray:
+    """
+    Function to create a sawtooth wave
+    :param sampling_frequency_hz: frequency of waveform. Determines how many samples in a waveform
+    :param period_time_ms: duration of wave in ms
+    :param start_time_ms: starting time of waveform in ms
+    :param end_time_ms: termination time of sawtooth
+    :param rest_time_ms: supplemental time after period time has ended in ms
+    :param amplitude_volts: amplitude of sawtooth
+    :param offset_volts: offset of sawtooth
+    :param cutoff_frequency_hz: unused
+    :return: numpy array of waveform
+    """
+
     time_samples_ms = np.linspace(0, 2 * np.pi,
                                   int(((period_time_ms - start_time_ms) / 1000) * sampling_frequency_hz))
     waveform = offset_volts + amplitude_volts * signal.sawtooth(t=time_samples_ms,
@@ -346,7 +407,19 @@ def square_wave(sampling_frequency_hz: float,
                 rest_time_ms: float,
                 max_volts: float,
                 min_volts: float
-                ):
+                ) -> np.ndarray:
+    """
+    Function to create a sawtooth wave
+    :param sampling_frequency_hz: frequency of waveform. Determines how many samples in a waveform
+    :param period_time_ms: duration of wave in ms
+    :param start_time_ms: starting time of waveform in ms
+    :param end_time_ms: termination time of square wave
+    :param rest_time_ms: supplemental time after period time has ended in ms
+    :param max_volts: maximum volts of square wave
+    :param min_volts: minimum volts of square wave
+    :return: numpy array of waveform
+    """
+
     time_samples = int(((period_time_ms + rest_time_ms) / 1000) * sampling_frequency_hz)
     start_sample = int((start_time_ms / 1000) * sampling_frequency_hz)
     end_sample = int((end_time_ms / 1000) * sampling_frequency_hz)
@@ -365,7 +438,19 @@ def triangle_wave(sampling_frequency_hz: float,
                   amplitude_volts: float,
                   offset_volts: float,
                   cutoff_frequency_hz: float
-                  ):
+                  ) -> np.ndarray:
+
+    """Function to create a sawtooth wave
+    :param sampling_frequency_hz: frequency of waveform. Determines how many samples in a waveform
+    :param period_time_ms: duration of wave in ms
+    :param start_time_ms: starting time of waveform in ms
+    :param end_time_ms: termination time of triangle_wave
+    :param rest_time_ms: supplemental time after period time has ended in ms
+    :param amplitude_volts: amplitude of triangle_wave
+    :param offset_volts: offset of triangle_wave
+    :param cutoff_frequency_hz: unused
+    :return: numpy array of waveform"""
+
     # sawtooth with end time in center of waveform
     waveform = sawtooth(sampling_frequency_hz,
                         period_time_ms,

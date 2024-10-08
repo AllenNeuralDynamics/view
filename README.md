@@ -1,125 +1,49 @@
-Instrument and Acquisition View
-This repository contains modules for managing and interacting with various instruments and acquisition processes in a voxel-based system. It leverages the napari viewer for visualization and integrates multiple device widgets for controlling different components of the instrument and acquisition.
+# View
 
-Features
-Instrument View
-Logging: Configurable logging setup to monitor and debug the instrument’s operations.
-Device Widgets: Dynamic creation and management of widgets for various devices such as lasers, DAQs, cameras, stages, and more.
-Live Streaming: Setup and control of live streaming from cameras, including snapshot functionality.
-DAQ Management: Initialization and configuration of DAQs with tasks for both live streaming and data acquisition.
-Stage Control: Arrangement and control of stage positions and joystick widgets.
-Laser Control: Management of laser widgets and their configurations.
-Filter Wheel Control: Stacking and management of filter wheel widgets.
-Channel Selection: Widget for selecting which laser to use for live streaming.
-Configuration Management: Saving and updating the instrument configuration on application quit.
-Acquisition View
-Metadata Management: Custom widget for managing metadata related to the acquisition.
-Volume Planning: Visualization and planning of acquisition grids, including volume and channel plans.
-Operation Widgets: Dynamic creation and management of widgets for various acquisition operations such as writing, transferring, processing, and routines.
-Stage Positioning: Live tracking and updating of field-of-view (FOV) positions.
-Acquisition Control: Start and stop buttons for controlling the acquisition process.
-Configuration Management: Saving and updating the acquisition configuration on application quit.
-Installation
-Ensure you have the following dependencies installed:
+## Introduction
+This project provides a graphical user interface (GUI) designed to interact with various lightsheet instruments and define 
+tiles for the acquisition processes. View was developed to work with [Voxel](https://github.com/AllenNeuralDynamics/voxel) but can work 
+with other instrument and acquisition engines that follow similar structures and naming conventions. 
 
-ruamel.yaml
-qtpy
-pathlib
-importlib
-PIL
-napari
-numpy
-logging
-inflection
-inspect
-You can install these dependencies using pip:
+As view was written to be compatible with as many different types of scopes as possible, the design is modular. 
+View is composed of two main windows: instrument and acquisition. The Instrument window contains all the widgets for 
+devices found in the input instrument (lasers, cameras, DAQs, stages, ect.). Widgets for each device can be specified in 
+the config.yaml or use the default BaseDeviceWidget if not specified. The Acquisition window contains widgets for all operations 
+found in the input acquisition (data writers, data transfers, routines, ect.). Similarly to the instrument window, 
+widgets each operation can be specified in the config.yaml or use the default BaseDeviceWidget if not specified. The 
+Acquisition window additionally house widgets to define the scan volume for the acquisition engine. 
 
-pip install ruamel.yaml qtpy pathlib importlib PIL napari numpy logging inflection inspect
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Dependencies](#dependencies)
+- [Configuration](#configuration)
+- [Documentation](#documentation)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+- [Contributors](#contributors)
+- [License](#license)
 
-Usage
-Instrument View
-To use the InstrumentView class, initialize it with the instrument configuration and desired log level:
+## Features
+- **Instrument Management**: Provides an interface for interacting with various instruments using the `InstrumentView` class.
+- **Acquisition Management**: Handles acquisition-related tasks such as metadata management, volume planning, channel setup, and operation configuration.
+- **Dynamic Device Widgets**: The `BaseDeviceWidget` dynamically generates UI elements based on the properties of the device, 
+allowing flexible input fields and easy creation of custom widgets.
+- **Napari Viewer**: Leverages `napari` for data visualisation before and during acquisition
+- **Custom Widgets**: Includes wide array of custom device widgets to use as well as examples on how to utilize them.
 
-Python
+## Installation
 
-from pathlib import Path
-from instrument_view import InstrumentView
+### Prerequisites
+Make sure you have the following installed:
+- Python 3.8 or higher
+- `QtPy` (for PyQt/PySide bindings)
+- `Pillow` (for image processing)
+- `Napari` (for threading and possibly visualization)
+- `ruamel.yaml` (for YAML configuration)
+- `numpy` (for numerical computations)
 
-instrument = ...  # Your instrument object
-config_path = Path('path/to/config.yaml')
-view = InstrumentView(instrument, config_path, log_level='INFO')
-AI-generated code. Review and use carefully. More info on FAQ.
-Acquisition View
-To use the AcquisitionView class, initialize it with the acquisition configuration and the instrument view:
-
-Python
-
-from acquisition_view import AcquisitionView
-
-acquisition = ...  # Your acquisition object
-instrument_view = ...  # Your instrument view object
-acquisition_view = AcquisitionView(acquisition, instrument_view, log_level='INFO')
-AI-generated code. Review and use carefully. More info on FAQ.
-Key Methods
-Instrument View
-setup_daqs(): Initializes DAQs with live streaming tasks.
-setup_stage_widgets(): Arranges stage position and joystick widgets.
-setup_laser_widgets(): Arranges laser widgets.
-setup_daq_widgets(): Sets up DAQ widgets and their configurations.
-setup_camera_widgets(): Sets up live view and snapshot buttons for cameras.
-setup_channel_widget(): Creates a widget to select which laser to live stream with.
-create_device_widgets(device_name, device_specs): Creates widgets based on device specifications.
-update_config_on_quit(): Saves device properties to the instrument configuration on application quit.
-Acquisition View
-create_start_button(): Creates a button to start the acquisition.
-create_stop_button(): Creates a button to stop the acquisition.
-start_acquisition(): Starts the acquisition process.
-acquisition_ended(): Re-enables UI and threads after the acquisition has ended.
-stack_device_widgets(device_type): Stacks device widgets in a layout and hides/unhides them with a combo box.
-create_metadata_widget(): Creates a custom widget for metadata.
-create_acquisition_widget(): Creates a widget to visualize the acquisition grid.
-update_config_on_quit(): Saves device properties to the acquisition configuration on application quit.
-Signals
-Instrument View
-snapshotTaken: Emitted when a snapshot is taken.
-contrastChanged: Emitted when the contrast of an image changes.
-Acquisition View
-fovHalt: Emitted to stop the stage.
-fovMove: Emitted to move the stage to clicked coordinates.
-Example
-Instrument View
-Python
-
-# Example of setting up the InstrumentView
-from pathlib import Path
-from instrument_view import InstrumentView
-
-instrument = ...  # Initialize your instrument object
-config_path = Path('path/to/config.yaml')
-view = InstrumentView(instrument, config_path, log_level='DEBUG')
-
-# Start the application
-app = QApplication.instance()
-app.exec_()
-AI-generated code. Review and use carefully. More info on FAQ.
-Acquisition View
-Python
-
-# Example of setting up the AcquisitionView
-from acquisition_view import AcquisitionView
-
-acquisition = ...  # Initialize your acquisition object
-instrument_view = ...  # Initialize your instrument view object
-acquisition_view = AcquisitionView(acquisition, instrument_view, log_level='DEBUG')
-
-# Start the application
-app = QApplication.instance()
-app.exec_()
-AI-generated code. Review and use carefully. More info on FAQ.
-Contributing
-Contributions are welcome! Please submit a pull request or open an issue to discuss any changes.
-
-License
-This project is licensed under the MIT License.
-
-Feel free to customize this README further based on your specific needs! If you have any other questions or need additional details, let me know.
+You can install the required dependencies using pip:
+```bash
+pip install qtpy napari pillow ruamel.yaml numpy

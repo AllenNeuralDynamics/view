@@ -7,7 +7,6 @@ class QScrollableLineEdit(QLineEdit):
 
     def wheelEvent(self, event):
         super().wheelEvent(event)
-
         if self.validator() is not None and type(self.validator()) in [QIntValidator, QDoubleValidator]:
             if type(self.validator()) == QDoubleValidator:
                 dec = len(self.text()[self.text().index('.') + 1:]) if '.' in self.text() else 0
@@ -15,7 +14,7 @@ class QScrollableLineEdit(QLineEdit):
                 new_value = f"%.{dec}f" % float(float(self.text()) + change)
             else:  # QIntValidator
                 new_value = int(self.text()) + 1 if event.angleDelta().y() > 0 else int(self.text()) - 1
-            if self.validator().minimum() <= new_value <= self.validator().maximum():
+            if self.validator().bottom() <= new_value <= self.validator().top():
                 self.setText(str(new_value))
                 self.editingFinished.emit()
 
