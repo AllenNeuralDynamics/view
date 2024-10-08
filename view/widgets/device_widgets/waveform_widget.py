@@ -202,10 +202,10 @@ class DraggableGraphItem(GraphItem):
 
         y_pos = ev.pos()[1] + self.dragOffsetY  # new y pos is old plus drag offset
         if ind in [1, 3] and min_v <= y_pos <= max_v:   # either side of peak is moved
+            self.pos[2][1] = y_pos + (self.pos[2][1] - self.pos[3][1])  # update peak to account for new offset volts
             for i in [0, 1, 3, 4]:  # update points to include drag value
                 self.pos[i][1] = ev.pos()[1] + self.dragOffsetY
             self.offset_volts = (self.pos[2][1] + y_pos) / 2    # update offset volts
-            self.pos[2][1] = y_pos + (self.pos[2][1] - self.pos[3][1])  # update peak to account for new offset volts
 
         elif ind == 2 and min_v <= y_pos <= max_v and min_v <= 2 * self.offset_volts - y_pos <= max_v:   # peak is moved
             self.pos[2][1] = ev.pos()[1] + self.dragOffsetY     # update peak with drag value
