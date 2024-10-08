@@ -4,7 +4,7 @@ from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from view.widgets.miscellaneous_widgets.q_clickable_label import QClickableLabel
 from typing import Literal, TypedDict
-
+import inspect
 
 # TODO: Use this else where to. Consider moving it so we don't have to copy paste?
 class SignalChangeVar:
@@ -120,10 +120,11 @@ class DraggableGraphItem(GraphItem):
             if self.pos.shape[0] != 6:
                 raise Exception(f"Waveform {waveform} must have 6 points in data set. "
                                 f"Waveform has {self.pos.shape[0]}")
-
+        # block signals
+        self.blockSignals(True)
         for k, v in self.parameters.items():
             setattr(self, k, v)
-
+        self.blockSignals(False)
     def mouseDragEvent(self, ev) -> None:
         """
         Register if user clicks and drags point of waveform
@@ -209,7 +210,7 @@ class DraggableGraphItem(GraphItem):
 
         elif ind == 2 and min_v <= y_pos <= max_v and min_v <= 2 * self.offset_volts - y_pos <= max_v:   # peak is moved
             self.pos[2][1] = ev.pos()[1] + self.dragOffsetY     # update peak with drag value
-            self.amplitude_volts = y_pos - self.offset_volts    # update amplitude
+            self.amplitude_volts = y_pos - self.offset_volts  # update amplitude
             for i in [0, 1, 3, 4]:      # update points to account for new amplitude
                 self.pos[i][1] = self.offset_volts - self.amplitude_volts
 
@@ -285,7 +286,6 @@ class WaveformWidget(PlotWidget):
         self.addItem(item)
         if 'name' in kwargs.keys():
             self.add_legend_item(item)
-        item.valueChanged.connect(lambda value: self.update())
         return item
 
     def add_legend_item(self, item: DraggableGraphItem) -> None:

@@ -25,7 +25,7 @@ def widget_property_changed(name, device, widget):
     # for k, v in widget.property_widgets.items():
     #     instrument_value = getattr(device, k)
     #     print(k, instrument_value)
-    #     #setattr(widget, k, instrument_value)
+        #setattr(widget, k, instrument_value)
 
 
 if __name__ == "__main__":

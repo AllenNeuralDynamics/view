@@ -11,7 +11,7 @@ from scipy import signal
 from qtpy.QtCore import Slot
 from random import randint
 from typing import Union
-
+import inspect
 class NIWidget(BaseDeviceWidget):
 
     def __init__(self, daq,
@@ -145,7 +145,8 @@ class NIWidget(BaseDeviceWidget):
         """Update textbox if waveform is changed
         :param value: new value to update
         :param name: textbox name """
-
+        if 'amplitude' in name:
+            print('waveform volts', value)
         if hasattr(self, f'{name}_slider'):  # value is included in exposed branches
             name_lst = name.split('.')
             textbox = getattr(self, f'{name}_widget')
@@ -316,6 +317,7 @@ class NIWidget(BaseDeviceWidget):
         :param value: newly input amplitude value
         :param name: attribute name
         """
+
         textbox = getattr(self, f'{name}_widget')
         slider = getattr(self, f'{name}_slider')
         maximum = slider.maximum()
@@ -348,7 +350,6 @@ class NIWidget(BaseDeviceWidget):
         :param value: new value entered into textbox
         :param name: name of attribute
         """
-
         textbox = getattr(self, f'{name}_widget')
         slider = getattr(self, f'{name}_slider')
         maximum = slider.maximum()
