@@ -144,20 +144,19 @@ class NIWidget(BaseDeviceWidget):
     def waveform_value_changed(self, value: float, name: str) -> None:
         """Update textbox if waveform is changed
         :param value: new value to update
-        :param name: textbox name """
-        if 'amplitude' in name:
-            print('waveform volts', value)
+        :param name: name of parameter """
+
+        name_lst = name.split('.')
         if hasattr(self, f'{name}_slider'):  # value is included in exposed branches
-            name_lst = name.split('.')
             textbox = getattr(self, f'{name}_widget')
             slider = getattr(self, f'{name}_slider')
             value = round(value, 0) if 'time' in name else round(value, 3)
             textbox.setText(str(value))
             slider.setValue(value)
-            dictionary = pathGet(self.__dict__, name_lst[0:-1])
-            dictionary.__setitem__(name_lst[-1], value)
-            setattr(self, name, value)
-            self.ValueChangedInside.emit(name)
+        dictionary = pathGet(self.__dict__, name_lst[0:-1])
+        dictionary.__setitem__(name_lst[-1], value)
+        setattr(self, name, value)
+        self.ValueChangedInside.emit(name)
 
     def remodel_timing_widgets(self, name: str, widget: Union[QComboBox, QScrollableLineEdit]) \
             -> Union[QComboBox, QScrollableLineEdit]:
