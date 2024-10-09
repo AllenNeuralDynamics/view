@@ -242,7 +242,7 @@ class ChannelPlanWidget(QTabWidget):
                 elif type(delegate) == QComboItemDelegate:
                     array[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
                 else:
-                    array[channel] = np.empty(self._tile_volumes.shape)
+                    array[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
 
                 if getattr(self, column_name + '_initial_value') is not None:
                     array[channel][:, :] = getattr(self, column_name + '_initial_value')

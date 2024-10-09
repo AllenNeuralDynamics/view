@@ -84,16 +84,17 @@ acquisition_view:
           cameras: [ binning ]
           lasers: [ power_setpoint_mw ]
           focusing_stages: [ position_mm ]
-          start_delay_time:
+          spin_example:
             delegate: spin
             type: float
             minimum: 0
+            maximum: 100
             initial_value: 10
-          repeats:
-            delegate: spin
-            type: int
-            minimum: 0
-          example:
+          text_example:
+            delegate: text
+            type: str
+            initial_value: hello
+          combo_example:
             delegate: combo
             type: str
             items: [ 'this', 'is', 'an', 'example' ]

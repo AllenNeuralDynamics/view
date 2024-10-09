@@ -305,7 +305,7 @@ class VolumeModel(GLOrthoViewWidget):
             glimage = self.fov_images[image.tobytes()]
             coords = [glimage.transform()[i, 3] / pol for i, pol in zip(range(3), self.polarity)]
             self.removeItem(glimage)
-            self.add_fov_image(image, coords, contrast_levels)
+            self.add_fov_image(image, contrast_levels)
 
     def toggle_fov_image_visibility(self, visible: bool) -> None:
         """Function to hide all fov_images

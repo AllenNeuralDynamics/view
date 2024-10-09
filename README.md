@@ -180,3 +180,73 @@ and end value can be configured in this table. Note that if the scanning dimensi
 the scanning dimension start cannot be edited in the table. If the Apply to all button is checked, all tile volumes will
 be based on the 0,0 tile volume. The rest of the table will be disabled. If Apply to all button is unchecked, tiles can 
 be configured individually. 
+
+![instrument view](visuals/apply_all.gif)
+
+The start and end tile can also be configured in the volume plan tile grid by right-clicking the vertical header bar of 
+the graph. 
+
+
+#### Volume Model
+The volume model is a opengl widget that represents the acquisition volume. It can toggle between three planes to view 
+the volume: (tiling dimension 0, tiling dimension 1), (tiling dimension 0, scanning dimension), and (scanning dimension, 
+tiling dimension 1). There are 3 radio buttons to toggle between views. If a user clicks on the volume model, a popup 
+will appear asking if the stage should be moved to the clicked position. The popup will contain a checkmark denoting if
+the stage should move to the closest tile position to the clicked position. The halt button will stop stage movement. 
+
+![instrument view](visuals/volume_model_move.gif)
+
+Taking a snapshot in the instrument view will result in the image being placed at the volume model. The napari contrast
+sliders can be used to adjust contrast. To remove image, right click on the image in the volume model. 
+
+![instrument view](visuals/volume_model_image.gif)
+
+#### Channel Plan
+The channel plan is a table that allows the step size, step count, and tile prefix to be configured as well as specified 
+device properties. To add a channel, click on the plus tab and select a channel. The acquisition will iterate through 
+channels in the order of the tabs in the channel plan. To move a channel to a different index, click and drag the 
+corresponding tab. To remove a channel, hit the x button on the tab. At the far right of the channel plan is a combo box 
+to specify whether the acquisition will iterate through the channels per tile or per volume.  Like the volume plan, all 
+channel values will be based on the 0,0 tile volume if the Apply to all button is checked and the rest of the table 
+disabled. If Apply to all button is unchecked, tiles can be configured individually. 
+
+![instrument view](visuals/channel_plan_tab.gif)
+
+To add device properties to the channel plan table, the properties must be included in the channel_plan init section of 
+the yaml. The properties argument should be a dictionary with the keys being the device type and values, a list of 
+property names to be editable for the corresponding device type. Note that the channel plan will use devices specified in 
+the channels of the instrument to pick what device to set properties of. 
+
+Non-device related columns can also be specified in the properties dictionary by creating an item pair where the key is 
+the column title and the value a dictionary describing the column. All column dictionaries should contain
+the delegate to use (combo, text, or spin), variable type, and initial value. Spin delegates should be used for numbers 
+and combo delegates should be used for variable restricted to specific values. Spin column dictionaries can also define 
+minimum or maximum values. Combo column dictionaries must include a list of items to select from. An example of how to 
+configure the gui yaml is seen below:
+
+```
+acquisition_view:
+  acquisition_widgets:
+    channel_plan:
+      init:
+        properties:
+          cameras: [ binning ]
+          lasers: [ power_setpoint_mw ]
+          focusing_stages: [ position_mm ]
+          spin_example:
+            delegate: spin
+            type: float
+            minimum: 0
+            maximum: 100
+            initial_value: 10
+          text_example:
+            delegate: text
+            type: str
+            initial_value: hello
+          combo_example:
+            delegate: combo
+            type: str
+            items: [ 'this', 'is', 'an', 'example' ]
+            initial_value: example
+```
+![instrument view](visuals/channel_plan_edit.gif)
