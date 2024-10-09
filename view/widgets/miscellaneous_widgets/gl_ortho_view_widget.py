@@ -1,13 +1,21 @@
 import numpy as np
 from pyqtgraph.opengl import GLViewWidget
-from PyQt6 import QtGui
+from qtpy.QtGui import QMatrix4x4
+from typing import Literal
 
 class GLOrthoViewWidget(GLViewWidget):
     """
-    **Bases:** :class:`GLGraphicsItem <pyqtgraph.opengl.GLViewWidget>`
+    Class inheriting from GLViewWidget that only allows specification of orthogonal or frustum view
     """
     # override projectionMatrix is overrided to enable true ortho projection
-    def projectionMatrix(self, region=None, projection='ortho'):
+    def projectionMatrix(self, region=None, projection: Literal['ortho', 'frustum'] ='ortho') -> QMatrix4x4:
+        """
+        Function that return projection matrix of space
+        :param region: region to create projection matrix for
+        :param projection: type of projection. Limited to orthogonal or frustum
+        :return:
+        """
+
         assert projection in ['ortho', 'frustum']
         if region is None:
             dpr = self.devicePixelRatio()
@@ -29,7 +37,7 @@ class GLOrthoViewWidget(GLViewWidget):
         bottom = t * ((region[1] - y0) * (2.0 / h) - 1)
         top = t * ((region[1] + region[3] - y0) * (2.0 / h) - 1)
 
-        tr = QtGui.QMatrix4x4()
+        tr = QMatrix4x4()
         if projection == 'ortho':
             tr.ortho(left, right, bottom, top, nearClip, farClip)
         elif projection == 'frustum':

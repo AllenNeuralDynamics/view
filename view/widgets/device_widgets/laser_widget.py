@@ -9,9 +9,12 @@ class LaserWidget(BaseDeviceWidget):
     def __init__(self, laser,
                  color: str = 'blue',
                  advanced_user: bool = True):
-        """Modify BaseDeviceWidget to be specifically for laser. Main need is adding slider .
+        """
+        Modify BaseDeviceWidget to be specifically for laser. Main need is adding slider .
         :param laser: laser object
-        :param color: color of laser slider"""
+        :param color: color of laser slider
+        :param advanced_user: boolean specifying complexity of widget. If False, only power widget will be visible
+        """
 
         self.laser_properties = scan_for_properties(laser) if advanced_user else \
             {'power_setpoint_mw':laser.power_setpoint_mw}
@@ -21,8 +24,10 @@ class LaserWidget(BaseDeviceWidget):
         self.max_power_mw = getattr(type(laser).power_setpoint_mw, 'maximum', 110)
         self.add_power_slider()
 
-    def add_power_slider(self):
-        """Redo power widget to be slider"""
+    def add_power_slider(self) -> None:
+        """
+        Modify power widget to be slider
+        """
 
         textbox = self.power_setpoint_mw_widget
         if type(textbox.validator()) == QDoubleValidator:
@@ -52,8 +57,11 @@ class LaserWidget(BaseDeviceWidget):
         self.property_widgets['power_setpoint_mw'].layout().addWidget(create_widget('H', text=textbox,
                                                                                          slider=slider))
 
-    def power_slider_fixup(self, value):
-        """Fix entered values that are larger than max power"""
+    def power_slider_fixup(self, value) -> None:
+        """
+        Fix entered values that are larger than max power
+        :param value: value entered that is above maximum of slider
+        """
 
         self.power_setpoint_mw_widget.setText(str(self.max_power_mw))
         self.power_setpoint_mw_widget.editingFinished.emit()

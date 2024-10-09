@@ -25,7 +25,7 @@ def widget_property_changed(name, device, widget):
     # for k, v in widget.property_widgets.items():
     #     instrument_value = getattr(device, k)
     #     print(k, instrument_value)
-    #     #setattr(widget, k, instrument_value)
+        #setattr(widget, k, instrument_value)
 
 
 if __name__ == "__main__":
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     gui_config = YAML(typ='safe', pure=True).load(GUI_YAML)
 
     exposed = gui_config['instrument_view']['device_widgets']['PCIe-6738']['init']['exposed_branches']
-    daq_widget = NIWidget(daq_object)
+    daq_widget = NIWidget(daq_object, exposed)
     daq_widget.show()
     daq_widget.ValueChangedInside[str].connect(
         lambda value, dev=daq_object, widget=daq_widget,: widget_property_changed(value, dev, widget))

@@ -1,0 +1,231 @@
+instrument:
+  id: exaspim-01
+  master_device: vp-151mx
+  channels:
+    CH488:
+      filters: [BP488]
+      lasers: [488 nm]
+      cameras: [vp-151mx]
+      focusing_stages: [n stage axis]
+    CH561:
+      filters: [BP561]
+      lasers: [561 nm]
+      cameras: [vp-151mx]
+      focusing_stages: [n stage axis]
+    CH639:
+      filters: [LP638]
+      lasers: [639 nm]
+      cameras: [vp-151mx]
+      focusing_stages: [n stage axis]
+  devices:
+    vp-151mx:
+      type: camera
+      driver: voxel.devices.camera.simulated
+      module: Camera
+      init:
+        id: sim000
+      properties:
+        exposure_time_ms: 20.0
+        pixel_type: mono16
+        height_offest_px: 4744
+        height_px: 1152
+        width_offset_px: 6528
+        width_px: 1152
+        trigger:
+          mode: 'off'
+          polarity: rising
+          source: external
+    488 nm:
+      type: laser
+      driver: voxel.devices.lasers.simulated
+      module: SimulatedLaser
+      color: blue
+      init:
+        id: COM3
+        wavelength: 488
+    561 nm:
+      type: laser
+      driver: voxel.devices.lasers.simulated
+      module: SimulatedLaser
+      color: green
+      init:
+        id: COM4
+        wavelength: 561
+    639 nm:
+      type: laser
+      driver: voxel.devices.lasers.simulated
+      module: SimulatedLaser
+      color: red
+      init:
+        id: COM5
+        wavelength: 639
+    ASI FW-1000:
+      type: filter_wheel
+      driver: voxel.devices.filterwheel.simulated
+      init:
+        filters:
+          BP405: 0
+          BP488: 1
+          BP561: 2
+          LP638: 3
+          MB405/488/561/638: 4
+          Empty1: 5
+          Empty2: 6
+        id: 0
+      module: FilterWheel
+      subdevices:
+        BP405:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP405
+        BP488:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP488
+        BP561:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: BP561
+        LP638:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: LP638
+        MB405/488/561/638:
+          type: filter
+          driver: voxel.devices.filter.simulated
+          module: Filter
+          init:
+            id: MB405/488/561/638
+    ASI MS8000 x axis:
+      type: scanning_stage
+      driver: voxel.devices.stage.simulated
+      module: Stage
+      init:
+        hardware_axis: x
+        instrument_axis: z
+      properties:
+        speed_mm_s: 1.0
+    ASI MS8000 y axis:
+      type: tiling_stage
+      driver: voxel.devices.stage.simulated
+      module: Stage
+      init:
+        hardware_axis: y
+        instrument_axis: x
+      properties:
+        speed_mm_s: 1.0
+    ASI LS100 z axis:
+      type: tiling_stage
+      driver: voxel.devices.stage.simulated
+      module: Stage
+      init:
+        hardware_axis: z
+        instrument_axis: y
+      properties:
+        speed_mm_s: 1.0
+    n stage axis:
+      driver: voxel.devices.stage.simulated
+      init:
+        hardware_axis: n
+        instrument_axis: n
+      module: Stage
+      properties:
+        speed_mm_s: 1.0
+      type: focusing_stage
+    ASI joystick:
+      driver: voxel.devices.stage.simulated
+      module: Joystick
+      type: joystick
+    PCIe-6738:
+      type: daq
+      driver: voxel.devices.daq.ni
+      module: DAQ
+      init:
+        dev: Dev2
+      properties:
+        tasks:
+          ao_task:
+            name: ao task
+            ports:
+              stage:
+                device_max_volts: 5.0
+                device_min_volts: 0.0
+                parameters:
+                  end_time_ms:
+                    channels:
+                      CH488: 350.0
+                      CH561: 350.0
+                      CH639: 350.0
+                  max_volts:
+                    channels:
+                      CH488: 5.0
+                      CH561: 5.0
+                      CH639: 5.0
+                  min_volts:
+                    channels:
+                      CH488: 0.0
+                      CH561: 0.0
+                      CH639: 0.0
+                  start_time_ms:
+                    channels:
+                      CH488: 60.0
+                      CH561: 60.0
+                      CH639: 60.0
+                port: ao1
+                waveform: square wave
+              tunable lens:
+                device_max_volts: 5.0
+                device_min_volts: 0.0
+                parameters:
+                  amplitude_volts:
+                    channels:
+                      CH488: 1.5
+                      CH561: 1.0
+                      CH639: 1.0
+                  cutoff_frequency_hz:
+                    channels:
+                      CH488: 200
+                      CH561: 200
+                      CH639: 200
+                  end_time_ms:
+                    channels:
+                      CH488: 400.0
+                      CH561: 400.0
+                      CH639: 400.0
+                  offset_volts:
+                    channels:
+                      CH488: 2.5
+                      CH561: 2.5
+                      CH639: 2.5
+                  start_time_ms:
+                    channels:
+                      CH488: 10.0
+                      CH561: 10.0
+                      CH639: 10.0
+                port: ao0
+                waveform: sawtooth
+            timing:
+              period_time_ms: 500
+              rest_time_ms: 50
+              retriggerable: 'on'
+              sample_mode: finite
+              sampling_frequency_hz: 10000
+              trigger_mode: 'on'
+              trigger_polarity: rising
+              trigger_port: PFI0
+          co_task:
+            counters:
+              - ctr0
+            name: co task
+            timing:
+              frequency_hz: 2.0
+              output_port: PFI0
+              trigger_mode: 'off'

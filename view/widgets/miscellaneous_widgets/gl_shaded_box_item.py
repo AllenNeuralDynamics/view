@@ -3,17 +3,21 @@ import numpy as np
 from qtpy.QtGui import QColor
 from OpenGL.GL import *  # noqa
 
+
 class GLShadedBoxItem(GLMeshItem):
     """Subclass of GLMeshItem creates a rectangular mesh item"""
 
-    def __init__(self, pos, size, color='cyan', width=1, opacity= 1, glOptions=None, parentItem=None):
+    def __init__(self, pos: np.ndarray,
+                 size: np.ndarray,
+                 color: str = 'cyan',
+                 width: float = 1,
+                 opacity: float = 1,
+                 *args,
+                 **kwargs):
         """
-
-        :param pos: position of ite,
+        :param pos: position of item
         :param size: size of item
         :param color: color of item
-        :param glOptions:
-        :param parentItem:
         """
 
         self._size = size
@@ -26,10 +30,15 @@ class GLShadedBoxItem(GLMeshItem):
         self._vertexes, self._faces = self._create_box(pos, size)
 
         super().__init__(vertexes=self._vertexes, faces=self._faces, faceColors=colors,
-                     drawEdges=True, edgeColor=(0, 0, 0, 1), glOptions=glOptions, parentItem=parentItem)
+                         drawEdges=True, edgeColor=(0, 0, 0, 1), *args, **kwargs)
 
-    def _create_box(self, pos, size):
-        """Convenience method create the vertexes and faces of box to draw"""
+    def _create_box(self, pos: np.ndarray, size: np.ndarray) -> (np.ndarray, np.ndarray):
+        """
+        Convenience method create the vertexes and faces of box to draw
+        :param pos: position of upper right corner of box
+        :param size: x,y,z size of box
+        :return:
+        """
 
         nCubes = np.prod(pos.shape[:-1])
         cubeVerts = np.mgrid[0:2, 0:2, 0:2].reshape(3, 8).transpose().reshape(1, 8, 3)
@@ -47,32 +56,45 @@ class GLShadedBoxItem(GLMeshItem):
 
         return vertexes, faces
 
-    def color(self):
+    def color(self) -> str or list[float, float, float, float]:
         """Color of box and outline"""
         return self._color
 
-    def setColor(self, color: str or list):
+    def setColor(self, color: str or list[float, float, float, float]) -> None:
         self._color = color
         colors = np.array([self._convert_color(self._color) for i in range(12)])
         self.setMeshData(vertexes=self._vertexes, faces=self._faces, faceColors=colors)
 
-    def _convert_color(self, color):
-        """Convenience method used to convert string color"""
+    def _convert_color(self, color: str) -> list[float, float, float, float]:
+        """
+        Convenience method used to convert string color
+        :param color: name of color to convert to rgbF values
+        """
         if isinstance(color, str):
             rgbf = list(QColor(color).getRgbF())
-            color = rgbf[:3] + [self._opacity*rgbf[3]]
+            color = rgbf[:3] + [self._opacity * rgbf[3]]
         return color
-    def size(self):
+
+    def size(self) -> np.ndarray:
         """Size of box and outline"""
         return self._size
-    def setSize(self, x, y, z):
-        self._size = np.array([x,y,z])
+
+    def setSize(self, x: float, y: float, z: float) -> None:
+        """
+        Set size of box
+        :param x: size in the x dimension
+        :param y: size in the y dimension
+        :param z: size in the z dimension
+        """
+
+        self._size = np.array([x, y, z])
         self._vertexes, self._faces = self._create_box(self._pos, self._size)
         colors = np.array([self._convert_color(self._color) for i in range(12)])
         self.setMeshData(vertexes=self._vertexes,
                          faces=self._faces,
                          faceColors=colors)
-    def paint(self):
+
+    def paint(self) -> None:
         """Overwriting to include box outline"""
 
         super().paint()
@@ -84,8 +106,8 @@ class GLShadedBoxItem(GLMeshItem):
 
         glColor4f(*self._convert_color(self._color))
 
-        x, y, z = [self._pos[0,0,i]+x for i, x in enumerate(self.size())]
-        x_pos, y_pos, z_pos = self._pos[0,0,:]
+        x, y, z = [self._pos[0, 0, i] + x for i, x in enumerate(self.size())]
+        x_pos, y_pos, z_pos = self._pos[0, 0, :]
 
         glVertex3f(x_pos, y_pos, z_pos)
         glVertex3f(x_pos, y_pos, z)

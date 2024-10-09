@@ -72,8 +72,11 @@ class ChannelPlanWidget(QTabWidget):
                                       setattr(self, 'channels', [self.tabText(ch) for ch in range(self.count() - 1)]))
         self._apply_all = True  # external flag to dictate behaviour of added tab
 
-    def initialize_tables(self, instrument_view):
-        """Initialize table for all channels with proper columns and delegates"""
+    def initialize_tables(self, instrument_view) -> None:
+        """
+        Initialize table for all channels with proper columns and delegates
+        :param instrument_view: view object that contains all widget for devices in an instrument
+        """
 
         # TODO: Checks here if prop or device isn't part of the instrument? Or go in instrument validation?
 
@@ -153,11 +156,13 @@ class ChannelPlanWidget(QTabWidget):
             table.verticalHeader().hide()
 
     @property
-    def apply_all(self):
+    def apply_all(self) -> bool:
+        """Property for the state of apply all
+         :return: boolean indicating if settings for the 0,0 tile are applied to all tiles"""
         return self._apply_all
 
     @apply_all.setter
-    def apply_all(self, value):
+    def apply_all(self, value: bool) -> None:
         """When apply all is toggled, update existing channels"""
 
         if self._apply_all != value:
@@ -173,11 +178,15 @@ class ChannelPlanWidget(QTabWidget):
         self._apply_all = value
 
     @property
-    def tile_volumes(self):
+    def tile_volumes(self) -> np.ndarray:
+        """
+        Property of tile volumes in 2d numpy array
+        :return: 2d numpy array containing the volume of the tile at the i, j location
+        """
         return self._tile_volumes
 
     @tile_volumes.setter
-    def tile_volumes(self, value: np.array):
+    def tile_volumes(self, value: np.ndarray) -> None:
         """When tile dims is updated, update size of channel arrays"""
 
         self._tile_volumes = value
@@ -200,8 +209,12 @@ class ChannelPlanWidget(QTabWidget):
 
 
 
-    def enable_item(self, item, enable):
-        """Change flags for enabling/disabling items in channel_plan table"""
+    def enable_item(self, item: QTableWidgetItem, enable: bool) -> None:
+        """
+        Change flags for enabling/disabling items in channel_plan table
+        :param item: item to change flag for
+        :param enable: boolean value indicating if flags should be configured to enable or disable item
+        """
 
         flags = QTableWidgetItem().flags()
         if not enable:
@@ -212,8 +225,10 @@ class ChannelPlanWidget(QTabWidget):
             flags |= Qt.ItemIsSelectable
         item.setFlags(flags)
 
-    def add_channel(self, channel):
-        """Add channel to acquisition"""
+    def add_channel(self, channel: str) -> None:
+        """Add channel to acquisition
+        :param channel: name of channel to add
+        """
 
         table = getattr(self, f'{channel}_table')
 
@@ -227,7 +242,7 @@ class ChannelPlanWidget(QTabWidget):
                 elif type(delegate) == QComboItemDelegate:
                     array[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
                 else:
-                    array[channel] = np.empty(self._tile_volumes.shape)
+                    array[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
 
                 if getattr(self, column_name + '_initial_value') is not None:
                     array[channel][:, :] = getattr(self, column_name + '_initial_value')
@@ -257,9 +272,11 @@ class ChannelPlanWidget(QTabWidget):
 
         self.channelAdded.emit(channel)
 
-    def add_channel_rows(self, channel, order: list):
+    def add_channel_rows(self, channel: str, order: list) -> None:
         """Add rows to channel table in specific order of tiles
-        :param order: list of tile order e.g. [[0,0], [0,1]]"""
+        :param channel: name of channel
+        :param order: list of tile order e.g. [[0,0], [0,1]]
+        """
 
         table = getattr(self, f'{channel}_table')
         table.blockSignals(True)
@@ -289,8 +306,10 @@ class ChannelPlanWidget(QTabWidget):
                     self.enable_item(item, not self.apply_all)
         table.blockSignals(False)
 
-    def remove_channel(self, channel):
-        """Remove channel from acquisition"""
+    def remove_channel(self, channel: str) -> None:
+        """Remove channel from acquisition
+        :param channel: name of channel
+        """
 
         self.channels.remove(channel)
 
@@ -316,8 +335,13 @@ class ChannelPlanWidget(QTabWidget):
 
         self.channelChanged.emit()
 
-    def cell_edited(self, row, column, channel=None):
-        """Update table based on cell edit"""
+    def cell_edited(self, row: int, column: int, channel: str = None) -> None:
+        """
+        Update table based on cell edit
+        :param row: row of item edited
+        :param column: column of item edited
+        :param channel: channel name of item edited
+        """
 
         channel = self.tabText(self.currentIndex()) if channel is None else channel
         table = getattr(self, f'{channel}_table')
@@ -348,8 +372,14 @@ class ChannelPlanWidget(QTabWidget):
         table.blockSignals(False)
         self.channelChanged.emit()
 
-    def update_steps(self, tile_index, row,  channel):
-        """Update number of steps based on volume"""
+    def update_steps(self, tile_index: list[int], row: int,  channel: str) -> list[float, int]:
+        """
+        Update number of steps based on volume
+        :param tile_index: integer list specifying row, column value of tile
+        :param row: row of item that correspond to tile at position tile_index
+        :param channel: name of channel
+        :return: step_size in um and number of steps
+        """
 
         volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
         index = tile_index if not self.apply_all else [slice(None), slice(None)]
@@ -364,8 +394,14 @@ class ChannelPlanWidget(QTabWidget):
 
         return step_size, steps
 
-    def update_step_size(self, tile_index, row,  channel):
-        """Update step size based on volume"""
+    def update_step_size(self, tile_index: list[int], row: int,  channel: str) -> list[float, int]:
+        """
+        Update number of steps based on volume
+        :param tile_index: integer list specifying row, column value of tile
+        :param row: row of item that correspond to tile at position tile_index
+        :param channel: name of channel
+        :return: step_size in um and number of steps
+        """
 
         volume_um = (self.tile_volumes[*tile_index]*self.unit).to(self.micron)
         index = tile_index if not self.apply_all else [slice(None), slice(None)]
@@ -388,14 +424,22 @@ class ChannelPlanTabBar(QTabBar):
         super(ChannelPlanTabBar, self).__init__()
         self.tabMoved.connect(self.tab_index_check)
 
-    def tab_index_check(self, prev_index, curr_index):
-        """Keep last tab as last tab"""
+    def tab_index_check(self, prev_index: int, curr_index: int) -> None:
+        """
+        Keep last tab as last tab
+        :param prev_index: previous index of tab
+        :param curr_index: index tab was moved to
+        """
 
         if prev_index == self.count() - 1:
             self.moveTab(curr_index, prev_index)
 
-    def mouseMoveEvent(self, ev):
-        """Make last tab immovable"""
+    def mouseMoveEvent(self, ev) -> None:
+        """
+        Make last tab immovable
+        :param ev: qmouseevent that triggered call
+        :return:
+        """
         index = self.currentIndex()
         if index == self.count() - 1:  # last tab is immovable
             return

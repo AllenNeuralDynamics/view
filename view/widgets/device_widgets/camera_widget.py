@@ -9,7 +9,10 @@ class CameraWidget(BaseDeviceWidget):
                  advanced_user: bool = True):
         """Modify BaseDeviceWidget to be specifically for camera. Main need are adding roi validator,
         live view button, and snapshot button.
-        :param camera: camera object"""
+        :param camera: camera object
+        :param advanced_user: boolean specifying complexity of widget. If True, all property widget of camera will be
+        hidden and only the snapshot and live button will be shown.
+        """
 
         self.camera_properties = scan_for_properties(camera)
         del self.camera_properties['latest_frame']    # remove image property
@@ -99,12 +102,13 @@ class CameraWidget(BaseDeviceWidget):
             central_widget.layout().setSpacing(0)  # remove space between central widget and newly formatted widgets
             self.setCentralWidget(create_widget('H',self.live_button, self.snapshot_button))
 
-        if hasattr(self, 'frame_time_ms_widget'):
+        # check if frame_time_ms_widget exits and its has a validator
+        if hasattr(self, 'frame_time_ms_widget') and self.frame_time_ms_widget.validator() is not None:
             self.frame_time_ms_widget.validator().setDecimals(2)  # set frame time decimals to 2
-        if hasattr(self, 'exposure_time_ms_widget'):
+        if hasattr(self, 'exposure_time_ms_widget') and self.exposure_time_ms_widget.validator() is not None:
             self.exposure_time_ms_widget.validator().setDecimals(2)  # set exposure time decimals to 2
 
-    def create_live_button(self):
+    def create_live_button(self) -> QPushButton:
         """Add live button"""
 
         button = QPushButton('Live')
@@ -113,7 +117,7 @@ class CameraWidget(BaseDeviceWidget):
 
         return button
 
-    def create_snapshot_button(self):
+    def create_snapshot_button(self) -> QPushButton:
         """Add snapshot button"""
 
         button = QPushButton('Snapshot')

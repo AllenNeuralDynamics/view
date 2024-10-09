@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import QFrame, QPushButton, QStyle, QDockWidget, QLabel, QHBoxLayout
-from qtpy.QtCore import Qt
-from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot
+from qtpy.QtGui import QMouseEvent
+from qtpy.QtCore import Signal, QTimer, Property, QObject, Slot, Qt
 
 
 class QDockWidgetTitleBar(QFrame):
@@ -8,9 +8,13 @@ class QDockWidgetTitleBar(QFrame):
 
     resized = Signal()
 
-    def __init__(self, dock:QDockWidget):
+    def __init__(self, dock: QDockWidget, *args, **kwargs):
 
-        super().__init__()
+        """
+        :param dock: QDockWidget that widget will be placed in
+        """
+
+        super().__init__(*args, **kwargs)
 
         self._timeline = None
         self.current_height = None
@@ -61,17 +65,17 @@ class QDockWidgetTitleBar(QFrame):
 
         self.setLayout(layout)
 
-    def close(self):
+    def close(self) -> None:
         """Close widget"""
 
         self.dock.close()
 
-    def pop_out(self):
+    def pop_out(self) -> None:
         """Pop out widget"""
 
         self.dock.setFloating(not self.dock.isFloating())
 
-    def minimize(self):
+    def minimize(self) -> None:
         """Minimize widget"""
 
         self.dock.setMinimumHeight(25)
@@ -81,7 +85,7 @@ class QDockWidgetTitleBar(QFrame):
         self._timeline.frameChanged.connect(self.set_widget_size)
         self._timeline.start()
 
-    def maximize(self):
+    def maximize(self) -> None:
         """Minimize widget"""
 
         if self.current_height is not None:
@@ -92,9 +96,11 @@ class QDockWidgetTitleBar(QFrame):
             self._timeline.frameChanged.connect(self.set_widget_size)
             self._timeline.start()
 
-    def set_widget_size(self, i):
-        """Change size of widget based on qtimer"""
-
+    def set_widget_size(self, i) -> None:
+        """
+        Change size of widget based on qtimer
+        :param i: height to set widgets that will iterate based on qtimer
+        """
 
         self.dock.widget().resize(self.dock.widget().width(), int(i))
         self.dock.resize(self.dock.width(), int(i))
@@ -103,13 +109,22 @@ class QDockWidgetTitleBar(QFrame):
         self.dock.setMinimumHeight(25)
         self.resized.emit()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """
+        Overwrite to update initial pos of mouse
+        :param event: mouse press event
+        """
         if event.button() == Qt.MouseButton.LeftButton:
             self.initial_pos = event.position().toPoint()
         super().mousePressEvent(event)
         event.accept()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """
+        Overwrite to move window when mouse is dragged
+        :param event: mouse event
+        :return:
+        """
         if self.initial_pos is not None:
             delta = event.position().toPoint() - self.initial_pos
             self.window().move(
@@ -124,6 +139,12 @@ class TimeLine(QObject):
     timerEnded = Signal()
 
     def __init__(self, interval=60, loopCount=1, step_size=1, parent=None):
+        """
+        :param interval: interval at which to step up and emit value in milliseconds
+        :param loopCount: how many times to repeat timeline
+        :param step_size: step size to take between emitted values
+        :param parent: parent of widget
+        """
         super(TimeLine, self).__init__(parent)
         self._stepSize = step_size
         self._startFrame = 0
@@ -134,7 +155,10 @@ class TimeLine(QObject):
         self._loop_counter = 0
         self.setInterval(interval)
 
-    def on_timeout(self):
+    def on_timeout(self) -> None:
+        """
+        Function called by Qtimer that will trigger a step of current step_size and emit new counter value
+        """
 
         if (self._startFrame <= self._counter <= self._endFrame and self._stepSize > 0) or \
                 (self._startFrame >= self._counter >= self._endFrame and self._stepSize < 0):
@@ -148,32 +172,59 @@ class TimeLine(QObject):
                 self._timer.stop()
                 self.timerEnded.emit()
 
-    def setLoopCount(self, loopCount):
+    def setLoopCount(self, loopCount: int) -> None:
+        """
+        Function set loop count variable
+        :param loopCount: integer specifying how many times to repeat timeline
+        """
         self._loopCount = loopCount
 
-    def loopCount(self):
+    def loopCount(self) -> int:
+        """
+        Current loop count
+        :return: Current loop count
+        """
         return self._loopCount
 
     interval = Property(int, fget=loopCount, fset=setLoopCount)
 
-    def setInterval(self, interval):
+    def setInterval(self, interval: int) -> None:
+        """
+        Function to set interval variable in seconds
+        :param interval: integer specifying the length of timeline in milliseconds
+        """
         self._timer.setInterval(interval)
 
-    def interval(self):
+    def interval(self) -> int:
+        """
+        Current interval time in milliseconds
+        :return: integer value of current interval time in milliseconds
+        """
         return self._timer.interval()
 
     interval = Property(int, fget=interval, fset=setInterval)
 
-    def setFrameRange(self, startFrame, endFrame):
+    def setFrameRange(self, startFrame: float, endFrame: float) -> None:
+        """
+        Setting function for starting and end value that timeline will step through
+        :param startFrame: starting value
+        :param endFrame: ending value
+        """
         self._startFrame = startFrame
         self._endFrame = endFrame
 
     @Slot()
-    def start(self):
+    def start(self)-> None:
+        """
+        Function to start QTimer and begin emitting and stepping through value
+        """
         self._counter = self._startFrame
         self._loop_counter = 0
         self._timer.start()
 
-    def stop(self):
+    def stop(self)-> None:
+        """
+        Function to stop QTimer and stop stepping through values
+        """
         self._timer.stop()
         self.timerEnded.emit()
