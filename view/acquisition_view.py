@@ -50,7 +50,7 @@ class AcquisitionView(QWidget):
         # create workers for latest image taken by cameras
         for camera_name, camera in self.instrument.cameras.items():
             worker = self.grab_property_value(camera, 'latest_frame', camera_name)
-            worker.yielded.connect(self.update_acquisition_layer)
+            worker.yielded.connect(lambda args: self.update_acquisition_layer(*args))
             worker.start()
             worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
             self.property_workers.append(worker)
@@ -443,7 +443,7 @@ class AcquisitionView(QWidget):
         self.grab_fov_positions_worker.start()
 
     @thread_worker
-    def grab_fov_positions(self) -> Iterator[float, float, float]:
+    def grab_fov_positions(self) -> Iterator[list[float, float, float]]:
         """
         Grab stage position from all stage objects and yield positions
         """
@@ -502,7 +502,7 @@ class AcquisitionView(QWidget):
                     widget.deleteLater()
                     setattr(gui, f'{prop_name}_widget', progress_bar)
                 worker = self.grab_property_value(operation, prop_name, getattr(gui, f'{prop_name}_widget'))
-                worker.yielded.connect(self.update_property_value)
+                worker.yielded.connect(lambda args: self.update_property_value(*args))
                 worker.start()
                 worker.pause()  # start and pause, so we can resume when acquisition starts and pause when over
                 self.property_workers.append(worker)

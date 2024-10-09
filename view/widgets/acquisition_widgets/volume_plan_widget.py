@@ -117,7 +117,6 @@ class VolumePlanWidget(QMainWindow):
                  coordinate_plane: list[str, str, str] = None,
                  unit: str = 'um'):
         """
-
         :param limits: 2D list containing min and max stage limits for each coordinate plane in the order of [
         tiling_dim[0], tiling_dim[1], scanning_dim[0]]
         :param fov_dimensions: dimensions of field of view in
@@ -259,7 +258,7 @@ class VolumePlanWidget(QMainWindow):
         for i in range(3):
             box = self.grid_offset_widgets[i]
             box.setSizePolicy(QSizePolicy.Policy(7), QSizePolicy.Policy(0))
-            box.setValue(fov_position[i])
+            box.setValue(self.fov_position[i])
             box.setDecimals(6)
             box.setRange(*self.limits[i])
             box.setSuffix(f" {unit}")

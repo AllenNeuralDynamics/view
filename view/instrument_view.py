@@ -333,9 +333,9 @@ class InstrumentView(QWidget):
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
 
         if frames == 1:  # pass in optional argument that this image is a snapshot
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args, snapshot=True))
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args, snapshot=True))
         else:
-            self.grab_frames_worker.yielded.connect(self.update_layer)
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args))
 
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
@@ -377,7 +377,7 @@ class InstrumentView(QWidget):
             self.instrument.lasers[laser_name].disable()
 
     @thread_worker
-    def grab_frames(self, camera_name: str, frames=float("inf")) -> Iterator[np.ndarray, str]:
+    def grab_frames(self, camera_name: str, frames=float("inf")) -> Iterator[tuple[np.ndarray, str]]:
         """
         Grab frames from camera
         :param frames: how many frames to take
@@ -506,7 +506,7 @@ class InstrumentView(QWidget):
             updating_props = specs.get('updating_properties', [])
             for prop_name in updating_props:
                 worker = self.grab_property_value(device, prop_name, getattr(gui, f'{prop_name}_widget'))
-                worker.yielded.connect(self.update_property_value)
+                worker.yielded.connect(lambda args: self.update_property_value(*args))
                 worker.start()
                 self.property_workers.append(worker)
 
