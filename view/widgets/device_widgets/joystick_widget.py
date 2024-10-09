@@ -5,8 +5,11 @@ class JoystickWidget(BaseDeviceWidget):
 
     def __init__(self, joystick,
                  advanced_user: bool = True):
-        """Modify BaseDeviceWidget to be specifically for Joystick.
-        :param joystic: joystick object"""
+        """
+        Modify BaseDeviceWidget to be specifically for Joystick.
+        :param joystick: joystick object
+        :param advanced_user: boolean specifying complexity of widget. If False, returns blank widget
+        """
 
         properties = scan_for_properties(joystick) if advanced_user else {}
         super().__init__(type(joystick), properties)
@@ -15,8 +18,10 @@ class JoystickWidget(BaseDeviceWidget):
         if self.advanced_user:
             self.create_axis_combo_box()
 
-    def create_axis_combo_box(self):
-        """Transform Instrument Axis text box into combo box and allow selection of only available axes"""
+    def create_axis_combo_box(self) -> None:
+        """
+        Transform Instrument Axis text box into combo box and allow selection of only available axes
+        """
 
         joystick_widgets = [QLabel('Joystick Mapping'), QLabel()]
         for joystick_axis, specs in self.joystick_mapping.items():
@@ -43,8 +48,10 @@ class JoystickWidget(BaseDeviceWidget):
         self.centralWidget().layout().replaceWidget(self.property_widgets['joystick_mapping'],
                                                     create_widget('HV', *joystick_widgets))
 
-    def update_axes_selection(self):
-        """When joystick axis mapped to new stage axis, update available stage axis"""
+    def update_axes_selection(self) -> None:
+        """
+        When joystick axis mapped to new stage axis, update available stage axis
+        """
 
         for joystick_axis, specs in self.joystick_mapping.items():
             unused = list(set(self.stage_axes) - set(ax['instrument_axis'] for ax in self.joystick_mapping.values()))

@@ -29,7 +29,7 @@ instrument:
             port: COM4
             hardware_axis: x
             instrument_axis: z
-          settings:
+          properties:
             speed_mm_s: 1.0
         ASI MS-8000 y axis:
           type: tiling_stage
@@ -40,7 +40,7 @@ instrument:
             port: COM4
             hardware_axis: y
             instrument_axis: x
-          settings:
+          properties:
             speed_mm_s: 1.0
         ASI MS-8000 z axis:
           type: tiling_stage
@@ -50,7 +50,7 @@ instrument:
             port: COM4
             hardware_axis: z
             instrument_axis: y
-          settings:
+          properties:
             speed_mm_s: 1.0
         ASI FW-1000:
           type: filter_wheel
@@ -113,7 +113,7 @@ instrument:
 #                coefficients:
 #                  1: 3.218
 #                  0: -57.515
-#              settings:
+#              properties:
 #                cdrh: OFF
 #                constant_current: ON
 #                modulation_mode: digital
@@ -124,11 +124,12 @@ instrument:
             color: blue
             init:
               id : 488nm
+              wavelength: 488
               prefix: L5
               coefficients:
                 1: 2.3125
                 0: -35.09
-            settings:
+            properties:
               cdrh: OFF
               constant_current: ON
               modulation_mode: digital
@@ -142,7 +143,7 @@ instrument:
 #                coefficients:
 #                  1: 2.237
 #                  0: -29.349
-#              settings:
+#              properties:
 #                cdrh: OFF
 #                constant_current: ON
 #                modulation_mode: digital
@@ -159,7 +160,7 @@ instrument:
       module: Camera
       init:
         id: "500748"
-      settings:
+      properties:
         exposure_time_ms: 20.0
         pixel_type: mono16
         roi:

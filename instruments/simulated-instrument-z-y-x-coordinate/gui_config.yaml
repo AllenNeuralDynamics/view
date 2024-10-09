@@ -1,0 +1,122 @@
+instrument_view:
+  device_widgets:
+      ASI MS-8000 x axis:
+        type:   scanning_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+      ASI MS-8000 y axis:
+        type: tiling_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+      ASI MS-8000 z axis:
+        type:   tiling_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+      n stage axis:
+        type: focusing_stage
+        driver: view.widgets.device_widgets.stage_widget
+        module: StageWidget
+        init:
+          advanced_user: False
+        updating_properties:
+          - position_mm
+      tigerbox:
+        type: joystick
+        driver: view.widgets.device_widgets.joystick_widget
+        module: JoystickWidget
+        init:
+          advanced_user: False
+      "488nm":
+        type: laser
+        driver: view.widgets.device_widgets.laser_widget
+        module: LaserWidget
+        init:
+          color: blue
+          advanced_user: False
+      "561nm":
+        type: laser
+        driver: view.widgets.device_widgets.laser_widget
+        module: LaserWidget
+        init:
+          color: green
+          advanced_user: False
+      "639nm":
+        type: laser
+        driver: view.widgets.device_widgets.laser_widget
+        module: LaserWidget
+        init:
+          color: red
+          advanced_user: True
+      ASI FW-1000:
+        type: filter_wheel
+        driver: view.widgets.device_widgets.filter_wheel_widget
+        module: FilterWheelWidget
+        init:
+          advanced_user: True
+          colors:
+            BP405: purple
+            BP488: blue
+            BP561: yellowgreen
+            LP638: red
+            MB405/488/561/638: magenta
+      vp-151mx:
+        type: camera
+        driver: view.widgets.device_widgets.camera_widget
+        module: CameraWidget
+        init:
+          advanced_user: False
+      PCIe-6738:
+        type: daq
+        driver: view.widgets.device_widgets.ni_widget
+        module: NIWidget
+        init:
+            advanced_user: True
+            exposed_branches:
+              tasks.ao_task.ports.tunable lens:
+                parameters.amplitude_volts.channels:
+                      "488": 1.0
+                      "561": 1.0
+                      "639": 1.0
+              tasks.ao_task.ports.x galvo mirror:
+                parameters:
+                  amplitude_volts:
+                    channels:
+                      "488": 1.0
+                      "561": 1.0
+                      "639": 1.0
+                  offset_volts:
+                    channels:
+                      "488": 2.5
+                      "561": 2.5
+acquisition_view:
+  fov_dimensions: [ 10.672384, 8.00128, 0 ]
+  coordinate_plane: [ 'z', 'y', 'x' ]
+  unit: 'mm'
+  acquisition_widgets:
+    channel_plan:
+      init:
+        properties:
+          cameras: [ binning ]
+          lasers: [ power_setpoint_mw ]
+          focusing_stages: [position_mm]
+          start_delay_time:
+            delegate: spin
+            type: float
+            minimum: 0
+            initial_value: 10
+          repeats:
+            delegate: spin
+            type: int
+            minimum: 0
+          example:
+            delegate: combo
+            type: str
+            items: [ 'this', 'is', 'an', 'example' ]
+            initial_value: example
+  operation_widgets: {}

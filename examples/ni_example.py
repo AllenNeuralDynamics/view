@@ -5,9 +5,12 @@ import sys
 from qtpy.QtCore import Slot
 from pathlib import Path
 from ruamel.yaml import YAML
+import os
 
-INSTRUMENT_YAML = Path('C:\\Users\\micah.woodard\\Projects\\view\\instruments\\speakeasy-view\\'
-                       'speakeasy_gui.yaml')
+RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
+INSTRUMENT_YAML = RESOURCES_DIR / 'resources/simulated_instrument.yaml'
+GUI_YAML = RESOURCES_DIR / 'resources/gui_config.yaml'
+
 
 @Slot(str)
 def widget_property_changed(name, device, widget):
@@ -22,7 +25,7 @@ def widget_property_changed(name, device, widget):
     # for k, v in widget.property_widgets.items():
     #     instrument_value = getattr(device, k)
     #     print(k, instrument_value)
-    #     #setattr(widget, k, instrument_value)
+        #setattr(widget, k, instrument_value)
 
 
 if __name__ == "__main__":
@@ -31,7 +34,7 @@ if __name__ == "__main__":
     # set up daq
     config = YAML(typ='safe', pure=True).load(INSTRUMENT_YAML)
 
-    daq_tasks = config['instrument_view']['livestream_tasks']['PCIe-6738']['tasks']
+    daq_tasks = config['instrument']['devices']['PCIe-6738']['properties']['tasks']
     ao_task = daq_tasks['ao_task']
     co_task = daq_tasks['co_task']
 
@@ -42,11 +45,12 @@ if __name__ == "__main__":
     daq_object.generate_waveforms('ao', '488')
     daq_object.write_ao_waveforms()
 
-    daq_tasks = NIWidget(daq_object)
-    daq_tasks.show()
-    daq_tasks.ValueChangedInside[str].connect(
-        lambda value, dev=daq_object, widget=daq_tasks,: widget_property_changed(value, dev, widget))
+    gui_config = YAML(typ='safe', pure=True).load(GUI_YAML)
+
+    exposed = gui_config['instrument_view']['device_widgets']['PCIe-6738']['init']['exposed_branches']
+    daq_widget = NIWidget(daq_object, exposed)
+    daq_widget.show()
+    daq_widget.ValueChangedInside[str].connect(
+        lambda value, dev=daq_object, widget=daq_widget,: widget_property_changed(value, dev, widget))
 
     sys.exit(app.exec_())
-
-    # sys.exit(app.exec_())

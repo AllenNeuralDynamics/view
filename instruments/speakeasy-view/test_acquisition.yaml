@@ -6,7 +6,7 @@ acquisition:
       metadata_dictionary:
         instrument_type: speakeasy
         subject_id: 123456
-        experimenter_name: adam glaser
+        experimenter_name: [adam glaser]
         immersion_medium: 0.05X SSC
         immersion_medium_refractive_index: 1.33
         x_anatomical_direction: Anterior_to_posterior
@@ -31,7 +31,7 @@ acquisition:
 #        module: Writer
 #        init:
 #          path: C:\Users\micah.woodard\Downloads
-#        settings:
+#        properties:
 #          compression: lz4shuffle
 #          data_type: uint16
 #      max_projection:
@@ -40,7 +40,7 @@ acquisition:
 #        module: MaxProjection
 #        init:
 #          path: ./local_test
-#        settings:
+#        properties:
 #          data_type: uint16
 #          projection_count_px: 32
 

@@ -1,29 +1,16 @@
-from view.widgets.base_device_widget import BaseDeviceWidget
-from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
-from qtpy.QtWidgets import QLabel, QTextEdit
+from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties
+from qtpy.QtWidgets import QLabel
 import importlib
-
-
-def scan_for_properties(device):
-    """Scan for properties with setters and getters in class and return dictionary
-    :param device: object to scan through for properties
-    """
-
-    prop_dict = {}
-    for attr_name in dir(device):
-        attr = getattr(type(device), attr_name, None)
-        if isinstance(attr, property) and getattr(device, attr_name) != None:
-            prop_dict[attr_name] = getattr(device, attr_name)
-
-    return prop_dict
-
 
 class StageWidget(BaseDeviceWidget):
 
     def __init__(self, stage,
                  advanced_user: bool = True):
-        """Modify BaseDeviceWidget to be specifically for Stage. Main need is advanced user.
-        :param stage: stage object"""
+        """
+        Modify BaseDeviceWidget to be specifically for Stage. Main need is advanced user.
+        :param stage: stage object
+        :param advanced_user: boolean specifying complexity of widget. If False, only position is shown
+        """
 
         self.stage_properties = scan_for_properties(stage) if advanced_user else {'position_mm': stage.position_mm}
 

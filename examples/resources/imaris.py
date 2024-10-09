@@ -304,6 +304,7 @@ class Writer:
             block_index = pw.ImageSize(x=0, y=0, z=chunk_num, c=0, t=0)
             # Wait for new data.
             while self.done_reading.is_set():
+                print('in imaris writer while self.done_reading.is_set(): ' , self.done_reading.is_set())
                 sleep(0.001)
             # Attach a reference to the data from shared memory.
             shm = SharedMemory(self.shm_name, create=False, size=self.shm_nbytes)
@@ -326,6 +327,7 @@ class Writer:
                   f"{self.stack_name}. "
                   f"current progress is {100*self.callback_class.progress:.1f}%.")
         while self.callback_class.progress < 1.0:
+            print('in imaris writer while self.callback_class.progress < 1.0: ', self.callback_class.progress)
             sleep(0.5)
             logger.warning(f"{self.stack_name}: waiting for data writing to complete for "
                   f"{self.stack_name}. "

@@ -32,7 +32,8 @@ instrument:
       color: red
       driver: voxel.devices.lasers.simulated
       init:
-        id: COM5
+        id: COM7
+        wavelength: 639
       module: SimulatedLaser
       type: laser
     ASI FW-1000:
@@ -80,32 +81,31 @@ instrument:
           module: Filter
           init:
             id: MB405/488/561/638
-
-    ASI MS-8000 z axis:
-      driver: voxel.devices.stage.simulated
-      init:
-        hardware_axis: x
-        instrument_axis: z
-      module: Stage
-      settings:
-        speed_mm_s: 1.0
-      type: scanning_stage
     ASI MS-8000 x axis:
       driver: voxel.devices.stage.simulated
       init:
-        hardware_axis: y
+        hardware_axis: x
         instrument_axis: x
       module: Stage
-      settings:
+      properties:
+        speed_mm_s: 1.0
+      type: scanning_stage
+    ASI MS-8000 z axis:
+      driver: voxel.devices.stage.simulated
+      init:
+        hardware_axis: z
+        instrument_axis: z
+      module: Stage
+      properties:
         speed_mm_s: 1.0
       type: tiling_stage
     ASI MS-8000 y axis:
       driver: voxel.devices.stage.simulated
       init:
-        hardware_axis: z
+        hardware_axis: y
         instrument_axis: y
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: tiling_stage
     n stage axis:
@@ -114,14 +114,14 @@ instrument:
         hardware_axis: n
         instrument_axis: n
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: focusing_stage
     PCIe-6738:
       driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
-      settings:
+      properties:
         tasks:
           ao_task:
             name: ao task
@@ -263,13 +263,14 @@ instrument:
       color: purple
       driver: voxel.devices.lasers.simulated
       init:
+        wavelength: 488
         coefficients:
           0: -57.515
           1: 3.218
-        id: COM5
+        id: COM6
         prefix: L6
       module: SimulatedLaser
-      settings:
+      properties:
         cdrh: 'OFF'
         constant_current: 'ON'
         modulation_mode: digital
@@ -278,7 +279,8 @@ instrument:
       color: greenyellow
       driver: voxel.devices.lasers.simulated
       init:
-        id : COM5
+        id : COM3
+        wavelength: 561
         prefix: L3
       module: SimulatedLaser
       type: laser
@@ -291,7 +293,7 @@ instrument:
       init:
         id: sim000
       module: Camera
-      settings:
+      properties:
         exposure_time_ms: 20.0
         pixel_type: mono16
         height_offest_px: 4744

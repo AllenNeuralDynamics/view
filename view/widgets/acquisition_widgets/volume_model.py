@@ -1,14 +1,13 @@
-from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem, GLImageItem
-from qtpy.QtWidgets import QMessageBox, QCheckBox
+from pyqtgraph.opengl import GLImageItem
+from qtpy.QtWidgets import QMessageBox, QCheckBox, QGridLayout, QButtonGroup, QLabel, QRadioButton, QPushButton, QWidget
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion, QColor
+from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
 from pyqtgraph import makeRGBA
 from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewWidget
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
-from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
 
 
@@ -36,15 +35,15 @@ class VolumeModel(GLOrthoViewWidget):
     scan_volumes = SignalChangeVar()
     tile_visibility = SignalChangeVar()
     valueChanged = Signal((str))
-    fovMoved = Signal((list))
+    fovMove = Signal((list))
+    fovHalt = Signal()
 
     def __init__(self,
                  unit: str = 'mm',
-                 coordinate_plane: list[str] = ['x', 'y', 'z'],
-                 fov_dimensions: list[float] = [1.0, 1.0, 0],
-                 fov_position: list[float] = [0.0, 0.0, 0.0],
-                 limits: list[float] = [[float('-inf'), float('inf')], [float('-inf'), float('inf')],
-                                        [float('-inf'), float('inf')]],
+                 limits: list[[float, float], [float, float], [float, float]] = None,
+                 fov_dimensions: list[float, float, float] = None,
+                 fov_position: list[float, float, float] = None,
+                 coordinate_plane: list[str, str, str] = None,
                  fov_color: str = 'yellow',
                  fov_line_width: int = 2,
                  fov_opacity: float = 0.15,
@@ -92,10 +91,10 @@ class VolumeModel(GLOrthoViewWidget):
 
         # initialize attributes
         self.unit = unit
-        self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
+        self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane] if coordinate_plane else ['x', 'y', 'z']
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
-        self.fov_dimensions = fov_dimensions
-        self.fov_position = fov_position
+        self.fov_dimensions = fov_dimensions[:2]+[0] if fov_dimensions else [1.0, 1.0, 0]    # add 0 in the scanning dim
+        self.fov_position = fov_position if fov_position else [0.0, 0.0, 0.0]
         self.view_plane = (self.coordinate_plane[0], self.coordinate_plane[1])  # plane currently being viewed
 
         self.scan_volumes = np.zeros([1, 1])  # 2d list detailing volume of tiles
@@ -113,6 +112,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.tile_line_width = tile_line_width
 
         # limits aesthetic properties
+        limits = sorted(limits) if limits else [[float('-inf'), float('inf')] for _ in range(3)]
         self.limits_line_width = limits_line_width
         self.limits_color = limits_color
         self.limits_opacity = limits_opacity
@@ -143,7 +143,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.addItem(self.fov_view)
 
         if limits != [[float('-inf'), float('inf')], [float('-inf'), float('inf')], [float('-inf'), float('inf')]]:
-            size = [((max(limits[i]) - min(limits[i])) + fov_dimensions[i]) for i in range(3)]
+            size = [((max(limits[i]) - min(limits[i])) + self.fov_dimensions[i]) for i in range(3)]
             stage_limits = GLShadedBoxItem(width=self.limits_line_width,
                                            pos=np.array([[[min([x * self.polarity[0] for x in limits[0]]),
                                                            min([y * self.polarity[1] for y in limits[1]]),
@@ -159,7 +159,35 @@ class VolumeModel(GLOrthoViewWidget):
 
         self._update_opts()
 
-    def update_model(self, attribute_name):
+        # Add widgets for toggling view plane, path visibility, and halt stage
+        self.widgets = QWidget()
+        layout = QGridLayout()
+
+        path_show = QCheckBox('Show Path')
+        path_show.setChecked(True)
+        path_show.toggled.connect(self.path.setVisible)
+        layout.addWidget(path_show, 0, 0)
+
+        layout.addWidget(QLabel('Plane View: '), 0, 1)
+        view_plane = QButtonGroup()
+        for i, view in enumerate([f'({self.coordinate_plane[0]}, {self.coordinate_plane[2]})',
+                                  f'({self.coordinate_plane[2]}, {self.coordinate_plane[1]})',
+                                  f'({self.coordinate_plane[0]}, {self.coordinate_plane[1]})']):
+            button = QRadioButton(view)
+            button.clicked.connect(lambda clicked, b=button: self.toggle_view_plane(b))
+            view_plane.addButton(button)
+            button.setChecked(True)
+            layout.addWidget(button, 0, i + 2)
+
+        halt = QPushButton('HALT STAGE')
+        halt.pressed.connect(self.fovHalt.emit)
+        layout.addWidget(halt, 1, 0, 1, 5)
+
+        self.widgets.setLayout(layout)
+        self.widgets.setMaximumHeight(70)
+        self.widgets.show()
+
+    def update_model(self, attribute_name) -> None:
         """Update attributes of grid
         :param attribute_name: name of attribute to update"""
 
@@ -227,28 +255,27 @@ class VolumeModel(GLOrthoViewWidget):
 
         self._update_opts()
 
-    def toggle_path_visibility(self, visible):
-        """Slot for a radio button to toggle visibility of path"""
+    def toggle_view_plane(self, button) -> None:
+        """
+        Update view plane optics
+        :param button: button pressed to change view
+        """
 
-        if visible:
-            self.path.setVisible(True)
+        view_plane = tuple(x for x in button.text() if x.isalpha())
+        self.view_plane = view_plane
 
-        else:
-            self.path.setVisible(False)
-
-    def set_path_pos(self, coord_order: list):
+    def set_path_pos(self, coord_order: list) -> None:
         """Set the pos of path in correct order
-        coord_order: ordered list of coords for path"""
+        :param coord_order: ordered list of coords for path"""
 
-        path = np.array([[((coord[i] * pol) + (.5 * fov)) if x in self.view_plane else 0. for i, fov, pol, x in
+        path = np.array([[((coord[i] * pol) + (.5 * fov)) for i, fov, pol, x in
                           zip([0, 1, 2], self.fov_dimensions, self.polarity, self.coordinate_plane)] for coord in
                          coord_order])
         self.path.setData(pos=path)
 
-    def add_fov_image(self, image: np.array, coords: list, levels: list):
+    def add_fov_image(self, image: np.ndarray, levels: list[float]) -> None:
         """add image to model assuming image has same fov dimensions and orientation
         :param image: numpy array of image to display in model
-        :param coords: list of coordinates corresponding to the coordinate plane of model,
         :param levels: levels for passed in image"""
 
         image_rgba = makeRGBA(image, levels=levels)
@@ -256,7 +283,7 @@ class VolumeModel(GLOrthoViewWidget):
 
         gl_image = GLImageItem(image_rgba[0],
                                glOptions='additive')
-        x, y, z = coords
+        x, y, z = self.fov_position
         gl_image.setTransform(QMatrix4x4(self.fov_dimensions[0] / image.shape[0], 0, 0, x * self.polarity[0],
                                          0, self.fov_dimensions[1] / image.shape[1], 0, y * self.polarity[1],
                                          0, 0, 1, z * self.polarity[2],
@@ -267,28 +294,27 @@ class VolumeModel(GLOrthoViewWidget):
         if self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
             gl_image.setVisible(False)
 
-    def adjust_glimage_contrast(self, image, contrast_levels):
+    def adjust_glimage_contrast(self, image: np.ndarray, contrast_levels: list[float]) -> None:
         """
         Adjust image in model contrast levels
         :param image: numpy array of image key in fov_images
         :param contrast_levels: levels for passed in image
-        :return:
         """
 
         if image.tobytes() in self.fov_images.keys():  # check if image has been deleted
             glimage = self.fov_images[image.tobytes()]
             coords = [glimage.transform()[i, 3] / pol for i, pol in zip(range(3), self.polarity)]
             self.removeItem(glimage)
-            self.add_fov_image(image, coords, contrast_levels)
+            self.add_fov_image(image, contrast_levels)
 
-    def toggle_fov_image_visibility(self, visible: bool):
+    def toggle_fov_image_visibility(self, visible: bool) -> None:
         """Function to hide all fov_images
         :param visible: boolean for if fov_images should be visible"""
 
         for image in self.fov_images.values():
             image.setVisible(visible)
 
-    def _update_opts(self):
+    def _update_opts(self) -> None:
         """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""
 
         view_plane = self.view_plane
@@ -309,19 +335,25 @@ class VolumeModel(GLOrthoViewWidget):
                                                y,
                                                (z + sz)] for (x, y, z), sz in zip(coords, dimensions)]))
 
-        extrema = {'x_min': min([x for x, y, z in coords]), 'x_max': max([x for x, y, z in coords]),
-                   'y_min': min([y for x, y, z in coords]), 'y_max': max([y for x, y, z in coords]),
-                   'z_min': min([z for x, y, z in coords]), 'z_max': max([z for x, y, z in coords])}
-        fov = {**{axis: dim for axis, dim in zip(['x', 'y'], self.fov_dimensions)}, 'z': 0}
-        pos = {axis: dim for axis, dim in zip(['x', 'y', 'z'], self.fov_position)}
+        extrema = {f'{self.coordinate_plane[0]}_min': min(coords[:, 0]),
+                   f'{self.coordinate_plane[0]}_max': max(coords[:, 0]),
+                   f'{self.coordinate_plane[1]}_min': min(coords[:, 1]),
+                   f'{self.coordinate_plane[1]}_max': max(coords[:, 1]),
+                   f'{self.coordinate_plane[2]}_min': min(coords[:, 2]),
+                   f'{self.coordinate_plane[2]}_max': max(coords[:, 2])}
 
-        distances = {'xy': [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords],
-                     'xz': [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - z) ** 2) for x, y, z in coords],
-                     'zy': [sqrt((pos[view_plane[0]] - z) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords]}
+        fov = {plane: fov for plane, fov in zip(self.coordinate_plane, self.fov_dimensions)}
+        pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
+        distances = {self.coordinate_plane[0] + self.coordinate_plane[1]:
+                         [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords],
+                     self.coordinate_plane[0] + self.coordinate_plane[2]:
+                         [sqrt((pos[view_plane[0]] - x) ** 2 + (pos[view_plane[1]] - z) ** 2) for x, y, z in coords],
+                     self.coordinate_plane[2] + self.coordinate_plane[1]:
+                         [sqrt((pos[view_plane[0]] - z) ** 2 + (pos[view_plane[1]] - y) ** 2) for x, y, z in coords]}
         max_index = distances[''.join(view_plane)].index(max(distances[''.join(view_plane)], key=abs))
-        furthest_tile = {'x': coords[max_index][0],
-                         'y': coords[max_index][1],
-                         'z': coords[max_index][2]}
+        furthest_tile = {self.coordinate_plane[0]: coords[max_index][0],
+                         self.coordinate_plane[1]: coords[max_index][1],
+                         self.coordinate_plane[2]: coords[max_index][2]}
         center = {}
 
         # Horizontal sizing, if fov_position is within grid or farthest distance is between grid tiles
@@ -336,29 +368,32 @@ class VolumeModel(GLOrthoViewWidget):
             horz_dist = (abs(pos[x] - furthest_tile[x]) + (fov[x] * 2)) / 2 * tan(radians(self.opts['fov']))
         # Vertical sizing, if fov_position is within grid or farthest distance is between grid tiles
         y = view_plane[1]
+        scaling = (self.size().width() / self.size().height())
         if extrema[f'{y}_min'] <= pos[y] <= extrema[f'{y}_max'] or \
                 abs(furthest_tile[y] - pos[y]) < abs(extrema[f'{y}_max'] - extrema[f'{y}_min']):
             center[y] = (((extrema[f'{y}_min'] + extrema[f'{y}_max']) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
             # View doesn't scale when changing vertical size so take into account the dif between the height and width
             vert_dist = ((extrema[f'{y}_max'] - extrema[f'{y}_min']) + (fov[y] * 2)) / 2 \
-                        * tan(radians(self.opts['fov'])) * (self.size().width() / self.size().height())
-
+                        * tan(radians(self.opts['fov'])) * scaling
         else:
             center[y] = (((pos[y] + furthest_tile[y]) / 2) + (fov[y] / 2 * view_pol[1])) * view_pol[1]
-            vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 \
-                        * (self.size().width() / self.size().height())
+            vert_dist = (abs(pos[y] - furthest_tile[y]) + (fov[y] * 2)) / 2 * tan(radians(self.opts['fov']))* scaling
         # @Micah in ortho mode it seems to scale properly with x1200... not sure how to explain why though
         # not sure if this actually works, and whether it needs to be copied to other places in the fx
         self.opts['distance'] = horz_dist * 1200 if horz_dist > vert_dist else vert_dist * 1200
+
         self.opts['center'] = QVector3D(
-            center.get('x', 0),
-            center.get('y', 0),
-            center.get('z', 0))
+            center.get(self.coordinate_plane[0], 0),
+            center.get(self.coordinate_plane[1], 0),
+            center.get(self.coordinate_plane[2], 0))
 
         self.update()
 
-    def move_fov_query(self, new_fov_pos):
-        """Message box asking if user wants to move fov position"""
+    def move_fov_query(self, new_fov_pos: list[float]) -> [int, bool]:
+        """Message box asking if user wants to move fov position
+        :param new_fov_pos: position to move the fov to in um
+        :return: user reply to pop up and whether to move to the tile nearest the new_fov_pos
+        """
 
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -374,9 +409,10 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec(), checkbox.isChecked()
 
-    def delete_fov_image_query(self, fov_image_pos):
+    def delete_fov_image_query(self, fov_image_pos: list[float]) -> int:
         """Message box asking if user wants to move fov position
-        :param fov_image_pos: coordinates of fov image"""
+        :param fov_image_pos: coordinates of fov image
+        :return: user reply to deleting image"""
 
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -386,14 +422,15 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
         """Override mouseMoveEvent so user can't change view
-        and allow user to move fov easier"""
+        and allow user to move fov easier
+        :param event: QMouseEvent of users mouse"""
 
-        plane = self.view_plane
+        plane = list(self.view_plane) + [ax for ax in self.coordinate_plane if ax not in self.view_plane]
         view_pol = [self.polarity[self.coordinate_plane.index(plane[0])],
                     self.polarity[self.coordinate_plane.index(plane[1])],
-                    self.polarity[self.coordinate_plane.index(*(set(self.coordinate_plane) - set(plane)))]]
+                    self.polarity[self.coordinate_plane.index(plane[2])]]
         # Translate mouseclick x, y into view widget coordinate plane.
         horz_dist = (self.opts['distance'] / tan(radians(self.opts['fov']))) / 1200
         vert_dist = (self.opts['distance'] / tan(radians(self.opts['fov'])) * (
@@ -402,40 +439,32 @@ class VolumeModel(GLOrthoViewWidget):
         vert_scale = ((event.y() * 2 * vert_dist) / self.size().height())
 
         # create dictionaries of from fov and pos
-        fov = {'x': self.fov_dimensions[0],
-               'y': self.fov_dimensions[1],
-               'z': 0}
+        fov = {axis: fov for axis, fov in zip(self.coordinate_plane, self.fov_dimensions)}
         pos = {axis: dim for axis, dim in zip(self.coordinate_plane, self.fov_position)}
 
-        transform_dict = {grid: stage for grid, stage in zip(['x', 'y', 'z'], self.coordinate_plane)}
-        other_dim = [dim for dim in transform_dict if dim not in plane][0]
-        transform = [transform_dict[plane[0]], transform_dict[plane[1]], transform_dict[other_dim]]
-
-        center = {'x': self.opts['center'].x(), 'y': self.opts['center'].y(), 'z': self.opts['center'].z()}
+        center = {self.coordinate_plane[0]: self.opts['center'].x(),
+                  self.coordinate_plane[1]: self.opts['center'].y(),
+                  self.coordinate_plane[2]: self.opts['center'].z()}
         h_ax = self.view_plane[0]
         v_ax = self.view_plane[1]
 
-        new_pos = {transform[0]: ((center[h_ax] - horz_dist + horz_scale) - .5 * fov[transform[0]]) * view_pol[0],
-                   transform[1]: ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[transform[1]]) * view_pol[1],
-                   transform[2]: pos[transform[2]] * view_pol[2]}
-
+        new_pos = {plane[0]: ((center[h_ax] - horz_dist + horz_scale) - .5 * fov[plane[0]]) * view_pol[0],
+                   plane[1]: ((center[v_ax] + vert_dist - vert_scale) - .5 * fov[plane[1]]) * view_pol[1],
+                   plane[2]: pos[plane[2]] * view_pol[2]}
+        move_to = [new_pos[ax] for ax in self.coordinate_plane]
         if event.button() == Qt.LeftButton:
-            return_value, checkbox = self.move_fov_query([new_pos['x'],
-                                                          new_pos['y'],
-                                                          new_pos['z']])
+            return_value, checkbox = self.move_fov_query(move_to)
 
             if return_value == QMessageBox.Ok:
                 if not checkbox:  # Move to exact location
-                    pos = new_pos
+                    pos = move_to
                 else:  # move to the nearest tile
                     flattened = self.grid_coords.reshape([-1, 3])
                     tree = spatial.KDTree(self.grid_coords.reshape([-1, 3]))
-                    distance, index = tree.query([new_pos['x'], new_pos['y'], new_pos['z']])
+                    distance, index = tree.query(move_to)
                     tile = flattened[index]
-                    pos = {'x': tile[0], 'y': tile[1], 'z': tile[2]}
-                self.fov_position = [pos['x'], pos['y'], pos['z']]
-                self.view_plane = plane  # make sure grid plane remains the same
-                self.fovMoved.emit([pos['x'], pos['y'], pos['z']])
+                    pos = [tile[0], tile[1], tile[2]]
+                self.fovMove.emit(pos)
 
             else:
                 return

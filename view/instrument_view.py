@@ -1,11 +1,12 @@
 from ruamel.yaml import YAML
 from qtpy.QtCore import Slot, Signal
+from qtpy.QtGui import QMouseEvent
 from pathlib import Path
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
     scan_for_properties, disable_button
-from qtpy.QtWidgets import QPushButton, QStyle, QFileDialog, QRadioButton, QWidget, QButtonGroup, QSlider, \
-    QGridLayout, QComboBox, QApplication, QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox
+from qtpy.QtWidgets import QStyle, QRadioButton, QWidget, QButtonGroup, QSlider, QGridLayout, QComboBox, QApplication, \
+    QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox, QPushButton, QFileDialog
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils.theme import get_theme
@@ -18,6 +19,7 @@ import inspect
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 import numpy as np
+from typing import Literal, Union, Iterator
 
 class InstrumentView(QWidget):
     """"Class to act as a general instrument view model to voxel instrument"""
@@ -25,8 +27,14 @@ class InstrumentView(QWidget):
     snapshotTaken = Signal((np.ndarray, list))
     contrastChanged = Signal((np.ndarray, list))
 
-    def __init__(self, instrument, config_path: Path, log_level='INFO'):
-
+    def __init__(self, instrument,
+                 config_path: Path,
+                 log_level: Literal['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO'):
+        """
+        :param instrument: voxel like instrument object
+        :param config_path: path to gui config yaml
+        :param log_level: level to set logger
+        """
         super().__init__()
 
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -55,7 +63,8 @@ class InstrumentView(QWidget):
         self.snapshot = False  # flag to signal snapshot has been taken
 
         self.instrument = instrument
-        self.config = YAML(typ='safe', pure=True).load(config_path)  # TODO: maybe bulldozing comments but easier
+        self.config_path = config_path
+        self.config = YAML().load(config_path)
 
         # Convenient config maps
         self.channels = self.instrument.config['instrument']['channels']
@@ -83,11 +92,15 @@ class InstrumentView(QWidget):
 
         # Set app events
         app = QApplication.instance()
+        app.aboutToQuit.connect(self.update_config_on_quit)  # query if config should be saved and where
+        self.config_save_to = self.config_path
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
 
-    def setup_daqs(self):
-        """Initialize daqs with livestreaming tasks if different from data acquisition tasks"""
+    def setup_daqs(self)-> None:
+        """
+        Initialize daqs with livestreaming tasks if different from data acquisition tasks
+        """
 
         for daq_name, daq in self.instrument.daqs.items():
             if daq_name in self.config['instrument_view'].get('livestream_tasks', {}).keys():
@@ -98,8 +111,10 @@ class InstrumentView(QWidget):
                                    f'task in instrument yaml.')
                     raise ValueError
 
-    def setup_stage_widgets(self):
-        """Arrange stage position and joystick widget"""
+    def setup_stage_widgets(self) -> None:
+        """
+        Arrange stage position and joystick widget
+        """
 
         stage_layout = QGridLayout()
 
@@ -124,8 +139,10 @@ class InstrumentView(QWidget):
         stage_widget.setLayout(stage_layout)
         self.viewer.window.add_dock_widget(stage_widget, area='left', name='Stages')
 
-    def setup_laser_widgets(self):
-        """Arrange laser widgets"""
+    def setup_laser_widgets(self) -> None:
+        """
+        Arrange laser widgets
+        """
 
         laser_widgets = []
         for name, widget in self.laser_widgets.items():
@@ -140,15 +157,17 @@ class InstrumentView(QWidget):
         laser_widget = create_widget('V', *laser_widgets)
         self.viewer.window.add_dock_widget(laser_widget, area='bottom', name='Lasers')
 
-    def setup_daq_widgets(self):
-        """Setup saving to config if widget is from device-widget repo"""
+    def setup_daq_widgets(self) -> None:
+        """
+        Setup saving to config if widget is from device-widget repo
+        """
 
         for daq_name, daq_widget in self.daq_widgets.items():
 
             # if daq_widget is BaseDeviceWidget or inherits from it, update waveforms when gui is changed
             if type(daq_widget) == BaseDeviceWidget or BaseDeviceWidget in type(daq_widget).__bases__:
                 daq_widget.ValueChangedInside[str].connect(
-                    lambda value, daq=self.instrument.daqs[daq_name], name=daq_name: self.write_waveforms(daq, name))
+                    lambda value, daq=self.instrument.daqs[daq_name]: self.write_waveforms(daq))
                 # update tasks if livestreaming task is different from data acquisition task
                 if daq_name in self.config.get('livestream_tasks', {}).keys():
                     daq_widget.ValueChangedInside[str].connect(lambda attr, widget=daq_widget, name=daq_name:
@@ -157,9 +176,12 @@ class InstrumentView(QWidget):
         stacked = self.stack_device_widgets('daq')
         self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs')
 
-    def stack_device_widgets(self, device_type):
-        """Stack like device widgets in layout and hide/unhide with combo box
-        :param device_type: type of device being stacked"""
+    def stack_device_widgets(self, device_type:str) -> QWidget:
+        """
+        Stack like device widgets in layout and hide/unhide with combo box
+        :param device_type: type of device being stacked
+        :return: widget containing all widgets pertaining to device type stacked ontop of each other
+        """
 
         device_widgets = getattr(self, f'{device_type}_widgets')
         overlap_layout = QGridLayout()
@@ -179,10 +201,12 @@ class InstrumentView(QWidget):
 
         return overlap_widget
 
-    def hide_devices(self, text, device_type):
-        """Hide device widget if not selected in combo box
+    def hide_devices(self, text: str, device_type: str) -> None:
+        """
+        Hide device widget if not selected in combo box
         :param text: selected text of combo box
-        :param device_type: type of device related to combo box"""
+        :param device_type: type of device related to combo box
+        """
 
         device_widgets = getattr(self, f'{device_type}_widgets')
         for name, widget in device_widgets.items():
@@ -191,10 +215,11 @@ class InstrumentView(QWidget):
             else:
                 widget.setVisible(True)
 
-    def write_waveforms(self, daq, daq_name):
-        """Write waveforms if livestreaming is on
+    def write_waveforms(self, daq) -> None:
+        """
+        Write waveforms if livestreaming is on
         :param daq: daq object
-        :param daq_name: name of daq"""
+       """
 
         if self.grab_frames_worker.is_running:  # if currently livestreaming
             if daq.ao_task is not None:
@@ -204,9 +229,14 @@ class InstrumentView(QWidget):
                 daq.generate_waveforms('do', self.livestream_channel)
                 daq.write_do_waveforms(rereserve_buffer=False)
 
-    def update_config_waveforms(self, daq_widget, daq_name, attr_name: str):
-        """If waveforms are changed in gui, apply changes to livestream_tasks and data_acquisition_tasks if
-        applicable """
+    def update_config_waveforms(self, daq_widget, daq_name: str, attr_name: str) -> None:
+        """
+        If waveforms are changed in gui, apply changes to livestream_tasks and data_acquisition_tasks if
+        applicable
+        :param daq_widget: widget pertaining to daq object
+        :param daq_name: name of daq
+        :param attr_name: waveform attribute to update
+        """
 
         path = attr_name.split('.')
         value = getattr(daq_widget, attr_name)
@@ -230,13 +260,17 @@ class InstrumentView(QWidget):
                              f"be reflected in acquisition")
 
     def setup_filter_wheel_widgets(self):
-        """Stack filter wheels"""
+        """
+        Stack filter wheels
+        """
 
         stacked = self.stack_device_widgets('filter_wheel')
         self.viewer.window.add_dock_widget(stacked, area='bottom', name='Filter Wheels')
 
     def setup_camera_widgets(self):
-        """Setup live view and snapshot button"""
+        """
+        Setup live view and snapshot button
+        """
 
         for camera_name, camera_widget in self.camera_widgets.items():
             # Add functionality to snapshot button
@@ -254,9 +288,11 @@ class InstrumentView(QWidget):
         stacked = self.stack_device_widgets('camera')
         self.viewer.window.add_dock_widget(stacked, area='right', name='Cameras')
 
-    def toggle_live_button(self, camera_name):
-        """Toggle text and functionality of live button when pressed
-        :param camera_name: name of camera to set up"""
+    def toggle_live_button(self, camera_name: str) -> None:
+        """
+        Toggle text and functionality of live button when pressed
+        :param camera_name: name of camera to set up
+        """
 
         live_button = getattr(self.camera_widgets[camera_name], 'live_button', QPushButton())
         live_button.disconnect()
@@ -274,10 +310,12 @@ class InstrumentView(QWidget):
         live_button.pressed.connect(lambda button=live_button: disable_button(button))
         live_button.pressed.connect(lambda camera=camera_name: self.toggle_live_button(camera_name))
 
-    def setup_live(self, camera_name, frames=float('inf')):
-        """Set up for either livestream or snapshot
+    def setup_live(self, camera_name: str, frames=float('inf')) -> None:
+        """
+        Set up for either livestream or snapshot
         :param camera_name: name of camera to set up
-        :param frames: how many frames to take"""
+        :param frames: how many frames to take
+        """
 
         if self.grab_frames_worker.is_running:
             if frames == 1:  # create snapshot layer with the latest image
@@ -295,9 +333,9 @@ class InstrumentView(QWidget):
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
 
         if frames == 1:  # pass in optional argument that this image is a snapshot
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args, snapshot=True))
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args, snapshot=True))
         else:
-            self.grab_frames_worker.yielded.connect(self.update_layer)
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args))
 
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
@@ -326,9 +364,11 @@ class InstrumentView(QWidget):
 
             daq.start()
 
-    def dismantle_live(self, camera_name):
-        """Safely shut down live
-        :param camera_name: name of camera to shut down live"""
+    def dismantle_live(self, camera_name: str) -> None:
+        """
+        Safely shut down live
+        :param camera_name: name of camera to shut down live
+        """
 
         self.instrument.cameras[camera_name].abort()
         for daq_name, daq in self.instrument.daqs.items():
@@ -337,10 +377,12 @@ class InstrumentView(QWidget):
             self.instrument.lasers[laser_name].disable()
 
     @thread_worker
-    def grab_frames(self, camera_name, frames=float("inf")):
-        """Grab frames from camera
+    def grab_frames(self, camera_name: str, frames=float("inf")) -> Iterator[tuple[np.ndarray, str]]:
+        """
+        Grab frames from camera
         :param frames: how many frames to take
-        :param camera_name: name of camera"""
+        :param camera_name: name of camera
+        """
 
         i = 0
         while i < frames:  # while loop since frames can == inf
@@ -348,12 +390,14 @@ class InstrumentView(QWidget):
             yield self.instrument.cameras[camera_name].grab_frame(), camera_name
             i += 1
 
-    def update_layer(self, args, snapshot: bool = False):
-        """Update viewer with new camera frame
-        :param args: tuple containing image and camera name
-        :param snapshot: if image taken is a snapshot or not """
+    def update_layer(self, image: np.ndarray, camera_name: str, snapshot: bool = False) -> None:
+        """
+        Update viewer with new camera frame
+        :param image: array like object to upload to viewer
+        :param camera_name: name of camera image came off of
+        :param snapshot: if image taken is a snapshot or not
+        """
 
-        (image, camera_name) = args
         if image is not None:
             layer_name = f"{camera_name} {self.livestream_channel}" if not snapshot else \
                 f"{camera_name} {self.livestream_channel} snapshot"
@@ -374,10 +418,14 @@ class InstrumentView(QWidget):
                         layer.events.contrast_limits.connect(lambda event: self.contrastChanged.emit(layer.data,
                                                                                                   layer.contrast_limits))
 
-    def save_image(self, layer, event):
-        """Save image in viewer by right-clicking viewer
+    @staticmethod
+    def save_image(layer: Union[napari.layers.image.image.Image, list[napari.layers.image.image.Image]],
+                   event: QMouseEvent) -> None:
+        """
+        Save image in viewer by right-clicking viewer
         :param layer: layer that was pressed
-        :param event: event type"""
+        :param event: mouse event
+        """
 
         if event.button == 2:  # Left click
             if layer.multiscale:
@@ -391,8 +439,10 @@ class InstrumentView(QWidget):
             if folder[0] != '':  # user pressed cancel
                 image.save(folder[0])
 
-    def setup_channel_widget(self):
-        """Create widget to select which laser to livestream with"""
+    def setup_channel_widget(self) -> None:
+        """
+        Create widget to select which laser to livestream with
+        """
 
         widget = QWidget()
         widget_layout = QVBoxLayout()
@@ -408,17 +458,19 @@ class InstrumentView(QWidget):
         widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
 
-    def change_channel(self, checked, channel):
-        """Update livestream_channel to newly selected channel
+    def change_channel(self, checked: bool, channel: str) -> None:
+        """
+        Update livestream_channel to newly selected channel
         :param channel: name of channel
-        :param checked: if button is checked (True) or unchecked(False)"""
+        :param checked: if button is checked (True) or unchecked(False)
+        """
 
         if checked:
             if self.grab_frames_worker.is_running:  # livestreaming is going
                 for old_laser_name in self.channels[self.livestream_channel].get('lasers', []):
                     self.instrument.lasers[old_laser_name].disable()
-                for daq_name, daq in self.instrument.daqs.items():
-                    self.write_waveforms(daq, daq_name)
+                for daq in self.instrument.daqs.values():
+                    self.write_waveforms(daq)
                 for new_laser_name in self.channels[channel].get('lasers', []):
                     self.instrument.lasers[new_laser_name].enable()
             self.livestream_channel = channel
@@ -426,8 +478,9 @@ class InstrumentView(QWidget):
             for filter in self.channels[self.livestream_channel].get('filters', []):
                 self.instrument.filters[filter].enable()
 
-    def create_device_widgets(self, device_name: str, device_specs: dict):
-        """Create widgets based on device dictionary attributes from instrument or acquisition
+    def create_device_widgets(self, device_name: str, device_specs: dict) -> None:
+        """
+        Create widgets based on device dictionary attributes from instrument or acquisition
          :param device_name: name of device
          :param device_specs: dictionary dictating how device should be set up
          """
@@ -453,7 +506,7 @@ class InstrumentView(QWidget):
             updating_props = specs.get('updating_properties', [])
             for prop_name in updating_props:
                 worker = self.grab_property_value(device, prop_name, getattr(gui, f'{prop_name}_widget'))
-                worker.yielded.connect(self.update_property_value)
+                worker.yielded.connect(lambda args: self.update_property_value(*args))
                 worker.start()
                 self.property_workers.append(worker)
 
@@ -469,8 +522,14 @@ class InstrumentView(QWidget):
         gui.setWindowTitle(f'{device_type} {device_name}')
 
     @thread_worker
-    def grab_property_value(self, device, property_name, widget):
-        """Grab value of property and yield"""
+    def grab_property_value(self, device: object, property_name: str, widget) -> Iterator:
+        """
+        Grab value of property and yield
+        :param device: device to grab property from
+        :param property_name: name of property to get
+        :param widget: corresponding device widget
+        :return: value of property and widget to update
+        """
 
         while True:  # best way to do this or have some sort of break?
             sleep(.5)
@@ -480,11 +539,13 @@ class InstrumentView(QWidget):
                 value = None
             yield value, widget
 
-    def update_property_value(self, args):
-        """Update stage position in stage widget
-        :param args: tuple containing the name of stage and position of stage"""
+    def update_property_value(self, value, widget) -> None:
+        """
+        Update stage position in stage widget
+        :param widget: widget to update
+        :param value: value to update with
+        """
 
-        (value, widget) = args
         try:
             if type(widget) in [QLineEdit, QScrollableLineEdit]:
                 widget.setText(str(value))
@@ -498,12 +559,13 @@ class InstrumentView(QWidget):
             pass
 
     @Slot(str)
-    def device_property_changed(self, attr_name: str, device, widget):
-        """Slot to signal when device widget has been changed
+    def device_property_changed(self, attr_name: str, device: object, widget) -> None:
+        """
+        Slot to signal when device widget has been changed
         :param widget: widget object relating to device
         :param device: device object
-        :param attr_name: name of attribute"""
-
+        :param attr_name: name of attribute
+        """
 
         name_lst = attr_name.split('.')
         self.log.debug(f'widget {attr_name} changed to {getattr(widget, name_lst[0])}')
@@ -515,7 +577,7 @@ class InstrumentView(QWidget):
 
             # attempt to pass in correct value of correct type
             descriptor = getattr(type(device), name_lst[0])
-            fset = getattr(descriptor, 'fset')  # account for property and deliminated
+            fset = getattr(descriptor, 'fset')
             input_type = list(inspect.signature(fset).parameters.values())[-1].annotation
             if input_type != inspect._empty:
                 setattr(device, name_lst[0], input_type(value))
@@ -534,8 +596,10 @@ class InstrumentView(QWidget):
             self.log.warning(f"{attr_name} can't be mapped into device properties")
             pass
 
-    def add_undocked_widgets(self):
-        """Add undocked widget so all windows close when closing napari viewer"""
+    def add_undocked_widgets(self) -> None:
+        """
+        Add undocked widget so all windows close when closing napari viewer
+        """
 
         widgets = []
         for key, dictionary in self.__dict__.items():
@@ -549,8 +613,11 @@ class InstrumentView(QWidget):
                 if getattr(widget, 'property_widgets', False) == {}:
                     undocked_widget.setVisible(False)
 
-    def setDisabled(self, disable):
-        """Enable/disable viewer"""
+    def setDisabled(self, disable: bool) -> None:
+        """
+        Enable/disable viewer
+        :param disable: boolean specifying whether to disable
+        """
 
         widgets = []
         for key, dictionary in self.__dict__.items():
@@ -562,8 +629,53 @@ class InstrumentView(QWidget):
             except AttributeError:
                 pass
 
-    def close(self):
-        """Close instruments and end threads"""
+
+    def update_config_on_quit(self) -> None:
+        """
+        Add functionality to close function to save device properties to instrument config
+        """
+
+        return_value = self.update_config_query()
+        if return_value == QMessageBox.Ok:
+            self.instrument.update_current_state_config()
+            self.instrument.save_config(self.config_save_to)
+
+    def update_config_query(self) -> Literal[0, 1]:
+        """
+        Pop up message asking if configuration would like to be saved
+        :return: user reply to message box
+        """
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setText(f"Do you want to update the instrument configuration file at {self.config_save_to} "
+                       f"to current instrument state?")
+        msgBox.setWindowTitle("Updating Configuration")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        save_elsewhere = QPushButton('Change Directory')
+        msgBox.addButton(save_elsewhere, QMessageBox.DestructiveRole)
+
+        save_elsewhere.pressed.connect(lambda: self.select_directory(True, msgBox))
+
+        return msgBox.exec()
+
+    def select_directory(self,  pressed: bool, msgBox: QMessageBox) -> None:
+        """
+        Select directory
+        :param pressed: boolean for button press
+        :param msgBox:
+        """
+
+        fname = QFileDialog()
+        folder = fname.getSaveFileName(directory=str(self.instrument.config_path))
+        if folder[0] != '': # user pressed cancel
+            msgBox.setText(f"Do you want to update the instrument configuration file at {folder[0]} "
+                           f"to current instrument state?")
+            self.config_save_to = Path(folder[0])
+
+    def close(self) -> None:
+        """
+        Close instruments and end threads
+        """
 
         for worker in self.property_workers:
             worker.quit()

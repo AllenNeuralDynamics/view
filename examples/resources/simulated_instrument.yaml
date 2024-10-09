@@ -1,23 +1,39 @@
 instrument:
   channels:
     '488':
-      filters: [BP488]
-      lasers: [488nm]
-      cameras: [vnp-604mx]
+      cameras:
+      - vp-151mx
+      filters:
+      - BP488
+      focusing_stages:
+      - n stage axis
+      lasers:
+      - 488nm
     '561':
-      filters: [BP561]
-      lasers: [561nm]
-      cameras: [vnp-604mx]
+      cameras:
+      - vp-151mx
+      filters:
+      - BP561
+      focusing_stages:
+      - n stage axis
+      lasers:
+      - 561nm
     '639':
-      filters: [LP638]
-      lasers: [639nm]
-      cameras: [vnp-604mx]
+      cameras:
+      - vp-151mx
+      filters:
+      - LP638
+      focusing_stages:
+      - n stage axis
+      lasers:
+      - 639nm
   devices:
     639nm:
       color: red
       driver: voxel.devices.lasers.simulated
       init:
-        port: COM5
+        id: COM5
+        wavelength: 639
       module: SimulatedLaser
       type: laser
     ASI FW-1000:
@@ -66,13 +82,13 @@ instrument:
           init:
             id: MB405/488/561/638
 
-    ASI LS-100 x axis:
+    ASI MS-8000 z axis:
       driver: voxel.devices.stage.simulated
       init:
         hardware_axis: x
         instrument_axis: z
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: scanning_stage
     ASI MS-8000 x axis:
@@ -81,7 +97,7 @@ instrument:
         hardware_axis: y
         instrument_axis: x
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: tiling_stage
     ASI MS-8000 y axis:
@@ -90,21 +106,30 @@ instrument:
         hardware_axis: z
         instrument_axis: y
       module: Stage
-      settings:
+      properties:
         speed_mm_s: 1.0
       type: tiling_stage
+    n stage axis:
+      driver: voxel.devices.stage.simulated
+      init:
+        hardware_axis: n
+        instrument_axis: n
+      module: Stage
+      properties:
+        speed_mm_s: 1.0
+      type: focusing_stage
     PCIe-6738:
-      driver: voxel.devices.daq.ni
+      driver: voxel.devices.daq.simulated
       init:
         dev: Dev2
-      settings:
+      properties:
         tasks:
           ao_task:
             name: ao task
             ports:
               stage:
                 device_max_volts: 5.0
-                device_min_volts: 0.0
+                device_min_volts: -5.0
                 parameters:
                   end_time_ms:
                     channels:
@@ -130,7 +155,7 @@ instrument:
                 waveform: square wave
               tunable lens:
                 device_max_volts: 5.0
-                device_min_volts: 0.0
+                device_min_volts: -5.0
                 parameters:
                   amplitude_volts:
                     channels:
@@ -161,7 +186,7 @@ instrument:
                 waveform: sawtooth
               x galvo mirror:
                 device_max_volts: 5.0
-                device_min_volts: 0.0
+                device_min_volts: -5.0
                 parameters:
                   amplitude_volts:
                     channels:
@@ -235,75 +260,51 @@ instrument:
               trigger_port: PFI0
       module: DAQ
       type: daq
-    combiner_0:
+    488nm:
+      color: purple
       driver: voxel.devices.lasers.simulated
       init:
-        port: COM3
-      module: SimulatedCombiner
-      subdevices:
-        488nm:
-          color: purple
-          driver: voxel.devices.lasers.simulated
-          init:
-            coefficients:
-              0: -57.515
-              1: 3.218
-            port: COM5
-            prefix: L6
-          module: SimulatedLaser
-          settings:
-            cdrh: 'OFF'
-            constant_current: 'ON'
-            modulation_mode: digital
-          type: laser
-        561nm:
-          color: greenyellow
-          driver: voxel.devices.lasers.simulated
-          init:
-            port: COM5
-            prefix: L3
-          module: SimulatedLaser
-          type: laser
-      type: combiner
+        wavelength: 488
+        coefficients:
+          0: -57.515
+          1: 3.218
+        id: COM5
+        prefix: L6
+      module: SimulatedLaser
+      properties:
+        cdrh: 'OFF'
+        constant_current: 'ON'
+        modulation_mode: digital
+      type: laser
+    561nm:
+      color: greenyellow
+      driver: voxel.devices.lasers.simulated
+      init:
+        id : COM5
+        wavelength: 561
+        prefix: L3
+      module: SimulatedLaser
+      type: laser
     tigerbox:
       driver: voxel.devices.stage.simulated
       module: Joystick
       type: joystick
-    vnp-604mx:
-      driver: voxel.devices.camera.simulated
-      init:
-        id: sim001
-      module: Camera
-      settings:
-        exposure_time_ms: 40.0
-        pixel_type: mono16
-        roi:
-          height_offest_px: 4744
-          height_px: 1152
-          width_offset_px: 6528
-          width_px: 1152
-        trigger:
-          mode: 'off'
-          polarity: rising
-          source: external
-      type: camera
     vp-151mx:
       driver: voxel.devices.camera.simulated
       init:
         id: sim000
       module: Camera
-      settings:
+      properties:
         exposure_time_ms: 20.0
         pixel_type: mono16
-        roi:
-          height_offest_px: 4744
-          height_px: 1152
-          width_offset_px: 6528
-          width_px: 1152
+        height_offest_px: 4744
+        height_px: 1152
+        width_offset_px: 6528
+        width_px: 1152
         trigger:
           mode: 'off'
           polarity: rising
           source: external
       type: camera
   id: exaspim-01
-  master_device: vnp-604mx
+  master_device: vp-151mx
