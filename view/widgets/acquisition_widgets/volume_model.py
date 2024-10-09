@@ -1,16 +1,14 @@
-from pyqtgraph.opengl import GLViewWidget, GLBoxItem, GLLinePlotItem, GLTextItem, GLImageItem
+from pyqtgraph.opengl import GLImageItem
 from qtpy.QtWidgets import QMessageBox, QCheckBox, QGridLayout, QButtonGroup, QLabel, QRadioButton, QPushButton, QWidget
 from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion, QColor
+from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
 import numpy as np
 from scipy import spatial
 from pyqtgraph import makeRGBA
 from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewWidget
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
-from view.widgets.miscellaneous_widgets.gl_tile_item import GLTileItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
-from view.widgets.base_device_widget import create_widget
 
 
 class SignalChangeVar:
@@ -42,10 +40,10 @@ class VolumeModel(GLOrthoViewWidget):
 
     def __init__(self,
                  unit: str = 'mm',
-                 coordinate_plane: list[str] = ['x', 'y', 'z'],
-                 fov_dimensions: list[float] = [1.0, 1.0, 0],
-                 fov_position: list[float] = [0.0, 0.0, 0.0],
-                 limits: list[float] = [[float('-inf'), float('inf')] for _ in range(3)],
+                 limits: list[[float, float], [float, float], [float, float]] = None,
+                 fov_dimensions: list[float, float, float] = None,
+                 fov_position: list[float, float, float] = None,
+                 coordinate_plane: list[str, str, str] = None,
                  fov_color: str = 'yellow',
                  fov_line_width: int = 2,
                  fov_opacity: float = 0.15,
@@ -93,10 +91,10 @@ class VolumeModel(GLOrthoViewWidget):
 
         # initialize attributes
         self.unit = unit
-        self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane]
+        self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane] if coordinate_plane else ['x', 'y', 'z']
         self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
-        self.fov_dimensions = fov_dimensions[:2]+[0]    # add 0 in the scanning dimension to correctly draw box
-        self.fov_position = fov_position
+        self.fov_dimensions = fov_dimensions[:2]+[0] if fov_dimensions else [1.0, 1.0, 0]    # add 0 in the scanning dim
+        self.fov_position = fov_position if fov_position else [0.0, 0.0, 0.0]
         self.view_plane = (self.coordinate_plane[0], self.coordinate_plane[1])  # plane currently being viewed
 
         self.scan_volumes = np.zeros([1, 1])  # 2d list detailing volume of tiles
@@ -114,6 +112,7 @@ class VolumeModel(GLOrthoViewWidget):
         self.tile_line_width = tile_line_width
 
         # limits aesthetic properties
+        limits = sorted(limits) if limits else [[float('-inf'), float('inf')] for _ in range(3)]
         self.limits_line_width = limits_line_width
         self.limits_color = limits_color
         self.limits_opacity = limits_opacity

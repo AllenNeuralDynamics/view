@@ -1,5 +1,5 @@
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtWidgets import  QSlider
+from qtpy.QtWidgets import QSlider
 
 
 class QScrollableFloatSlider(QSlider):
@@ -21,6 +21,7 @@ class QScrollableFloatSlider(QSlider):
 
     def maximum(self):
         return super().maximum() / self.divisor
+
     def minimum(self):
         return super().minimum() / self.divisor
 
