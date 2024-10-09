@@ -59,6 +59,12 @@ instrument_view:
         module: FilterWheelWidget
         init:
           advanced_user: True
+          colors:
+            BP405: purple
+            BP488: blue
+            BP561: yellowgreen
+            LP638: red
+            MB405/488/561/638: magenta
       vp-151mx:
         type: camera
         driver: view.widgets.device_widgets.camera_widget
