@@ -14,6 +14,21 @@ found in the input acquisition (data writers, data transfers, routines, ect.). S
 widgets used for each operation can be specified in the config.yaml or use the default BaseDeviceWidget if not specified. The 
 Acquisition window additionally houses widgets to define the scan volume for the acquisition engine. 
 
+## Table of Contents
+___
+##### Table of Contents  
+- [Getting Started](#getting-started)  
+- [Usage](#usage)
+  - [Instrument View](#instrument-view)
+    - [yaml specifications](#yaml-specifications)
+  - [Acquisition View](#acquisition-view)
+    - [yaml specifications](#yaml-specifications)
+    - [Volume Plan](#volume-plan)
+    - [Volume Model](#volume-model)
+    - [Channel Plan](#channel-plan)
+    - [Output](#output)
+
+
 ## Getting Started
 ___
 ### Prerequisites
@@ -83,7 +98,7 @@ instrument_view:
 ```
 Note that the name used in the gui yaml must match the name found in the instrument object and any init arguments should 
 be included under init. If the device is not found within the yaml, the default will be a widget that will create text 
-inputs for all properties of the device: 
+inputs for all properties of the device. An example of a base laser widget is seen below:
 
 ![instrument view](visuals/laser_base_widget.png)
 
@@ -95,6 +110,7 @@ If there is a property of a device that needs to be updated during gui use, like
 needs to be included in the updating_properties list within the device section. 
 
 ### Acquisition View
+
 #### Initialization
 To initialize the acquisition view, an acquisition object needs to be created and passed in as an argument as well as
 the instrument view. The acquisition view will share the same gui as the instrument view.
@@ -250,3 +266,74 @@ acquisition_view:
             initial_value: example
 ```
 ![instrument view](visuals/channel_plan_edit.gif)
+
+#### Output
+The acquisition view's purpose is to construct an ordered list of tiles to be taken in an acquisition based on the 
+configuration of the volume and channel plan. The tile list will be saved under the tiles key in acquisition object's 
+yaml file. Each tile is represented by a dictionary that specifies channel, position in the input unit, step size (um), 
+step count, and prefix. Any column in the channel plan will also be included. The acquisition view is assuming the 
+acquisition engine will be able to ingest and use the tile list saved in the respective yaml file. An example tile list
+is below: 
+```commandline
+  tiles:
+    - channel: 'CH488'
+      position_mm:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      tile_number: 0
+      488 nm:
+        power_setpoint_mw: 50.0
+      vp-151mx:
+        binning: 1.0
+      n stage axis:
+        position_mm: -2.35
+      steps: 2048
+      step_size: 1
+      prefix: tile_0
+    - channel: 'CH488'
+      position_mm:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      tile_number: 1
+      488 nm:
+        power_setpoint_mw: 60.0
+      vp-151mx:
+        binning: 1.0
+      n stage axis:
+        position_mm: -2.37
+      steps: 2048
+      step_size: 1
+      prefix: tile_1
+    - channel: 'CH638'
+      position_mm:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      tile_number: 0
+      638 nm:
+        power_setpoint_mw: 99.0
+      vp-151mx:
+        binning: 1.0
+      n stage axis:
+        position_mm: -2.52
+      steps: 2048
+      step_size: 1
+      prefix: tile_0
+    - channel: 'CH638'
+      position_mm:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      tile_number: 1
+      638 nm:
+        power_setpoint_mw: 12.0
+      vp-151mx:
+        binning: 1.0
+      n stage axis:
+        position_mm: -2.84
+      steps: 2048
+      step_size: 1
+      prefix: tile_1
+```
