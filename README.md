@@ -20,9 +20,9 @@ ___
 - [Getting Started](#getting-started)  
 - [Usage](#usage)
   - [Instrument View](#instrument-view)
-    - [yaml specifications](#yaml-specifications)
+    - [Instrument View yaml ](#instrument-view-yaml )
   - [Acquisition View](#acquisition-view)
-    - [yaml specifications](#yaml-specifications)
+    - [Acquisition View yaml](#acquisition-view-yaml)
     - [Volume Plan](#volume-plan)
     - [Volume Model](#volume-model)
     - [Channel Plan](#channel-plan)
@@ -74,7 +74,7 @@ If the instrument object has devices that don't fit into these categories, these
 
 ![instrument view](visuals/instrument_view.JPG)
 
-#### yaml specifications
+#### Instrument View yaml 
 To specify a widget for a device, it must be included in the instrument_view dictionary under device_widget within the gui yaml.
 The instrument_view portion of the yaml should be configured like so: 
 ```commandline
@@ -135,7 +135,7 @@ construct the acquisition volume: volume plan widget, volume model widget, and c
 
 ![instrument view](visuals/acquisition_view.JPG)
 
-#### yaml specifications
+#### Acquisition View yaml 
 Under the acquisition_view portion of the yaml, the field of view dimensions (fov_view), coordinate_plane, and unit 
 must be defined. The unit will be used consistently throughout the volume plan, volume model, and  channel plan to 
 define the volume. Note that the fov_view must be in the same units as the unit variable. The coordinate plane will be a 
