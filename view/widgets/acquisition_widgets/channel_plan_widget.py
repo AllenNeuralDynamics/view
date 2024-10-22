@@ -1,7 +1,8 @@
-from qtpy.QtWidgets import QTabWidget, QTabBar, QWidget, QPushButton, \
+from qtpy.QtWidgets import QTabBar, QWidget, QPushButton, \
     QMenu, QToolButton, QAction, QTableWidget, QTableWidgetItem, QComboBox, QSpinBox
 from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate, QTextItemDelegate, QComboItemDelegate
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+from view.widgets.miscellaneous_widgets.q_add_tab_widget import QAddTabWidget
 from view.widgets.base_device_widget import label_maker
 import numpy as np
 from qtpy.QtCore import Signal, Qt
@@ -9,7 +10,7 @@ from inflection import singularize
 from math import isnan
 import pint
 import inspect
-class ChannelPlanWidget(QTabWidget):
+class ChannelPlanWidget(QAddTabWidget):
     """Widget defining parameters per tile per channel """
 
     channelAdded = Signal([str])
@@ -41,10 +42,6 @@ class ChannelPlanWidget(QTabWidget):
 
         self._tile_volumes = np.zeros([1, 1], dtype=float)  # array of tile starts and ends. Constant for every channel
 
-        self.tab_bar = ChannelPlanTabBar()
-        self.tab_bar.setMovable(True)
-        self.setTabBar(self.tab_bar)
-
         self.channel_order = QComboBox()
         self.channel_order.addItems(['per Tile', 'per Volume', ])
         self.setCornerWidget(self.channel_order)
@@ -54,22 +51,19 @@ class ChannelPlanWidget(QTabWidget):
         # initialize column dictionaries and column delgates
         self.initialize_tables(instrument_view)
 
-        # add tab with button to add channels
-        self.add_tool = QToolButton()
-        self.add_tool.setText('+')
+        # update menu for adding channels
         menu = QMenu()
         for channel in self.possible_channels:
             action = QAction(str(channel), self)
             action.triggered.connect(lambda clicked, ch=channel: self.add_channel(ch))
             menu.addAction(action)
-        self.add_tool.setMenu(menu)
-        self.add_tool.setPopupMode(QToolButton.InstantPopup)
-        self.insertTab(0, QWidget(), '')  # insert dummy qwidget
-        self.tab_bar.setTabButton(0, QTabBar.RightSide, self.add_tool)
+        self.setMenu(menu)
 
         # reorder channels if tabbar moved
-        self.tab_bar.tabMoved.connect(lambda:
+        tab_bar = self.tabBar()
+        tab_bar.tabMoved.connect(lambda:
                                       setattr(self, 'channels', [self.tabText(ch) for ch in range(self.count() - 1)]))
+
         self._apply_all = True  # external flag to dictate behaviour of added tab
 
     def initialize_tables(self, instrument_view) -> None:
@@ -254,19 +248,12 @@ class ChannelPlanWidget(QTabWidget):
         self.insertTab(0, table, channel)
         self.setCurrentIndex(0)
 
-        # add button to remove channel
-        button = QPushButton('x')
-        button.setMaximumWidth(20)
-        button.setMaximumHeight(20)
-        button.pressed.connect(lambda: self.remove_channel(channel))
-        self.tab_bar.setTabButton(0, QTabBar.RightSide, button)
-
         # remove channel from add_tool menu
-        menu = self.add_tool.menu()
+        menu = self.menu()
         for action in menu.actions():
             if action.text() == channel:
                 menu.removeAction(action)
-        self.add_tool.setMenu(menu)
+        self.setMenu(menu)
 
         self.channels = [channel] + self.channels
 
@@ -306,6 +293,16 @@ class ChannelPlanWidget(QTabWidget):
                     self.enable_item(item, not self.apply_all)
         table.blockSignals(False)
 
+    def removeTab(self, index: int) -> None:
+        """
+        Overwriting to handel removing a channel
+        :param index: index to remove
+        """
+        ch = self.tabText(index)
+        removed = super().removeTab(index)
+        if removed is None:
+            self.remove_channel(ch)
+
     def remove_channel(self, channel: str) -> None:
         """Remove channel from acquisition
         :param channel: name of channel
@@ -315,8 +312,6 @@ class ChannelPlanWidget(QTabWidget):
 
         table = getattr(self, f'{channel}_table')
         index = self.indexOf(table)
-
-        self.removeTab(index)
 
         # remove key from attributes
         for i in range(table.columnCount() - 1):  # skip row, column
@@ -415,32 +410,3 @@ class ChannelPlanWidget(QTabWidget):
             step_size = 0
         self.step_size[channel][*index] = step_size
         return step_size, steps
-
-class ChannelPlanTabBar(QTabBar):
-    """TabBar that will keep add channel tab at end"""
-
-    def __init__(self):
-
-        super(ChannelPlanTabBar, self).__init__()
-        self.tabMoved.connect(self.tab_index_check)
-
-    def tab_index_check(self, prev_index: int, curr_index: int) -> None:
-        """
-        Keep last tab as last tab
-        :param prev_index: previous index of tab
-        :param curr_index: index tab was moved to
-        """
-
-        if prev_index == self.count() - 1:
-            self.moveTab(curr_index, prev_index)
-
-    def mouseMoveEvent(self, ev) -> None:
-        """
-        Make last tab immovable
-        :param ev: qmouseevent that triggered call
-        :return:
-        """
-        index = self.currentIndex()
-        if index == self.count() - 1:  # last tab is immovable
-            return
-        super().mouseMoveEvent(ev)

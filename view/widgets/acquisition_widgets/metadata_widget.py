@@ -1,9 +1,13 @@
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties
 from qtpy.QtWidgets import QWidget
+from qtpy.QtCore import Signal
 from typing import Callable
 
 class MetadataWidget(BaseDeviceWidget):
     """Widget for handling metadata class"""
+
+    acquisitionNameChanged = Signal(str)
+
     def __init__(self, metadata_class, advanced_user: bool = True) -> None:
         """
         :param metadata_class: class to create widget out of
@@ -38,5 +42,5 @@ class MetadataWidget(BaseDeviceWidget):
             func(object, value)
             self.acquisition_name = self.metadata_class.acquisition_name
             self.update_property_widget('acquisition_name')
-
+            self.acquisitionNameChanged.emit(self.acquisition_name)
         return wrapper

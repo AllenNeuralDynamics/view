@@ -1,17 +1,23 @@
-from qtpy.QtWidgets import QTabWidget, QTabBar, QToolButton, QMenu, QWidget, QAction, QPushButton
-import typing
+from qtpy.QtWidgets import QTabWidget, QTabBar, QToolButton, QMenu, QWidget, QAction, QMessageBox
+from qtpy.QtCore import Signal
 
 class QAddTabWidget(QTabWidget):
     """QTabWidget that is able to delete and add tabs"""
+
+    tabClosed = Signal()
 
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
+        self.setTabsClosable(True)
+
         # create tab bar
         tab_bar = QAddTabBar()
         tab_bar.setMovable(True)
         self.setTabBar(tab_bar)
+        self.setTabsClosable(True)
+        self.tabCloseRequested.connect(self.removeTab)  # if close button clicked, remove tab
 
         # add tab with button to add channels
         self.add_tool = QToolButton()
@@ -26,26 +32,26 @@ class QAddTabWidget(QTabWidget):
         self.insertTab(0, QWidget(), '')  # insert dummy qwidget
         tab_bar.setTabButton(0, QTabBar.RightSide, self.add_tool)
 
-    def insertTab(self, index: int, widget: typing.Optional[QWidget], a2: typing.Optional[str]) -> int:
+    def removeTab(self, index: int) -> False or None:
         """
-        Overwrite to add removal button to tab
-        :param index: index to insert tab
-        :param widget: Widget to set tab as
-        :param a2: tab title
-        :return: index of tab
+        Overwrited to ask user if they want to close tab
+        :param index: index to close
+        :return: false if tab was not removed
         """
-        
-        super().insertTab(index, widget, a2)
 
-        tab = self.widget(index)
-        tab_bar = self.tabBar()
+        tab_text = self.tabText(index)
 
-        # add button to remove channel
-        button = QPushButton('x')
-        button.setMaximumWidth(20)
-        button.setMaximumHeight(20)
-        tab_bar.setTabButton(index, QTabBar.RightSide, button)
-        button.pressed.connect(lambda: self.removeTab(self.indexOf(tab)))
+        msg = QMessageBox()
+        msg.setText(f'Would you like to remove the {tab_text} tab')
+        msg.setWindowTitle(f'Remove {tab_text} Tab?')
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+
+        remove = msg.exec_()
+        if remove == QMessageBox.StandardButton.Yes:
+            super().removeTab(index)
+            self.tabClosed.emit(index)
+        else:
+            return False
 
     def setMenu(self, menu: QMenu) -> None:
         """

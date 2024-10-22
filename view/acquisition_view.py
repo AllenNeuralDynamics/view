@@ -11,16 +11,16 @@ import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QDockWidget, \
     QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication, \
-    QHBoxLayout, QFrame, QFileDialog, QMessageBox, QStackedWidget, QTabBar, QToolButton, QMenu, QAction, QTabWidget
+    QHBoxLayout, QFrame, QFileDialog, QMessageBox, QStackedWidget, QMenu, QAction, QWidgetAction, QCheckBox
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+from view.widgets.miscellaneous_widgets.q_add_tab_widget import QAddTabWidget
 from pathlib import Path
 from typing import Literal, Union, Iterator
 import numpy as np
-
 
 class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -81,18 +81,38 @@ class AcquisitionView(QWidget):
         # since scans can share metadata widget, keep track with list since duplicate widgets can't be tracked in
         # stacked widget
         self.metadata_widget_list = []
+        self.metadata_class_list = []  # need create new metadata class for each widget
 
         # initialize list of acceptable tile colors found from QColor.colorNames()
         vol_mod_cfg = self.config['acquisition_view']['acquisition_widgets'].get('volume_model', {}).get('init', {})
         init_color = vol_mod_cfg.get('active_tile_color', 'cyan')
         self.tile_colors = [init_color,  # first color found if config
-                            'blueviolet'
-                            'chartreuse'
-                            'darkorange'
-                            'darkseagreen'
+                            'blueviolet',
+                            'chartreuse',
+                            'darkorange',
+                            'darkseagreen',
                             'deeppink']
 
-        self.add_acquisition_widgets()
+        # configure tab bar to add scans
+        self.tab_widget = QAddTabWidget()
+        self.tab_widget.setMovable(False)
+        self.tab_widget.tabClosed.connect(self.remove_acquisition_widgets)
+
+        # update menu for adding acquisitions
+        menu = QMenu()
+        action = QAction('Add acquisition', self)
+        concatenate = QCheckBox('Concatenate with previous scan')
+        check_box_action = QWidgetAction(self)
+        check_box_action.setDefaultWidget(concatenate)
+        # if scan added, add acquisition and link correct metadata widget if concatenate is checked
+        action.triggered.connect(lambda: self.add_acquisition_widgets() if not concatenate.isChecked() else
+        self.add_acquisition_widgets(metadata_obj=getattr(self, 'metadata_widget_list')[-1].metadata_class))
+        menu.addAction(action)
+        menu.addAction(check_box_action)
+        self.tab_widget.setMenu(menu)
+
+        # add initial acquisition widgets
+        self.add_acquisition_widgets(metadata_obj=self.acquisition.metadata)  # initialize metadata object
 
         # format main acquisition widget
         acquisition_widget = QSplitter(Qt.Vertical)
@@ -134,23 +154,6 @@ class AcquisitionView(QWidget):
 
         # setup stage thread
         self.setup_fov_position()
-
-        # set up tab bar to add scans
-        self.tab_widget = QTabWidget()
-        self.add_scan_bar = AcquisitionTabBar()
-        self.tab_widget.setTabBar(self.add_scan_bar)
-        self.add_scan_bar.setMovable(True)
-        self.add_tool = QToolButton()
-        self.add_tool.setText('+')
-        menu = QMenu()
-        # for channel in self.possible_channels:
-        #     action = QAction(str(channel), self)
-        #     action.triggered.connect(lambda clicked, ch=channel: self.add_channel(ch))
-        #     menu.addAction(action)
-        self.add_tool.setMenu(menu)
-        self.add_tool.setPopupMode(QToolButton.InstantPopup)
-        self.tab_widget.insertTab(0, QWidget(), '')  # insert dummy qwidget
-        self.add_scan_bar.setTabButton(0, QTabBar.RightSide, self.add_tool)
 
         # add tab bar
         self.main_layout.addWidget(self.tab_widget, 0, 0, 1, 4)
@@ -277,8 +280,8 @@ class AcquisitionView(QWidget):
 
         # loop through acquisitions
         for metadata_widget, tiles in self.tile_dictionary.items():
-            self.acquisition.metadata.name = metadata_widget.name       # update metadata name
-            self.acquisition.config['acquisition']['tiles'] = tiles     # update tiles written in config
+            self.acquisition.metadata = metadata_widget.metadata_class  # update acquisition metadata class
+            self.acquisition.config['acquisition']['tiles'] = tiles  # update tiles written in config
             self.acquisition.run()
 
     def acquisition_ended(self) -> None:
@@ -357,29 +360,34 @@ class AcquisitionView(QWidget):
             else:
                 widget.setVisible(True)
 
-    def create_metadata_widget(self) -> MetadataWidget:
+    def create_metadata_widget(self, metadata_obj) -> MetadataWidget:
         """
         Create custom widget for metadata in config
+        :param metadata_obj: metadata class to tie to widget
         :return: widget for metadata
         """
 
-        metadata_widget = MetadataWidget(self.acquisition.metadata)
-        # metadata_widget.ValueChangedInside[str].connect(lambda name: setattr(self.acquisition.metadata, name,
-        #                                                                      getattr(metadata_widget, name)))
+        metadata_widget = MetadataWidget(metadata_obj)
+        metadata_widget.ValueChangedInside[str].connect(lambda name: setattr(metadata_obj, name,
+                                                                             getattr(metadata_widget, name)))
         for name, widget in metadata_widget.property_widgets.items():
             widget.setToolTip('')  # reset tooltips
         metadata_widget.setWindowTitle(f'Metadata')
         return metadata_widget
 
-    def add_acquisition_widgets(self, metadata_widget: MetadataWidget = None) -> QSplitter:
+    def add_acquisition_widgets(self, metadata_obj=None) -> QSplitter:
         """
         Add and create widgets to visualize acquisition grid
-        :param metadata_widget: metadata widget to associate with acquisition
+        :param metadata_obj: metadata object to associate with acquisition
         :return: splitter widget containing the volume model, volume plan, and channel plan widget
         """
 
-        # add or create metadata widget corresponding to acquisition widgets
-        metadata_widget = metadata_widget if metadata_widget else self.create_metadata_widget()
+        # add or create metadata widget and object corresponding to acquisition widgets
+        concatenate = False if metadata_obj else True
+        metadata_obj = metadata_obj if metadata_obj else \
+            type(self.acquisition.metadata)(**self.acquisition.config['acquisition']['metadata']['init'])
+        metadata_widget = self.create_metadata_widget(metadata_obj) \
+            if concatenate or len(self.metadata_widget_list) == 0 else self.metadata_widget_list[-1]
         self.metadata_widgets.addWidget(metadata_widget)
         self.metadata_widget_list.append(metadata_widget)
 
@@ -447,7 +455,42 @@ class AcquisitionView(QWidget):
         volume_model.itemAdded.connect(self.add_model_items)  # update other models with items added
         volume_model.itemRemoved.connect(self.remove_model_items)  # update other models with items removed
 
+        # add tab for scan and connect signals
+        index = self.tab_widget.count() - 1
+        self.tab_widget.insertTab(index, QWidget(), metadata_widget.acquisition_name)
+        metadata_widget.acquisitionNameChanged.connect(lambda name: self.tab_widget.setTabText(index, name))
+        self.tab_widget.setCurrentIndex(index)
+        self.change_stacked_widgets(index)
+
+        # connect tab bar signals
+        self.tab_widget.tabBarClicked.connect(self.change_stacked_widgets)
+
         return metadata_widget, volume_plan, volume_model, channel_plan
+
+    def remove_acquisition_widgets(self, index: int) -> None:
+        """
+        Remove acquisition widgets from stacked widgets
+        :param index: index to remove
+        """
+
+        self.volume_plans.removeWidget(self.volume_plans.widget(index))
+        self.volume_tables.removeWidget(self.volume_tables.widget(index))
+        self.volume_models.removeWidget(self.volume_models.widget(index))
+        self.channel_plans.removeWidget(self.channel_plans.widget(index))
+        self.metadata_widgets.removeWidget(self.metadata_widget_list[index])
+        del self.metadata_widget_list[index]
+        self.update_tiles()
+    def change_stacked_widgets(self, index: int) -> None:
+        """
+        Change index of all stacked widgets
+        :param index: index to change to
+        """
+
+        self.volume_plans.setCurrentIndex(index)
+        self.volume_tables.setCurrentIndex(index)
+        self.volume_models.setCurrentIndex(index)
+        self.channel_plans.setCurrentIndex(index)
+        self.metadata_widgets.setCurrentWidget(self.metadata_widget_list[index])
 
     def add_model_items(self, item) -> None:
         """
@@ -519,8 +562,8 @@ class AcquisitionView(QWidget):
         """
 
         self.tile_dictionary = self.create_tile_dictionary()
-        #self.acquisition.config['acquisition']['tiles'] = self.create_tile_dictionary()
-        print(self.tile_dictionary)
+        # self.acquisition.config['acquisition']['tiles'] = self.create_tile_dictionary()
+
 
     def move_stage(self, fov_position: list[float, float, float]) -> None:
         """
@@ -750,9 +793,9 @@ class AcquisitionView(QWidget):
             elif channel_plan.channel_order.currentText() == 'per Volume':
                 for ch in channel_plan.channels:
                     for tile in sliced_value:
-                        tiles.append(self.write_tile(volume_plan, channel_plan,ch, tile))
+                        tiles.append(self.write_tile(volume_plan, channel_plan, ch, tile))
 
-            if i != 0 and self.metadata_widget_list[i-1] == metadata:  # prev scan tiles should be merged w/ current
+            if i != 0 and self.metadata_widget_list[i - 1] == metadata:  # prev scan tiles should be merged w/ current
                 tile_dictionary[metadata] += tiles
             else:
                 tile_dictionary[metadata] = tiles
@@ -867,33 +910,3 @@ class AcquisitionView(QWidget):
                 except AttributeError:
                     self.log.debug(f'{device_name} {operation_name} does not have close function')
         self.acquisition.close()
-
-
-class AcquisitionTabBar(QTabBar):
-    """TabBar that will keep add an acquisition to acquisition_view"""
-
-    def __init__(self):
-
-        super().__init__()
-        self.tabMoved.connect(self.tab_index_check)
-
-    def tab_index_check(self, prev_index: int, curr_index: int) -> None:
-        """
-        Keep last tab as last tab
-        :param prev_index: previous index of tab
-        :param curr_index: index tab was moved to
-        """
-
-        if prev_index == self.count() - 1:
-            self.moveTab(curr_index, prev_index)
-
-    def mouseMoveEvent(self, ev) -> None:
-        """
-        Make last tab immovable
-        :param ev: qmouseevent that triggered call
-        :return:
-        """
-        index = self.currentIndex()
-        if index == self.count() - 1:  # last tab is immovable
-            return
-        super().mouseMoveEvent(ev)
