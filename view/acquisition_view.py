@@ -426,7 +426,14 @@ class AcquisitionView(QWidget):
                                    coordinate_plane=self.coordinate_plane,
                                    unit=self.unit,
                                    **vol_kwargs)
-        self.volume_models.addWidget(volume_model)
+        # populate with previous volume model items
+        for i in range(self.volume_models.count()):
+            other_volume_model = self.volume_models.widget(i)
+            for item in other_volume_model.items:
+                if item != other_volume_model.fov_view:  # skip fov_view
+                    volume_model.addItem(item)
+
+        self.volume_models.addWidget(volume_model)  # add top stacked widget
         self.volume_models_widgets.addWidget(volume_model.widgets)
 
         # create channel plan
@@ -476,6 +483,7 @@ class AcquisitionView(QWidget):
         self.volume_plans.removeWidget(self.volume_plans.widget(index))
         self.volume_tables.removeWidget(self.volume_tables.widget(index))
         self.volume_models.removeWidget(self.volume_models.widget(index))
+        self.volume_models_widgets.removeWidget(self.volume_models_widgets.widget(index))
         self.channel_plans.removeWidget(self.channel_plans.widget(index))
         self.metadata_widgets.removeWidget(self.metadata_widget_list[index])
         del self.metadata_widget_list[index]
@@ -489,6 +497,7 @@ class AcquisitionView(QWidget):
         self.volume_plans.setCurrentIndex(index)
         self.volume_tables.setCurrentIndex(index)
         self.volume_models.setCurrentIndex(index)
+        self.volume_models_widgets.setCurrentIndex(index)
         self.channel_plans.setCurrentIndex(index)
         self.metadata_widgets.setCurrentWidget(self.metadata_widget_list[index])
 

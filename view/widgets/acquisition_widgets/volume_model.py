@@ -492,7 +492,8 @@ class VolumeModel(GLOrthoViewWidget):
         Overwrite to emit signal when item added
         """
         super().addItem(item)
-        self.itemAdded.emit(item)
+        if item != getattr(self, 'fov_view', None):
+            self.itemAdded.emit(item)
 
     def removeItem(self, item):
         """
