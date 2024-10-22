@@ -2,7 +2,8 @@ import logging
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget, label_maker
 from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
-from view.widgets.acquisition_widgets.volume_plan_widget import VolumePlanWidget, GridFromEdges, GridWidthHeight, GridRowsColumns
+from view.widgets.acquisition_widgets.volume_plan_widget import VolumePlanWidget, GridFromEdges, GridWidthHeight, \
+    GridRowsColumns
 from view.widgets.acquisition_widgets.volume_model import VolumeModel
 from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidget
 from qtpy.QtCore import Slot, Qt
@@ -10,7 +11,7 @@ import inflection
 from time import sleep
 from qtpy.QtWidgets import QGridLayout, QWidget, QComboBox, QSizePolicy, QScrollArea, QDockWidget, \
     QLabel, QPushButton, QSplitter, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QSlider, QApplication, \
-    QHBoxLayout, QFrame, QFileDialog, QMessageBox
+    QHBoxLayout, QFrame, QFileDialog, QMessageBox, QStackedWidget, QTabBar, QToolButton, QMenu, QAction, QTabWidget
 from qtpy.QtGui import QFont
 from napari.qt.threading import thread_worker, create_worker
 from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
@@ -19,6 +20,7 @@ from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollabl
 from pathlib import Path
 from typing import Literal, Union, Iterator
 import numpy as np
+
 
 class AcquisitionView(QWidget):
     """"Class to act as a general acquisition view model to voxel instrument"""
@@ -43,6 +45,9 @@ class AcquisitionView(QWidget):
         self.coordinate_plane = self.config['acquisition_view']['coordinate_plane']
         self.unit = self.config['acquisition_view']['unit']
 
+        # Set up main window layout
+        self.main_layout = QGridLayout(self)
+
         # Eventual threads
         self.grab_fov_positions_worker = None
         self.property_workers = []
@@ -59,33 +64,108 @@ class AcquisitionView(QWidget):
             for operation_name, operation_specs in operation_dictionary.items():
                 self.create_operation_widgets(device_name, operation_name, operation_specs)
 
-        # setup additional widgets
-        self.metadata_widget = self.create_metadata_widget()
-        self.acquisition_widget = self.create_acquisition_widget()
+        # initialize dictionary of tiles for acquisition
+        self.tile_dictionary = {}
+
+        # create QStackedWidget to hold volume_plans, channel_plans, metadata_widgets
+        self.volume_plans = QStackedWidget()
+        self.volume_tables = QStackedWidget()
+        self.volume_models = QStackedWidget()
+        self.volume_models.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        self.volume_models_widgets = QStackedWidget()
+        self.volume_models_widgets.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+        self.channel_plans = QStackedWidget()
+        self.metadata_widgets = QStackedWidget()
+        # since scans can share metadata widget, keep track with list since duplicate widgets can't be tracked in
+        # stacked widget
+        self.metadata_widget_list = []
+
+        # initialize list of acceptable tile colors found from QColor.colorNames()
+        vol_mod_cfg = self.config['acquisition_view']['acquisition_widgets'].get('volume_model', {}).get('init', {})
+        init_color = vol_mod_cfg.get('active_tile_color', 'cyan')
+        self.tile_colors = [init_color,  # first color found if config
+                            'blueviolet'
+                            'chartreuse'
+                            'darkorange'
+                            'darkseagreen'
+                            'deeppink']
+
+        self.add_acquisition_widgets()
+
+        # format main acquisition widget
+        acquisition_widget = QSplitter(Qt.Vertical)
+        acquisition_widget.setChildrenCollapsible(False)
+
+        # splitter for operation widgets
+        splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)
+
+        # combine floating volume_model widget with glwindow
+        acquisition_widget.addWidget(create_widget('H', self.volume_plans,
+                                                   create_widget('V', self.volume_models, self.volume_models_widgets)))
+
+        # place volume_plan.tile_table and channel plan table side by side
+        table_splitter = QSplitter(Qt.Horizontal)
+        table_splitter.setChildrenCollapsible(False)
+        table_splitter.setHandleWidth(20)
+
+        widget = QWidget()  # dummy widget to move tile_table down in layout
+        widget.setMinimumHeight(25)
+        table_splitter.addWidget(create_widget('V', widget, self.volume_tables))
+        table_splitter.addWidget(self.channel_plans)
+
+        # format splitter handle. Must do after all widgets are added
+        handle = table_splitter.handle(1)
+        handle_layout = QHBoxLayout(handle)
+        line = QFrame(handle)
+        line.setStyleSheet('QFrame {border: 1px dotted grey;}')
+        line.setFixedHeight(50)
+        line.setFrameShape(QFrame.VLine)
+        handle_layout.addWidget(line)
+
+        # add tables to layout
+        acquisition_widget.addWidget(table_splitter)
+
+        # setup start and stop button
         self.start_button = self.create_start_button()
         self.stop_button = self.create_stop_button()
 
         # setup stage thread
         self.setup_fov_position()
 
-        # Set up main window
-        self.main_layout = QGridLayout()
+        # set up tab bar to add scans
+        self.tab_widget = QTabWidget()
+        self.add_scan_bar = AcquisitionTabBar()
+        self.tab_widget.setTabBar(self.add_scan_bar)
+        self.add_scan_bar.setMovable(True)
+        self.add_tool = QToolButton()
+        self.add_tool.setText('+')
+        menu = QMenu()
+        # for channel in self.possible_channels:
+        #     action = QAction(str(channel), self)
+        #     action.triggered.connect(lambda clicked, ch=channel: self.add_channel(ch))
+        #     menu.addAction(action)
+        self.add_tool.setMenu(menu)
+        self.add_tool.setPopupMode(QToolButton.InstantPopup)
+        self.tab_widget.insertTab(0, QWidget(), '')  # insert dummy qwidget
+        self.add_scan_bar.setTabButton(0, QTabBar.RightSide, self.add_tool)
+
+        # add tab bar
+        self.main_layout.addWidget(self.tab_widget, 0, 0, 1, 4)
 
         # Add start and stop button
-        self.main_layout.addWidget(self.start_button, 0, 0, 1, 2)
-        self.main_layout.addWidget(self.stop_button, 0, 2, 1, 2)
+        self.main_layout.addWidget(self.start_button, 1, 0, 1, 2)
+        self.main_layout.addWidget(self.stop_button, 1, 2, 1, 2)
 
         # add volume widget
-        self.main_layout.addWidget(self.acquisition_widget, 1, 0, 5, 3)
-
-        # splitter for operation widgets
-        splitter = QSplitter(Qt.Vertical)
-        splitter.setChildrenCollapsible(False)
+        self.main_layout.addWidget(acquisition_widget, 2, 0, 5, 3)
 
         # create scroll wheel for metadata widget
         scroll = QScrollArea()
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setWidget(self.metadata_widget)
+        scroll.setWidget(self.metadata_widgets)
         scroll.setWindowTitle('Metadata')
         scroll.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         dock = QDockWidget(scroll.windowTitle(), self)
@@ -100,18 +180,18 @@ class AcquisitionView(QWidget):
         for i, operation in enumerate(['writer', 'transfer', 'process', 'routine']):
             if hasattr(self, f'{operation}_widgets'):
                 stack = self.stack_device_widgets(operation)
-                stack.setFixedWidth(self.metadata_widget.size().width() - 20)
+                stack.setFixedWidth(self.metadata_widgets.size().width() - 20)
                 scroll = QScrollArea()
                 scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                 scroll.setWidget(stack)
-                scroll.setFixedWidth(self.metadata_widget.size().width())
+                scroll.setFixedWidth(self.metadata_widgets.size().width())
                 dock = QDockWidget(stack.windowTitle())
                 dock.setTitleBarWidget(QDockWidgetTitleBar(dock))
                 dock.setWidget(scroll)
                 dock.setMinimumHeight(25)
                 setattr(self, f'{operation}_dock', dock)
                 splitter.addWidget(dock)
-        self.main_layout.addWidget(splitter, 1, 3)
+        self.main_layout.addWidget(splitter, 2, 3)
         self.setLayout(self.main_layout)
         self.setWindowTitle('Acquisition View')
         self.show()
@@ -151,7 +231,7 @@ class AcquisitionView(QWidget):
         Start acquisition and disable widgets
         """
 
-        # add tiles to acquisition config
+        # update_tiles
         self.update_tiles()
 
         if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
@@ -163,26 +243,25 @@ class AcquisitionView(QWidget):
                 daq.tasks = self.instrument.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
                 # Tasks should be added and written in acquisition?
 
+        # disable stacked widgets
+        self.start_button.setEnabled(False)
+        self.metadata_widgets.setEnabled(False)
+        self.volume_plans.setDisabled(True)
+        self.channel_plans.setDisabled(True)
+        self.volume_tables.setDisabled(True)
+
         # anchor grid in volume widget
-        for anchor, widget in zip(self.volume_plan.anchor_widgets, self.volume_plan.grid_offset_widgets):
+        volume_plan = self.volume_plans.currentIndex()
+        for anchor, widget in zip(volume_plan.anchor_widgets, volume_plan.grid_offset_widgets):
             anchor.setChecked(True)
             widget.setDisabled(True)
-        self.volume_plan.tile_table.setDisabled(True)
-        self.channel_plan.setDisabled(True)
 
-        # disable acquisition view. Can't disable whole thing so stop button can be functional
-        self.start_button.setEnabled(False)
-        self.metadata_widget.setEnabled(False)
         for operation in ['writer', 'transfer', 'process', 'routine']:
             if hasattr(self, f'{operation}_dock'):
                 getattr(self, f'{operation}_dock').setDisabled(True)
         self.stop_button.setEnabled(True)
-        # disable instrument view
-        self.instrument_view.setDisabled(True)
 
-        # Start acquisition
-        self.instrument_view.setDisabled(False)
-        self.acquisition_thread = create_worker(self.acquisition.run)
+        self.acquisition_thread = create_worker(self.run_acquisition)
         self.acquisition_thread.start()
         self.acquisition_thread.finished.connect(self.acquisition_ended)
 
@@ -191,6 +270,17 @@ class AcquisitionView(QWidget):
             worker.resume()
             sleep(1)
 
+    def run_acquisition(self) -> None:
+        """
+        Worker function to loop through defined acquisition tiles
+        """
+
+        # loop through acquisitions
+        for metadata_widget, tiles in self.tile_dictionary.items():
+            self.acquisition.metadata.name = metadata_widget.name       # update metadata name
+            self.acquisition.config['acquisition']['tiles'] = tiles     # update tiles written in config
+            self.acquisition.run()
+
     def acquisition_ended(self) -> None:
         """
         Re-enable UI's and threads after acquisition has ended
@@ -198,22 +288,26 @@ class AcquisitionView(QWidget):
 
         # enable acquisition view
         self.start_button.setEnabled(True)
-        self.metadata_widget.setEnabled(True)
+        self.metadata_widgets.setEnabled(True)
         for operation in ['writer', 'transfer', 'process', 'routine']:
             if hasattr(self, f'{operation}_dock'):
                 getattr(self, f'{operation}_dock').setDisabled(False)
         self.stop_button.setEnabled(False)
 
-        # unanchor grid in volume widget
+        # enable grid offsets
         # anchor grid in volume widget
-        for anchor, widget in zip(self.volume_plan.anchor_widgets, self.volume_plan.grid_offset_widgets):
-            anchor.setChecked(False)
+        volume_plan = self.volume_plans.currentIndex()
+        for widget in volume_plan.grid_offset_widgets:
             widget.setDisabled(False)
-        self.volume_plan.tile_table.setDisabled(False)
-        self.channel_plan.setDisabled(False)
+        # enable stacked widgets
+        self.start_button.setEnabled(True)
+        self.metadata_widgets.setEnabled(True)
+        self.volume_plans.setEnabled(True)
+        self.channel_plans.setEnabled(True)
+        self.volume_tables.setEnabled(True)
 
         # enable instrument view
-        self.instrument_view.setDisabled(False)
+        self.instrument_view.setEnabled(False)
 
         # restart stage threads
         self.setup_fov_position()
@@ -270,18 +364,24 @@ class AcquisitionView(QWidget):
         """
 
         metadata_widget = MetadataWidget(self.acquisition.metadata)
-        metadata_widget.ValueChangedInside[str].connect(lambda name: setattr(self.acquisition.metadata, name,
-                                                                             getattr(metadata_widget, name)))
+        # metadata_widget.ValueChangedInside[str].connect(lambda name: setattr(self.acquisition.metadata, name,
+        #                                                                      getattr(metadata_widget, name)))
         for name, widget in metadata_widget.property_widgets.items():
             widget.setToolTip('')  # reset tooltips
         metadata_widget.setWindowTitle(f'Metadata')
         return metadata_widget
 
-    def create_acquisition_widget(self) -> QSplitter:
+    def add_acquisition_widgets(self, metadata_widget: MetadataWidget = None) -> QSplitter:
         """
-        Create widget to visualize acquisition grid
+        Add and create widgets to visualize acquisition grid
+        :param metadata_widget: metadata widget to associate with acquisition
         :return: splitter widget containing the volume model, volume plan, and channel plan widget
         """
+
+        # add or create metadata widget corresponding to acquisition widgets
+        metadata_widget = metadata_widget if metadata_widget else self.create_metadata_widget()
+        self.metadata_widgets.addWidget(metadata_widget)
+        self.metadata_widget_list.append(metadata_widget)
 
         # find limits of all axes
         lim_dict = {}
@@ -298,109 +398,119 @@ class AcquisitionView(QWidget):
 
         fov_dimensions = self.config['acquisition_view']['fov_dimensions']
 
-        acquisition_widget = QSplitter(Qt.Vertical)
-        acquisition_widget.setChildrenCollapsible(False)
-
         # create volume plan
-        self.volume_plan = VolumePlanWidget(limits=limits,
-                                            fov_dimensions=fov_dimensions,
-                                            coordinate_plane=self.coordinate_plane,
-                                            unit=self.unit)
-        self.volume_plan.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
+        volume_plan = VolumePlanWidget(limits=limits,
+                                       fov_dimensions=fov_dimensions,
+                                       coordinate_plane=self.coordinate_plane,
+                                       unit=self.unit)
+        self.volume_plans.addWidget(volume_plan)
+        self.volume_tables.addWidget(volume_plan.tile_table)
+
+        # configure volume model kwargs
+        vol_kwargs = self.config['acquisition_view']['acquisition_widgets'].get('volume_model', {}).get('init', {})
+        vol_kwargs['active_tile_color'] = self.tile_colors[0]
+        # shift tile colors
+        self.tile_colors.insert(0, self.tile_colors.pop())
 
         # create volume model
-        self.volume_model = VolumeModel(limits=limits,
-                                        fov_dimensions=fov_dimensions,
-                                        coordinate_plane=self.coordinate_plane,
-                                        unit=self.unit,
-                                        **self.config['acquisition_view']['acquisition_widgets'].get('volume_model',
-                                                                                                     {}).get('init',
-                                                                                                             {}))
-        # combine floating volume_model widget with glwindow
-        combined_layout = QGridLayout()
-        combined_layout.addWidget(self.volume_model, 0, 0, 3, 1)
-        combined_layout.addWidget(self.volume_model.widgets, 3, 0, 1, 1)
-        combined = QWidget()
-        combined.setLayout(combined_layout)
-        acquisition_widget.addWidget(create_widget('H', self.volume_plan, combined))
+        volume_model = VolumeModel(limits=limits,
+                                   fov_dimensions=fov_dimensions,
+                                   coordinate_plane=self.coordinate_plane,
+                                   unit=self.unit,
+                                   **vol_kwargs)
+        self.volume_models.addWidget(volume_model)
+        self.volume_models_widgets.addWidget(volume_model.widgets)
 
         # create channel plan
-        self.channel_plan = ChannelPlanWidget(instrument_view=self.instrument_view,
-                                              channels=self.instrument.config['instrument']['channels'],
-                                              unit=self.unit,
-                                              **self.config['acquisition_view']['acquisition_widgets'].get(
-                                                  'channel_plan', {}).get('init', {}))
-        # place volume_plan.tile_table and channel plan table side by side
-        table_splitter = QSplitter(Qt.Horizontal)
-        table_splitter.setChildrenCollapsible(False)
-        table_splitter.setHandleWidth(20)
+        channel_plan = ChannelPlanWidget(instrument_view=self.instrument_view,
+                                         channels=self.instrument.config['instrument']['channels'],
+                                         unit=self.unit,
+                                         **self.config['acquisition_view']['acquisition_widgets'].get(
+                                             'channel_plan', {}).get('init', {}))
+        self.channel_plans.addWidget(channel_plan)
 
-        widget = QWidget()  # dummy widget to move tile_table down in layout
-        widget.setMinimumHeight(25)
-        table_splitter.addWidget(create_widget('V', widget, self.volume_plan.tile_table))
-        table_splitter.addWidget(self.channel_plan)
-
-        # format splitter handle. Must do after all widgets are added
-        handle = table_splitter.handle(1)
-        handle_layout = QHBoxLayout(handle)
-        line = QFrame(handle)
-        line.setStyleSheet('QFrame {border: 1px dotted grey;}')
-        line.setFixedHeight(50)
-        line.setFrameShape(QFrame.VLine)
-        handle_layout.addWidget(line)
-
-        # add tables to layout
-        acquisition_widget.addWidget(table_splitter)
-
-        # connect signals
-        self.instrument_view.snapshotTaken.connect(self.volume_model.add_fov_image)  # connect snapshot signal
-        self.instrument_view.contrastChanged.connect(
-            self.volume_model.adjust_glimage_contrast)  # connect snapshot adjusted
-        self.volume_model.fovHalt.connect(self.stop_stage)  # stop stage if halt button is pressed
-        self.volume_model.fovMove.connect(self.move_stage)  # move stage to clicked coords
-        self.volume_plan.valueChanged.connect(self.volume_plan_changed)
-        self.channel_plan.channelAdded.connect(self.channel_plan_changed)
-        self.channel_plan.channelChanged.connect(self.update_tiles)
-
+        # connect volume plan signals
+        volume_plan.valueChanged.connect(lambda v: self.volume_plan_changed(volume_plan, channel_plan, volume_model, v))
         # TODO: This feels like a clunky connection. Works for now but could probably be improved
-        self.volume_plan.header.startChanged.connect(lambda i: self.create_tile_list())
-        self.volume_plan.header.stopChanged.connect(lambda i: self.create_tile_list())
+        volume_plan.header.startChanged.connect(lambda i: self.create_tile_dictionary())
+        volume_plan.header.stopChanged.connect(lambda i: self.create_tile_dictionary())
 
-        return acquisition_widget
+        # connect channel plan signals
+        channel_plan.channelChanged.connect(self.update_tiles)
+        channel_plan.channelAdded.connect(lambda ch: self.channel_plan_changed(volume_plan, channel_plan, ch))
 
-    def channel_plan_changed(self, channel: str) -> None:
+        # connect volume model signals
+        self.instrument_view.snapshotTaken.connect(volume_model.add_fov_image)  # connect snapshot signal
+        self.instrument_view.contrastChanged.connect(volume_model.adjust_glimage_contrast)  # snapshot adjusted
+        volume_model.fovHalt.connect(self.stop_stage)  # stop stage if halt button is pressed
+        volume_model.fovMove.connect(self.move_stage)  # move stage to clicked coords
+        volume_model.itemAdded.connect(self.add_model_items)  # update other models with items added
+        volume_model.itemRemoved.connect(self.remove_model_items)  # update other models with items removed
+
+        return metadata_widget, volume_plan, volume_model, channel_plan
+
+    def add_model_items(self, item) -> None:
+        """
+        Update volume models with other scan tile
+        :param item: item added
+        """
+
+        for i in range(self.volume_models.count()):
+            volume_model = self.volume_models.widget(i)
+            if item not in volume_model.items:
+                volume_model.addItem(item)
+
+    def remove_model_items(self, item) -> None:
+        """
+        Update volume models with other scan tiles
+        :param item: item removed
+        """
+
+        for i in range(self.volume_models.count()):
+            volume_model = self.volume_models.widget(i)
+            if item in volume_model.items:
+                volume_model.removeItem(item)
+
+    def channel_plan_changed(self, volume_plan: VolumePlanWidget, channel_plan: ChannelPlanWidget, ch: str) -> None:
         """
         Handle channel being added to scan
-        :param channel: channel added
+        :param channel_plan: channel plan widget associated with scan
+        :param volume_plan: volume plan widget associated with scan
+        :param ch: channel added
         """
 
-        tile_order = [[t.row, t.col] for t in self.volume_plan.value()]
+        tile_order = [[t.row, t.col] for t in volume_plan.value()]
         if len(tile_order) != 0:
-            self.channel_plan.add_channel_rows(channel, tile_order)
+            channel_plan.add_channel_rows(ch, tile_order)
         self.update_tiles()
 
-    def volume_plan_changed(self, value: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]) -> None:
+    def volume_plan_changed(self, volume_plan: VolumePlanWidget,
+                            channel_plan: ChannelPlanWidget,
+                            volume_model: VolumeModel,
+                            value: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]) -> None:
         """
         Update channel plan and volume model when volume plan is changed
+        :param channel_plan: channel plan widget associated with scan
+        :param volume_plan: volume plan widget associated with scan
+        :param volume_model: volume model widget associated with scan
         :param value: new value from volume_plan
         """
 
-        tile_volumes = self.volume_plan.scan_ends - self.volume_plan.scan_starts
+        tile_volumes = volume_plan.scan_ends - volume_plan.scan_starts
 
-        # update volume model
-        self.volume_model.blockSignals(True)  # only trigger update once
-        # self.volume_model.fov_dimensions = self.volume_plan.fov_dimensions
-        self.volume_model.grid_coords = self.volume_plan.tile_positions
-        self.volume_model.scan_volumes = tile_volumes
-        self.volume_model.blockSignals(False)
-        self.volume_model.tile_visibility = self.volume_plan.tile_visibility
-        self.volume_model.set_path_pos([self.volume_model.grid_coords[t.row][t.col] for t in value])
+        # # update volume model
+        volume_model.blockSignals(True)  # only trigger update once
+        volume_model.grid_coords = volume_plan.tile_positions
+        volume_model.scan_volumes = tile_volumes
+        volume_model.blockSignals(False)
+        volume_model.tile_visibility = volume_plan.tile_visibility
+        volume_model.set_path_pos([volume_model.grid_coords[t.row][t.col] for t in value])
 
         # update channel plan
-        self.channel_plan.apply_all = self.volume_plan.apply_all
-        self.channel_plan.tile_volumes = tile_volumes
-        for ch in self.channel_plan.channels:
-            self.channel_plan.add_channel_rows(ch, [[t.row, t.col] for t in value])
+        channel_plan.apply_all = volume_plan.apply_all
+        channel_plan.tile_volumes = tile_volumes
+        for ch in channel_plan.channels:
+            channel_plan.add_channel_rows(ch, [[t.row, t.col] for t in value])
         self.update_tiles()
 
     def update_tiles(self) -> None:
@@ -408,7 +518,9 @@ class AcquisitionView(QWidget):
         Update config with the latest tiles
         """
 
-        self.acquisition.config['acquisition']['tiles'] = self.create_tile_list()
+        self.tile_dictionary = self.create_tile_dictionary()
+        #self.acquisition.config['acquisition']['tiles'] = self.create_tile_dictionary()
+        print(self.tile_dictionary)
 
     def move_stage(self, fov_position: list[float, float, float]) -> None:
         """
@@ -438,8 +550,11 @@ class AcquisitionView(QWidget):
         """
 
         self.grab_fov_positions_worker = self.grab_fov_positions()
-        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_plan, 'fov_position', pos))
-        self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_model, 'fov_position', pos))
+        for i in range(self.volume_plans.count()):
+            volume_plan = self.volume_plans.widget(i)
+            volume_model = self.volume_models.widget(i)
+            self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(volume_plan, 'fov_position', pos))
+            self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(volume_model, 'fov_position', pos))
         self.grab_fov_positions_worker.start()
 
     @thread_worker
@@ -447,16 +562,18 @@ class AcquisitionView(QWidget):
         """
         Grab stage position from all stage objects and yield positions
         """
+
+        volume_plan = self.volume_plans.widget(0)  # fov_position is same for all volume plans
         scalar_coord_plane = [x.strip('-') for x in self.coordinate_plane]
         while True:  # best way to do this or have some sort of break?
-            fov_pos = [self.volume_plan.fov_position[0], self.volume_plan.fov_position[1],
-                       self.volume_plan.fov_position[2]]
+            fov_pos = [volume_plan.fov_position[0], volume_plan.fov_position[1],
+                       volume_plan.fov_position[2]]
             for name, stage in {**self.instrument.tiling_stages, **self.instrument.scanning_stages}.items():
                 if stage.instrument_axis in scalar_coord_plane:
                     index = scalar_coord_plane.index(stage.instrument_axis)
                     try:
                         pos = stage.position_mm
-                        fov_pos[index] = pos if pos is not None else self.volume_plan.fov_position[index]
+                        fov_pos[index] = pos if pos is not None else volume_plan.fov_position[index]
                     except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
                         pass
                     sleep(.1)
@@ -529,7 +646,7 @@ class AcquisitionView(QWidget):
         labeled.setWindowTitle(f'{device_name} {operation_type} {operation_name}')
         labeled.show()
 
-    def update_acquisition_layer(self, image: np.ndarray , camera_name: str) -> None:
+    def update_acquisition_layer(self, image: np.ndarray, camera_name: str) -> None:
         """
         Update viewer with latest frame taken during acquisition
         :param image: numpy array to add to viewer
@@ -609,69 +726,86 @@ class AcquisitionView(QWidget):
             self.log.warning(f"{attr_name} can't be mapped into operation properties due to {e}")
             pass
 
-    def create_tile_list(self) -> list:
+    def create_tile_dictionary(self) -> dict:
         """
-        Return a list of tiles for a scan
-        :return: list of tiles
+        Return a dictionary of tiles for all configured scans
+        :param tile_dictionary: dictionary to add to
+        :return: dictionary of tiles for all configured scans
         """
 
-        tiles = []
-        tile_slice = slice(self.volume_plan.start, self.volume_plan.stop)
-        value = self.volume_plan.value()
-        sliced_value = [tile for tile in value][tile_slice]
-        if self.channel_plan.channel_order.currentText() == 'per Tile':
-            for tile in sliced_value:
-                for ch in self.channel_plan.channels:
-                    tiles.append(self.write_tile(ch, tile))
-        elif self.channel_plan.channel_order.currentText() == 'per Volume':
-            for ch in self.channel_plan.channels:
+        tile_dictionary = {}
+
+        for i, metadata in enumerate(self.metadata_widget_list):
+            volume_plan = self.volume_plans.widget(i)
+            channel_plan = self.channel_plans.widget(i)
+            tiles = []
+
+            tile_slice = slice(volume_plan.start, volume_plan.stop)
+            value = volume_plan.value()
+            sliced_value = [tile for tile in value][tile_slice]
+            if channel_plan.channel_order.currentText() == 'per Tile':
                 for tile in sliced_value:
-                    tiles.append(self.write_tile(ch, tile))
-        return tiles
+                    for ch in channel_plan.channels:
+                        tiles.append(self.write_tile(volume_plan, channel_plan, ch, tile))
+            elif channel_plan.channel_order.currentText() == 'per Volume':
+                for ch in channel_plan.channels:
+                    for tile in sliced_value:
+                        tiles.append(self.write_tile(volume_plan, channel_plan,ch, tile))
 
-    def write_tile(self, channel: str, tile) -> dict:
+            if i != 0 and self.metadata_widget_list[i-1] == metadata:  # prev scan tiles should be merged w/ current
+                tile_dictionary[metadata] += tiles
+            else:
+                tile_dictionary[metadata] = tiles
+
+        return tile_dictionary
+
+    def write_tile(self, volume_plan: VolumePlanWidget,
+                   channel_plan: ChannelPlanWidget,
+                   channel: str, tile) -> dict:
         """
         Write dictionary describing tile parameters
+        :param volume_plan: volume plan widget associated with tiles
+        :param channel_plan: channel plan widget associated with tiles
         :param channel: channel the tile is in
         :param tile: tile object
         :return
         """
 
         row, column = tile.row, tile.col
-        table_row = self.volume_plan.tile_table.findItems(str([row, column]), Qt.MatchExactly)[0].row()
+        table_row = volume_plan.tile_table.findItems(str([row, column]), Qt.MatchExactly)[0].row()
 
         tile_dict = {
             'channel': channel,
-            f'position_{self.unit}': {k[0]: self.volume_plan.tile_table.item(table_row, j + 1).data(Qt.EditRole)
-                                      for j, k in enumerate(self.volume_plan.table_columns[1:-2])},
+            f'position_{self.unit}': {k[0]: volume_plan.tile_table.item(table_row, j + 1).data(Qt.EditRole)
+                                      for j, k in enumerate(volume_plan.table_columns[1:-2])},
             'tile_number': table_row,
         }
         # load channel plan values
-        for device_type, properties in self.channel_plan.properties.items():
-            if device_type in self.channel_plan.possible_channels[channel].keys():
-                for device_name in self.channel_plan.possible_channels[channel][device_type]:
+        for device_type, properties in channel_plan.properties.items():
+            if device_type in channel_plan.possible_channels[channel].keys():
+                for device_name in channel_plan.possible_channels[channel][device_type]:
                     tile_dict[device_name] = {}
                     for prop in properties:
                         column_name = label_maker(f'{device_name}_{prop}')
-                        if getattr(self.channel_plan, column_name, None) is not None:
-                            array = getattr(self.channel_plan, column_name)[channel]
-                            input_type = self.channel_plan.column_data_types[column_name]
+                        if getattr(channel_plan, column_name, None) is not None:
+                            array = getattr(channel_plan, column_name)[channel]
+                            input_type = channel_plan.column_data_types[column_name]
                             if input_type is not None:
                                 tile_dict[device_name][prop] = input_type(array[row, column])
                             else:
                                 tile_dict[device_name][prop] = array[row, column]
             else:
                 column_name = label_maker(f'{device_type}')
-                if getattr(self.channel_plan, column_name, None) is not None:
-                    array = getattr(self.channel_plan, column_name)[channel]
-                    input_type = self.channel_plan.column_data_types[column_name]
+                if getattr(channel_plan, column_name, None) is not None:
+                    array = getattr(channel_plan, column_name)[channel]
+                    input_type = channel_plan.column_data_types[column_name]
                     if input_type is not None:
                         tile_dict[device_type] = input_type(array[row, column])
                     else:
                         tile_dict[device_type] = array[row, column]
 
         for name in ['steps', 'step_size', 'prefix']:
-            array = getattr(self.channel_plan, name)[channel]
+            array = getattr(channel_plan, name)[channel]
             tile_dict[name] = array[row, column]
         return tile_dict
 
@@ -733,3 +867,33 @@ class AcquisitionView(QWidget):
                 except AttributeError:
                     self.log.debug(f'{device_name} {operation_name} does not have close function')
         self.acquisition.close()
+
+
+class AcquisitionTabBar(QTabBar):
+    """TabBar that will keep add an acquisition to acquisition_view"""
+
+    def __init__(self):
+
+        super().__init__()
+        self.tabMoved.connect(self.tab_index_check)
+
+    def tab_index_check(self, prev_index: int, curr_index: int) -> None:
+        """
+        Keep last tab as last tab
+        :param prev_index: previous index of tab
+        :param curr_index: index tab was moved to
+        """
+
+        if prev_index == self.count() - 1:
+            self.moveTab(curr_index, prev_index)
+
+    def mouseMoveEvent(self, ev) -> None:
+        """
+        Make last tab immovable
+        :param ev: qmouseevent that triggered call
+        :return:
+        """
+        index = self.currentIndex()
+        if index == self.count() - 1:  # last tab is immovable
+            return
+        super().mouseMoveEvent(ev)

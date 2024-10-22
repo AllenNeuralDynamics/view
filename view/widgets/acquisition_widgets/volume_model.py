@@ -1,5 +1,5 @@
 from pyqtgraph.opengl import GLImageItem
-from qtpy.QtWidgets import QMessageBox, QCheckBox, QGridLayout, QButtonGroup, QLabel, QRadioButton, QPushButton, QWidget
+from qtpy.QtWidgets import QMessageBox, QCheckBox, QGridLayout, QButtonGroup, QLabel, QRadioButton, QPushButton, QWidget, QSizePolicy
 from qtpy.QtCore import Signal, Qt
 from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
 from math import tan, radians, sqrt
@@ -9,7 +9,7 @@ from pyqtgraph import makeRGBA
 from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewWidget
 from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
-
+from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 
 class SignalChangeVar:
 
@@ -37,6 +37,8 @@ class VolumeModel(GLOrthoViewWidget):
     valueChanged = Signal((str))
     fovMove = Signal((list))
     fovHalt = Signal()
+    itemAdded = Signal(GLShadedBoxItem or GLPathItem)
+    itemRemoved = Signal(GLShadedBoxItem or GLPathItem)
 
     def __init__(self,
                  unit: str = 'mm',
@@ -59,7 +61,8 @@ class VolumeModel(GLOrthoViewWidget):
                  tile_line_width: int = 2,
                  limits_line_width: int = 2,
                  limits_color: str = 'white',
-                 limits_opacity: float = 0.01):
+                 limits_opacity: float = 0.01,
+                 parent=None):
 
         """
         GLViewWidget to display proposed grid of acquisition
@@ -87,12 +90,14 @@ class VolumeModel(GLOrthoViewWidget):
         :param limits_opacity: opacity of limits box
         """
 
-        super().__init__(rotationMethod='quaternion')
+        super().__init__(rotationMethod='quaternion', parent=parent)
+
+        self.setMinimumWidth(400)
 
         # initialize attributes
         self.unit = unit
         self.coordinate_plane = [x.replace('-', '') for x in coordinate_plane] if coordinate_plane else ['x', 'y', 'z']
-        self.polarity = [1 if '-' not in x else -1 for x in coordinate_plane]
+        self.polarity = [1 if '-' not in x else -1 for x in self.coordinate_plane]
         self.fov_dimensions = fov_dimensions[:2]+[0] if fov_dimensions else [1.0, 1.0, 0]    # add 0 in the scanning dim
         self.fov_position = fov_position if fov_position else [0.0, 0.0, 0.0]
         self.view_plane = (self.coordinate_plane[0], self.coordinate_plane[1])  # plane currently being viewed
@@ -252,7 +257,6 @@ class VolumeModel(GLOrthoViewWidget):
                     box.setVisible(self.tile_visibility[row, column])
                     self.addItem(box)
                     self.grid_box_items.append(box)
-
         self._update_opts()
 
     def toggle_view_plane(self, button) -> None:
@@ -482,6 +486,20 @@ class VolumeModel(GLOrthoViewWidget):
                     break
             if delete_key is not None:
                 del self.fov_images[delete_key]
+
+    def addItem(self, item):
+        """
+        Overwrite to emit signal when item added
+        """
+        super().addItem(item)
+        self.itemAdded.emit(item)
+
+    def removeItem(self, item):
+        """
+        Overwrite to emit signal when item removed
+        """
+        super().removeItem(item)
+        self.itemRemoved.emit(item)
 
     def mouseMoveEvent(self, event):
         """Override mouseMoveEvent so user can't change view"""

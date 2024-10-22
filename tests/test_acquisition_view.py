@@ -393,7 +393,7 @@ class AcquisitionViewTests(unittest.TestCase):
              'step_size': 0.0,
              'prefix': ''}]
 
-        actual_tiles = view.create_tile_list()
+        actual_tiles = view.create_tile_dictionary()
         self.assertEqual(expected_tiles, actual_tiles)
 
         view.volume_plan.stop = 3
@@ -432,7 +432,7 @@ class AcquisitionViewTests(unittest.TestCase):
              'step_size': 0.0,
              'prefix': ''},
             ]
-        actual_tiles = view.create_tile_list()
+        actual_tiles = view.create_tile_dictionary()
         self.assertEqual(expected_tiles, actual_tiles)
 
 
