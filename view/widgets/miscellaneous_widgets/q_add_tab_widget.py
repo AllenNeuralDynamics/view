@@ -4,7 +4,7 @@ from qtpy.QtCore import Signal
 class QAddTabWidget(QTabWidget):
     """QTabWidget that is able to delete and add tabs"""
 
-    tabClosed = Signal()
+    tabClosed = Signal(int)
 
     def __init__(self, *args, **kwargs):
 

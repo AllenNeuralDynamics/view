@@ -427,11 +427,14 @@ class AcquisitionView(QWidget):
                                    unit=self.unit,
                                    **vol_kwargs)
         # populate with previous volume model items
+        volume_model.blockSignals(True)
         for i in range(self.volume_models.count()):
             other_volume_model = self.volume_models.widget(i)
             for item in other_volume_model.items:
                 if item != other_volume_model.fov_view:  # skip fov_view
+                    volume_model.blockSignals(True)
                     volume_model.addItem(item)
+        volume_model.blockSignals(False)
 
         self.volume_models.addWidget(volume_model)  # add top stacked widget
         self.volume_models_widgets.addWidget(volume_model.widgets)
@@ -465,7 +468,9 @@ class AcquisitionView(QWidget):
         # add tab for scan and connect signals
         index = self.tab_widget.count() - 1
         self.tab_widget.insertTab(index, QWidget(), metadata_widget.acquisition_name)
-        metadata_widget.acquisitionNameChanged.connect(lambda name: self.tab_widget.setTabText(index, name))
+        tab = self.tab_widget.widget(index)
+        metadata_widget.acquisitionNameChanged.connect(lambda name:
+                                                       self.tab_widget.setTabText(self.tab_widget.indexOf(tab), name))
         self.tab_widget.setCurrentIndex(index)
         self.change_stacked_widgets(index)
 
@@ -480,6 +485,16 @@ class AcquisitionView(QWidget):
         :param index: index to remove
         """
 
+        volume_model = self.volume_models.widget(index)
+        # remove volume model items
+        for i in range(self.volume_models.count()):
+            other_volume_model = self.volume_models.widget(i)
+            other_volume_model.blockSignals(True)
+            #other_volume_model.removeItem(volume_model.path)
+            for item in volume_model.grid_box_items:
+                other_volume_model.removeItem(item)
+            other_volume_model.blockSignals(False)
+
         self.volume_plans.removeWidget(self.volume_plans.widget(index))
         self.volume_tables.removeWidget(self.volume_tables.widget(index))
         self.volume_models.removeWidget(self.volume_models.widget(index))
@@ -487,19 +502,22 @@ class AcquisitionView(QWidget):
         self.channel_plans.removeWidget(self.channel_plans.widget(index))
         self.metadata_widgets.removeWidget(self.metadata_widget_list[index])
         del self.metadata_widget_list[index]
+
         self.update_tiles()
+
+
     def change_stacked_widgets(self, index: int) -> None:
         """
         Change index of all stacked widgets
         :param index: index to change to
         """
-
-        self.volume_plans.setCurrentIndex(index)
-        self.volume_tables.setCurrentIndex(index)
-        self.volume_models.setCurrentIndex(index)
-        self.volume_models_widgets.setCurrentIndex(index)
-        self.channel_plans.setCurrentIndex(index)
-        self.metadata_widgets.setCurrentWidget(self.metadata_widget_list[index])
+        if index != self.tab_widget.count():    # skip if add tab pressed
+            self.volume_plans.setCurrentIndex(index)
+            self.volume_tables.setCurrentIndex(index)
+            self.volume_models.setCurrentIndex(index)
+            self.volume_models_widgets.setCurrentIndex(index)
+            self.channel_plans.setCurrentIndex(index)
+            self.metadata_widgets.setCurrentWidget(self.metadata_widget_list[index])
 
     def add_model_items(self, item) -> None:
         """
@@ -510,7 +528,9 @@ class AcquisitionView(QWidget):
         for i in range(self.volume_models.count()):
             volume_model = self.volume_models.widget(i)
             if item not in volume_model.items:
+                volume_model.blockSignals(True)
                 volume_model.addItem(item)
+                volume_model.blockSignals(False)
 
     def remove_model_items(self, item) -> None:
         """
@@ -521,7 +541,9 @@ class AcquisitionView(QWidget):
         for i in range(self.volume_models.count()):
             volume_model = self.volume_models.widget(i)
             if item in volume_model.items:
+                volume_model.blockSignals(True)
                 volume_model.removeItem(item)
+                volume_model.blockSignals(False)
 
     def channel_plan_changed(self, volume_plan: VolumePlanWidget, channel_plan: ChannelPlanWidget, ch: str) -> None:
         """

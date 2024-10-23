@@ -311,7 +311,6 @@ class ChannelPlanWidget(QAddTabWidget):
         self.channels.remove(channel)
 
         table = getattr(self, f'{channel}_table')
-        index = self.indexOf(table)
 
         # remove key from attributes
         for i in range(table.columnCount() - 1):  # skip row, column
