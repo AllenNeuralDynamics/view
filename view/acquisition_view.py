@@ -160,7 +160,7 @@ class AcquisitionView(QWidget):
         # write correct daq values if different from livestream
         for daq_name, daq in self.instrument.daqs.items():
             if daq_name in self.config['acquisition_view'].get('data_acquisition_tasks', {}).keys():
-                daq.tasks = self.instrument.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
+                daq.tasks = self.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
                 # Tasks should be added and written in acquisition?
 
         # anchor grid in volume widget
