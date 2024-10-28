@@ -163,13 +163,12 @@ class InstrumentView(QWidget):
         """
 
         for daq_name, daq_widget in self.daq_widgets.items():
-
             # if daq_widget is BaseDeviceWidget or inherits from it, update waveforms when gui is changed
             if type(daq_widget) == BaseDeviceWidget or BaseDeviceWidget in type(daq_widget).__bases__:
                 daq_widget.ValueChangedInside[str].connect(
                     lambda value, daq=self.instrument.daqs[daq_name]: self.write_waveforms(daq))
                 # update tasks if livestreaming task is different from data acquisition task
-                if daq_name in self.config.get('livestream_tasks', {}).keys():
+                if daq_name in self.config['instrument_view'].get('livestream_tasks', {}).keys():
                     daq_widget.ValueChangedInside[str].connect(lambda attr, widget=daq_widget, name=daq_name:
                                                                self.update_config_waveforms(widget, daq_name, attr))
 
@@ -252,7 +251,7 @@ class InstrumentView(QWidget):
             if key not in dictionary.keys():
                 raise KeyError
             dictionary[key] = value
-            self.log.debug(f"Data acquisition tasks parameters updated to "
+            self.log.info(f"Data acquisition tasks parameters updated to "
                            f"{self.config['acquisition_view']['data_acquisition_tasks'][daq_name]}")
 
         except KeyError:
