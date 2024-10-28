@@ -7,7 +7,7 @@ from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pat
     scan_for_properties, disable_button
 from qtpy.QtWidgets import QStyle, QRadioButton, QWidget, QButtonGroup, QSlider, QGridLayout, QComboBox, QApplication, \
     QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox, QPushButton,\
-    QFileDialog, QDockWidget, QSplitter
+    QFileDialog, QScrollArea
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils.theme import get_theme
@@ -118,29 +118,31 @@ class InstrumentView(QWidget):
         Arrange stage position and joystick widget
         """
 
-        stage_layout = QGridLayout()
-
         stage_widgets = []
-        for name, widget in {**self.scanning_stage_widgets,
-                             **self.tiling_stage_widgets,
+        for name, widget in {**self.tiling_stage_widgets,
+                             **self.scanning_stage_widgets,
                              **self.focusing_stage_widgets}.items():
             label = QLabel()
-            horizontal = QFrame()
+            frame = QFrame()
             layout = QVBoxLayout()
             layout.addWidget(create_widget('H', label, widget))
-            horizontal.setLayout(layout)
+            frame.setLayout(layout)
             border_color = get_theme(self.viewer.theme, as_dict=False).foreground
-            horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
-            stage_widgets.append(horizontal)
+            frame.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
+            stage_widgets.append(frame)
+
         stage_axes_widget = create_widget('V', *stage_widgets)
-        stage_layout.addWidget(stage_axes_widget)
+        stage_axes_widget.setContentsMargins(0, 0, 0, 0)
+        stage_axes_widget.layout().setSpacing(0)
 
-        stacked = self.stack_device_widgets('joystick')
-        stage_layout.addWidget(stacked)
+        stage_scroll = QScrollArea()
+        stage_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        stage_scroll.setWidget(stage_axes_widget)
+        self.viewer.window.add_dock_widget(stage_scroll, area='left', name='Stages')
 
-        stage_widget = QWidget()
-        stage_widget.setLayout(stage_layout)
-        self.viewer.window.add_dock_widget(stage_widget, area='left', name='Stages')
+        joystick_scroll = QScrollArea()
+        joystick_scroll.setWidget(self.stack_device_widgets('joystick'))
+        self.viewer.window.add_dock_widget(joystick_scroll, area='left', name='Joystick')
 
     def setup_laser_widgets(self) -> None:
         """
