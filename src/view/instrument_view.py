@@ -1,12 +1,13 @@
 from ruamel.yaml import YAML
-from qtpy.QtCore import Slot, Signal
+from qtpy.QtCore import Slot, Signal, Qt
 from qtpy.QtGui import QMouseEvent
 from pathlib import Path
 import importlib
 from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, pathGet, \
     scan_for_properties, disable_button
 from qtpy.QtWidgets import QStyle, QRadioButton, QWidget, QButtonGroup, QSlider, QGridLayout, QComboBox, QApplication, \
-    QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox, QPushButton, QFileDialog
+    QVBoxLayout, QLabel, QFrame, QSizePolicy, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox, QPushButton,\
+    QFileDialog, QDockWidget, QSplitter
 from PIL import Image
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils.theme import get_theme
@@ -18,6 +19,7 @@ import inflection
 import inspect
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
+from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
 import numpy as np
 from typing import Literal, Union, Iterator
 
@@ -93,7 +95,7 @@ class InstrumentView(QWidget):
         # Set app events
         app = QApplication.instance()
         app.aboutToQuit.connect(self.update_config_on_quit)  # query if config should be saved and where
-        self.config_save_to = self.config_path
+        self.config_save_to = self.instrument.config_path
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
 
@@ -130,7 +132,8 @@ class InstrumentView(QWidget):
             border_color = get_theme(self.viewer.theme, as_dict=False).foreground
             horizontal.setStyleSheet(f".QFrame {{ border:1px solid {border_color}; }} ")
             stage_widgets.append(horizontal)
-        stage_layout.addWidget(create_widget('V', *stage_widgets))
+        stage_axes_widget = create_widget('V', *stage_widgets)
+        stage_layout.addWidget(stage_axes_widget)
 
         stacked = self.stack_device_widgets('joystick')
         stage_layout.addWidget(stacked)
@@ -174,7 +177,7 @@ class InstrumentView(QWidget):
                                                                self.update_config_waveforms(widget, daq_name, attr))
 
         stacked = self.stack_device_widgets('daq')
-        self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs')
+        self.viewer.window.add_dock_widget(stacked, area='right', name='DAQs', add_vertical_stretch=False)
 
     def stack_device_widgets(self, device_type:str) -> QWidget:
         """
@@ -286,7 +289,7 @@ class InstrumentView(QWidget):
             live_button.pressed.connect(lambda camera=camera_name: self.toggle_live_button(camera))
 
         stacked = self.stack_device_widgets('camera')
-        self.viewer.window.add_dock_widget(stacked, area='right', name='Cameras')
+        self.viewer.window.add_dock_widget(stacked, area='right', name='Cameras', add_vertical_stretch=False)
 
     def toggle_live_button(self, camera_name: str) -> None:
         """
@@ -450,10 +453,10 @@ class InstrumentView(QWidget):
         laser_button_group = QButtonGroup(widget)
         for channel, specs in self.channels.items():
             button = QRadioButton(str(channel))
+            button.setChecked(True)  # Arbitrarily set last button checked
             button.toggled.connect(lambda value, ch=channel: self.change_channel(value, ch))
             laser_button_group.addButton(button)
             widget_layout.addWidget(button)
-            button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
         widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
