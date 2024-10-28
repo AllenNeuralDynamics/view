@@ -51,8 +51,15 @@ class BaseDeviceWidget(QMainWindow):
 
             boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
             if dict not in type(value).__mro__ and list not in type(value).__mro__ or type(arg_type) == enum.EnumMeta:
-                setattr(self, f"{name}_schema",
-                        Schema(type(value)))  # create schema validator so entries must adhere to specific format
+                # create schema validator so entries must adhere to specific format. Check to bypass ruamel types
+                if float in type(value).__mro__:    # set type to float
+                    setattr(self, f"{name}_schema", Schema(float))
+                elif int in type(value).__mro__:
+                    setattr(self, f"{name}_schema", Schema(int))
+                elif str in type(value).__mro__:
+                    setattr(self, f"{name}_schema", Schema(str))
+                else:
+                    setattr(self, f"{name}_schema", Schema(type(value)))
                 # Create combo boxes if there are preset options
                 if input_specs := self.check_driver_variables(search_name):
                     boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
