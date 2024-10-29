@@ -155,7 +155,8 @@ class AcquisitionView(QWidget):
         self.update_tiles()
 
         if self.instrument_view.grab_frames_worker.is_running:  # stop livestream if running
-            self.instrument_view.dismantle_live()
+            for camera_name in self.instrument.cameras.keys():
+                self.instrument_view.dismantle_live(camera_name)
 
         # write correct daq values if different from livestream
         for daq_name, daq in self.instrument.daqs.items():
