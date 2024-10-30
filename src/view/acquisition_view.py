@@ -162,7 +162,6 @@ class AcquisitionView(QWidget):
         for daq_name, daq in self.instrument.daqs.items():
             if daq_name in self.config['acquisition_view'].get('data_acquisition_tasks', {}).keys():
                 daq.tasks = self.config['acquisition_view']['data_acquisition_tasks'][daq_name]['tasks']
-                # Tasks should be added and written in acquisition?
 
         # anchor grid in volume widget
         for anchor, widget in zip(self.volume_plan.anchor_widgets, self.volume_plan.grid_offset_widgets):
@@ -204,6 +203,11 @@ class AcquisitionView(QWidget):
             if hasattr(self, f'{operation}_dock'):
                 getattr(self, f'{operation}_dock').setDisabled(False)
         self.stop_button.setEnabled(False)
+
+        # write correct daq values if different from acquisition task
+        for daq_name, daq in self.instrument.daqs.items():
+            if daq_name in self.config['instrument_view'].get('livestream_tasks', {}).keys():
+                daq.tasks = self.config['instrument_view']['livestream_tasks'][daq_name]['tasks']
 
         # unanchor grid in volume widget
         # anchor grid in volume widget
