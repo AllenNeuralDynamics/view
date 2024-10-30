@@ -454,10 +454,10 @@ class InstrumentView(QWidget):
         laser_button_group = QButtonGroup(widget)
         for channel, specs in self.channels.items():
             button = QRadioButton(str(channel))
-            button.setChecked(True)  # Arbitrarily set last button checked
             button.toggled.connect(lambda value, ch=channel: self.change_channel(value, ch))
             laser_button_group.addButton(button)
             widget_layout.addWidget(button)
+        button.setChecked(True)  # Arbitrarily set last button checked
         widget.setLayout(widget_layout)
         widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         self.viewer.window.add_dock_widget(widget, area='bottom', name='Channels')
