@@ -1,4 +1,4 @@
-from voxel.devices.lasers.simulated import SimulatedLaser
+from voxel.devices.laser.simulated import SimulatedLaser
 from view.widgets.device_widgets.laser_widget import LaserWidget
 from qtpy.QtWidgets import QApplication
 import sys
@@ -41,8 +41,8 @@ if __name__ == "__main__":
     laser = LaserWidget(laser_object)
     laser.show()
 
-    laser.ValueChangedInside[str].connect(
-        lambda value, dev=laser_object, widget=laser,: widget_property_changed(value, dev, widget))
+    # laser.ValueChangedInside[str].connect(
+    #     lambda value, dev=laser_object, widget=laser,: widget_property_changed(value, dev, widget))
     laser.setWindowTitle('Laser')
     sys.exit(app.exec_())
     # app = QApplication(sys.argv)

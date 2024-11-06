@@ -53,8 +53,10 @@ class LaserWidget(BaseDeviceWidget):
         slider.sliderReleased.connect(lambda: setattr(self, 'power_setpoint_mw', float(slider.value())))
         slider.sliderReleased.connect(lambda: self.ValueChangedInside.emit('power_setpoint_mw'))
 
+        self.property_widgets['power_mw'].layout().itemAt(0).widget().setVisible(False)     # hide power_mw label
         self.power_setpoint_mw_widget_slider = slider
         self.property_widgets['power_setpoint_mw'].layout().addWidget(create_widget('H', text=textbox,
+                                                                                         power=self.property_widgets['power_mw'],
                                                                                          slider=slider))
 
     def power_slider_fixup(self, value) -> None:
