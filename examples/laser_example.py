@@ -1,4 +1,4 @@
-from voxel.devices.lasers.simulated import SimulatedLaser
+from voxel.devices.laser.simulated import SimulatedLaser
 from view.widgets.device_widgets.laser_widget import LaserWidget
 from qtpy.QtWidgets import QApplication
 import sys
@@ -32,13 +32,13 @@ def widget_property_changed(name, device, widget):
     for k, v in widget.property_widgets.items():
         instrument_value = getattr(device, k)
         print(k, instrument_value)
-        #setattr(widget, k, instrument_value)
+        setattr(widget, k, instrument_value)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     laser_object = SimulatedLaser(id='', wavelength=488)
-    laser = LaserWidget(laser_object)
+    laser = LaserWidget(laser_object, color='blue', advanced_user=False)
     laser.show()
 
     laser.ValueChangedInside[str].connect(
