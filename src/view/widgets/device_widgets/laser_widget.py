@@ -30,24 +30,22 @@ class LaserWidget(BaseDeviceWidget):
         Modify power widget to be slider
         """
 
-        textbox_power_mw_setpoint = self.power_setpoint_mw_widget
-        value = textbox_power_mw_setpoint.text()
-        left_digits = value.find('.') if value != '0' else 1
-        right_digits = 2
-        textbox_power_mw_setpoint.setMaxLength(left_digits + right_digits + 1)
-        if type(textbox_power_mw_setpoint.validator()) == QDoubleValidator:
-            textbox_power_mw_setpoint.validator().setRange(0.0, self.max_power_mw, decimals=2)
-        elif type(textbox_power_mw_setpoint.validator()) == QIntValidator:
-            textbox_power_mw_setpoint.validator().setRange(0, self.max_power_mw)
-        textbox_power_mw_setpoint.validator().fixup = self.power_slider_fixup
-        textbox_power_mw_setpoint.editingFinished.connect(lambda: slider.setValue(round(float(textbox_power_mw_setpoint.text()))))
-        textbox_power_mw_setpoint.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        setpoint = self.power_setpoint_mw_widget
+        power = self.power_mw_widget
 
-        textbox_power_mw = self.property_widgets['power_mw'].layout().itemAt(1).widget()
-        textbox2_value = textbox_power_mw.text()
-        left_digits = textbox2_value.find('.') if textbox2_value != '0' else 1
-        right_digits = 2
-        textbox_power_mw.setMaxLength(left_digits + right_digits + 1)
+        if type(setpoint.validator()) == QDoubleValidator:
+            setpoint.validator().setRange(0.0, self.max_power_mw, decimals=2)
+            power.validator().setRange(0.0, self.max_power_mw, decimals=2)
+        elif type(setpoint.validator()) == QIntValidator:
+            setpoint.validator().setRange(0, self.max_power_mw)
+            power.validator().setRange(0.0, self.max_power_mw, decimals=2)
+        setpoint.setValue(round(setpoint.value(), 2))
+        power.setValue(round(power.value(), 2))
+        power.setEnabled(False)
+        setpoint.validator().fixup = self.power_slider_fixup
+        setpoint.editingFinished.connect(lambda: slider.setValue(round(float(setpoint.text()))))
+        setpoint.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
         textbox_power_mw_label = self.property_widgets['power_mw'].layout().itemAt(0).widget()
         textbox_power_mw_label.setVisible(False)  # hide power_mw label
 
@@ -62,14 +60,14 @@ class LaserWidget(BaseDeviceWidget):
         slider.setMinimum(0)  # Todo: is it always zero?
         slider.setMaximum(int(self.max_power_mw))
         slider.setValue(int(self.power_setpoint_mw))
-        slider.sliderMoved.connect(lambda: textbox_power_mw_setpoint.setText(str(slider.value())))
+        slider.sliderMoved.connect(lambda: setpoint.setText(str(slider.value())))
         slider.sliderReleased.connect(lambda: setattr(self, 'power_setpoint_mw', float(slider.value())))
         slider.sliderReleased.connect(lambda: self.ValueChangedInside.emit('power_setpoint_mw'))
 
         self.power_setpoint_mw_widget_slider = slider
-        self.property_widgets['power_setpoint_mw'].layout().addWidget(create_widget('H', textbox_power_mw_setpoint,
-                                                                                         self.property_widgets['power_mw'], # feed in combined propert widget not just textbox
-                                                                                         slider))
+        self.property_widgets['power_setpoint_mw'].layout().addWidget(self.power_mw_widget)
+        self.property_widgets['power_setpoint_mw'].layout().addWidget(slider)
+
 
     def power_slider_fixup(self, value) -> None:
         """
