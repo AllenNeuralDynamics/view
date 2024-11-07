@@ -30,6 +30,7 @@ class JoystickWidget(BaseDeviceWidget):
             unused.append(specs['instrument_axis'])
             old_widget = getattr(self, f'joystick_mapping.{joystick_axis}.instrument_axis_widget')
             new_widget = self.create_combo_box(f'joystick_mapping.{joystick_axis}.instrument_axis', unused)
+            old_widget.parentWidget().layout().removeItem(old_widget.parentWidget().layout().itemAt(0))
             old_widget.parentWidget().layout().replaceWidget(old_widget, new_widget)
             setattr(self, f'joystick_mapping.{joystick_axis}.instrument_axis_widget', new_widget)
             new_widget.currentTextChanged.connect(self.update_axes_selection)
