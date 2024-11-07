@@ -38,7 +38,7 @@ class QScrollableFloatSlider(QSlider):
         super().wheelEvent(event)
         value = self.value()
         self.sliderMoved.emit(value)
-        self.sliderReleased.emit()
+
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         if event.buttons() == Qt.MouseButton.LeftButton:
