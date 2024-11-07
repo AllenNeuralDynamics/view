@@ -11,7 +11,7 @@ from scipy import signal
 from qtpy.QtCore import Slot
 from random import randint
 from typing import Union
-
+import inspect
 class NIWidget(BaseDeviceWidget):
 
     def __init__(self, daq,
@@ -220,7 +220,7 @@ class NIWidget(BaseDeviceWidget):
                               0) if 'amplitude' not in name else -maximum  # allow for negative amplitude
             slider.setMaximum(maximum)
             slider.setMinimum(minimum)
-            textbox.validator().setRange(minimum, maximum, decimals=4)
+            textbox.validator().setRange(minimum, maximum, decimals=3)
 
         slider.setValue(getattr(self, f'{name}'))
 

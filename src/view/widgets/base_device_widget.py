@@ -30,6 +30,7 @@ class BaseDeviceWidget(QMainWindow):
         self.device_type = device_type
         self.device_driver = import_module(self.device_type.__module__) if hasattr(self.device_type, '__module__') \
             else types.SimpleNamespace()  # dummy driver if object is dictionary
+        self.device_driver = device_type
         self.create_property_widgets(properties, 'property')
 
         widget = create_widget('V', **self.property_widgets)
@@ -107,11 +108,9 @@ class BaseDeviceWidget(QMainWindow):
         """Check if there is variable in device driver that has name of
         property to inform input widget type and values
         :param name: name of property to search for"""
-
         driver_vars = self.device_driver.__dict__
         for variable in driver_vars:
-            search_name = inflection.pluralize(name.replace(".", "_"))
-            x = re.search(variable, fr'\b{search_name}?\b', re.IGNORECASE)
+            x = re.search(variable, fr'\b{inflection.pluralize(name.replace(".", "_"))}?\b', re.IGNORECASE)
             if x is not None:
                 if type(driver_vars[variable]) in [dict, list]:
                     return driver_vars[variable]
@@ -133,7 +132,6 @@ class BaseDeviceWidget(QMainWindow):
             validator.setNotation(QDoubleValidator.StandardNotation)
             validator.setDecimals(2)
             textbox.setValidator(validator)
-            textbox.setValue(round(value, 2))
         elif int in value_type.__mro__:
             validator = QIntValidator()
             textbox.setValidator(validator)
