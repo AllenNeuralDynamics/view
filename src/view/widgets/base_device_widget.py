@@ -133,6 +133,7 @@ class BaseDeviceWidget(QMainWindow):
             validator.setNotation(QDoubleValidator.StandardNotation)
             validator.setDecimals(2)
             textbox.setValidator(validator)
+            textbox.setValue(round(value, 2))
         elif int in value_type.__mro__:
             validator = QIntValidator()
             textbox.setValidator(validator)

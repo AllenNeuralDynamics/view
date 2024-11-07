@@ -38,9 +38,8 @@ class LaserWidget(BaseDeviceWidget):
             power.validator().setRange(0.0, self.max_power_mw, decimals=2)
         elif type(setpoint.validator()) == QIntValidator:
             setpoint.validator().setRange(0, self.max_power_mw)
-            power.validator().setRange(0.0, self.max_power_mw, decimals=2)
-        setpoint.setValue(round(setpoint.value(), 2))
-        power.setValue(round(power.value(), 2))
+            power.validator().setRange(0.0, self.max_power_mw)
+
         power.setEnabled(False)
         setpoint.validator().fixup = self.power_slider_fixup
         setpoint.editingFinished.connect(lambda: slider.setValue(round(float(setpoint.text()))))
