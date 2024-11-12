@@ -112,15 +112,15 @@ class ChannelPlanWidget(QTabWidget):
                                 maximum = getattr(descriptor, 'maximum', float('inf'))
                                 step = getattr(descriptor, 'step', .1)
                                 delegates.append(QSpinItemDelegate(minimum=minimum, maximum=maximum, step=step))
-                                setattr(self, column_name + '_initial_value', prop_widget.value())
+                                setattr(self, column_name + '_value_function', prop_widget.value)
                             elif type(getattr(device_widget, f'{prop}_widget')) == QComboBox:
                                 widget = getattr(device_widget, f'{prop}_widget')
                                 items = [widget.itemText(i) for i in range(widget.count())]
                                 delegates.append(QComboItemDelegate(items=items))
-                                setattr(self, column_name + '_initial_value', prop_widget.currentText())
+                                setattr(self, column_name + '_value_function', prop_widget.currentText)
                             else:  # TODO: How to handle dictionary values
                                 delegates.append(QTextItemDelegate())
-                                setattr(self, column_name + '_initial_value', prop_widget.text())
+                                setattr(self, column_name + '_value_function', prop_widget.text)
                 elif dict in type(properties).__mro__:     # TODO: how to validate the GUI yaml?
                     column_name = label_maker(device_type)
                     setattr(self, column_name, {})
@@ -244,8 +244,11 @@ class ChannelPlanWidget(QTabWidget):
                 else:
                     array[channel] = np.empty(self._tile_volumes.shape, dtype='U100')
 
-                if getattr(self, column_name + '_initial_value') is not None:
+                if getattr(self, column_name + '_initial_value', None) is not None:     # get initial value
                     array[channel][:, :] = getattr(self, column_name + '_initial_value')
+                elif getattr(self, column_name + '_value_function', None) is not None:
+                    # call value function to get current set point
+                    array[channel][:, :] = getattr(self, column_name + '_value_function')()
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
