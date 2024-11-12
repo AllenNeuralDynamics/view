@@ -41,6 +41,7 @@ class LaserWidget(BaseDeviceWidget):
             power.validator().setRange(0.0, self.max_power_mw)
 
         power.setEnabled(False)
+        power.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         setpoint.validator().fixup = self.power_slider_fixup
         setpoint.editingFinished.connect(lambda: slider.setValue(round(float(setpoint.text()))))
         setpoint.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
