@@ -220,9 +220,9 @@ class BaseDeviceWidget(QMainWindow):
                 if widget.validator() is None:
                     widget.setText(str(value))
                 elif type(widget.validator()) == QIntValidator:
-                    widget.setText(str(round(value)))
+                    widget.setValue(round(value))
                 elif type(widget.validator()) == QDoubleValidator:
-                    widget.setText(str(round(value, widget.validator().decimals())))
+                    widget.setValue(str(round(value, widget.validator().decimals())))
             elif hasattr(widget, 'setCurrentText'):
                 widget.setCurrentText(str(value))
             widget.blockSignals(False)

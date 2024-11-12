@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import QLineEdit
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-
+import typing
 
 class QScrollableLineEdit(QLineEdit):
     """Widget inheriting from QLineEdit that allows value to be scrollable"""
