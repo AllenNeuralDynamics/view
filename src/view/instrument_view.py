@@ -328,62 +328,8 @@ class InstrumentView(QWidget):
             live_button.pressed.connect(lambda camera=camera_name: self.setup_live(camera))
             live_button.pressed.connect(lambda camera=camera_name: self.toggle_live_button(camera))
 
-            # Add functionality to the edges button
-            self.edges_button = getattr(camera_widget, "edges_button", QPushButton())
-            self.edges_button.setCheckable(True)
-            self.edges_button.released.connect(lambda camera=camera_name: self.enable_edges(camera))
-
         stacked = self.stack_device_widgets("camera")
         self.viewer.window.add_dock_widget(stacked, area="right", name="Cameras", add_vertical_stretch=False)
-
-    def enable_edges(self, camera_name: str) -> None:
-        """
-        Toggle view middle edges when pressed
-        :param camera_name: name of camera to set up
-        """
-        if not self.grab_frames_worker.is_running:
-            return
-
-        self.viewer.layers.clear()
-        if self.edges_button.isChecked():
-            self.grab_frames_worker.yielded.connect(lambda args: self.dissect_image(*args))
-            self.grab_frames_worker.yielded.disconnect(lambda args: self.update_layer(*args))
-        else:
-            self.grab_frames_worker.yielded.disconnect(lambda args: self.dissect_image(*args))
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args))
-
-    def dissect_image(self, image: np.ndarray, camera_name: str, snapshot: bool = False) -> None:
-        """
-        Process images for view middle edges
-        """
-        if image is not None:
-            # Dissect image and add to viewer
-
-            chunk = 1024
-
-            lower_col = round((image.shape[1]/2) - chunk)
-            upper_col = round((image.shape[1]/2) + chunk)
-            lower_row = round((image.shape[0]/2) - chunk)
-            upper_row = round((image.shape[0]/2) + chunk)
-
-            length = chunk*2
-            width = chunk*4
-
-            container = np.zeros((length, width))
-            container[:chunk, chunk:chunk + length] = image[0][:chunk, lower_col:upper_col]  # Top
-            container[-chunk:, chunk:chunk + length] = image[0][-chunk:, lower_col:upper_col]  # bottom
-            container[:, :chunk] = image[0][lower_row:upper_row, :chunk]  # left
-            container[:, -chunk:] = image[0][lower_row:upper_row, - chunk:]  # right
-
-            layer_name = (
-                f"{camera_name} {self.livestream_channel}"
-            )
-            if layer_name in self.viewer.layers:
-                layer = self.viewer.layers[layer_name]
-                layer.data = container
-            else:
-                # Add image to a new layer if layer doesn't exist yet or image is snapshot
-                layer = self.viewer.add_image(container, name=layer_name)
 
     def toggle_live_button(self, camera_name: str) -> None:
         """
@@ -430,9 +376,9 @@ class InstrumentView(QWidget):
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
 
         if frames == 1:  # pass in optional argument that this image is a snapshot
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args, snapshot=True))
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args, snapshot=True))
         else:
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args))
+            self.grab_frames_worker.yielded.connect(self.update_layer)
 
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
@@ -489,13 +435,14 @@ class InstrumentView(QWidget):
             yield self.instrument.cameras[camera_name].grab_frame(), camera_name
             i += 1
 
-    def update_layer(self, image: np.ndarray, camera_name: str, snapshot: bool = False) -> None:
+    def update_layer(self, args, snapshot: bool = False) -> None:
         """
         Update viewer with new camera frame
         :param image: array like object to upload to viewer
         :param camera_name: name of camera image came off of
         :param snapshot: if image taken is a snapshot or not
         """
+        (image, camera_name) = args
 
         if image is not None:
             layer_name = (
