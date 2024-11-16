@@ -25,8 +25,7 @@ class CameraWidget(BaseDeviceWidget):
         # create and format livestream button and snapshot button
         self.live_button = self.create_live_button()
         self.snapshot_button = self.create_snapshot_button()
-        self.crosshairs_button = self.create_crosshairs_button()
-        picture_buttons = create_widget("H", self.live_button, self.snapshot_button, self.crosshairs_button)
+        picture_buttons = create_widget("H", self.live_button, self.snapshot_button)
 
         if advanced_user:  # Format widgets better in advaced user mode
 
@@ -119,9 +118,3 @@ class CameraWidget(BaseDeviceWidget):
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton)
         button.setIcon(icon)
         return button
-
-    def create_crosshairs_button(self) -> QPushButton:
-        """Add edges button"""
-
-        checkbox = QCheckBox("Crosshair")
-        return checkbox
