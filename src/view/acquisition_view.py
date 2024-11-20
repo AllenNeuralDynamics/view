@@ -42,6 +42,9 @@ from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollabl
 from pathlib import Path
 from typing import Literal, Union, Iterator
 import numpy as np
+import napari
+from napari.qt import get_stylesheet
+from napari.settings import get_settings
 
 
 class AcquisitionView(QWidget):
@@ -62,7 +65,8 @@ class AcquisitionView(QWidget):
         super().__init__()
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.log.setLevel(log_level)
-
+        self.setStyleSheet(napari.qt.get_current_stylesheet())
+        self.setStyleSheet(get_stylesheet(get_settings().appearance.theme))
         self.instrument_view = instrument_view
         self.acquisition = acquisition
         self.instrument = self.acquisition.instrument
