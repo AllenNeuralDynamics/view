@@ -362,23 +362,17 @@ class InstrumentView(QWidget):
 
         if self.grab_frames_worker.is_running:
             if frames == 1:  # create snapshot layer with the latest image
-                # TODO: Maybe make this it's own function
-                layer_name = f"{camera_name} {self.livestream_channel}"
-                multiscale_image = self.viewer.layers[layer_name].data
-                layer = self.viewer.add_image(multiscale_image, name=layer_name + " snapshot")
-                layer.mouse_drag_callbacks.append(self.save_image)
-                self.snapshotTaken.emit(np.rot90(multiscale_image[-3], k=3), layer.contrast_limits)
-                layer.events.contrast_limits.connect(
-                    lambda event: self.contrastChanged.emit(np.rot90(layer.data[-3], k=3), layer.contrast_limits)
-                )
+                layer = self.viewer.layers[f"{camera_name} {self.livestream_channel}"]
+                image = layer.data[0] if layer.multiscale else image.data
+                self.update_layer((image, camera_name), snapshot=True)
             return
 
         self.grab_frames_worker = self.grab_frames(camera_name, frames)
 
         if frames == 1:  # pass in optional argument that this image is a snapshot
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args, snapshot=True))
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args, snapshot=True))
         else:
-            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(*args))
+            self.grab_frames_worker.yielded.connect(lambda args: self.update_layer(args))
 
         self.grab_frames_worker.finished.connect(lambda: self.dismantle_live(camera_name))
         self.grab_frames_worker.start()
@@ -435,13 +429,14 @@ class InstrumentView(QWidget):
             yield self.instrument.cameras[camera_name].grab_frame(), camera_name
             i += 1
 
-    def update_layer(self, image: np.ndarray, camera_name: str, snapshot: bool = False) -> None:
+    def update_layer(self, args, snapshot: bool = False) -> None:
         """
         Update viewer with new camera frame
-        :param image: array like object to upload to viewer
-        :param camera_name: name of camera image came off of
+        :param args: tuple of image and camera name
         :param snapshot: if image taken is a snapshot or not
         """
+
+        (image, camera_name) = args
 
         if image is not None:
             layer_name = (
