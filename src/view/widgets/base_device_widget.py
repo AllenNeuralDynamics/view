@@ -28,31 +28,34 @@ class BaseDeviceWidget(QMainWindow):
 
         super().__init__()
         self.device_type = device_type
-        self.device_driver = import_module(self.device_type.__module__) if hasattr(self.device_type, '__module__') \
-            else types.SimpleNamespace()  # dummy driver if object is dictionary
-        self.create_property_widgets(properties, 'property')
+        self.device_driver = (
+            import_module(self.device_type.__module__)
+            if hasattr(self.device_type, "__module__")
+            else types.SimpleNamespace()
+        )  # dummy driver if object is dictionary
+        self.create_property_widgets(properties, "property")
 
-        widget = create_widget('V', **self.property_widgets)
+        widget = create_widget("V", **self.property_widgets)
         self.setCentralWidget(widget)
         self.ValueChangedOutside[str].connect(self.update_property_widget)  # Trigger update when property value changes
 
     def create_property_widgets(self, properties: dict, widget_group):
         """Create input widgets based on properties
-         :param properties: dictionary containing properties within a class and mapping to values
-         :param widget_group: attribute name for dictionary of widgets"""
+        :param properties: dictionary containing properties within a class and mapping to values
+        :param widget_group: attribute name for dictionary of widgets"""
 
         widgets = {}
         for name, value in properties.items():
             setattr(self, name, value)  # Add device properties as widget properties
             attr = getattr(self.device_type, name, None)
-            unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, 'unit', None) is not None else ''
+            unit = f"[{getattr(attr, 'unit')}]" if getattr(attr, "unit", None) is not None else ""
             arg_type = type(value)
-            search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name.split('.')[-1]
+            search_name = arg_type.__name__ if arg_type.__name__ in dir(self.device_driver) else name.split(".")[-1]
 
-            boxes = {'label': QLabel(label_maker(name.split('.')[-1] + f'_{unit}'))}
+            boxes = {"label": QLabel(label_maker(name.split(".")[-1] + f"_{unit}"))}
             if dict not in type(value).__mro__ and list not in type(value).__mro__ or type(arg_type) == enum.EnumMeta:
                 # create schema validator so entries must adhere to specific format. Check to bypass ruamel types
-                if float in type(value).__mro__:    # set type to float
+                if float in type(value).__mro__:  # set type to float
                     setattr(self, f"{name}_schema", Schema(float))
                 elif int in type(value).__mro__:
                     setattr(self, f"{name}_schema", Schema(int))
@@ -62,43 +65,45 @@ class BaseDeviceWidget(QMainWindow):
                     setattr(self, f"{name}_schema", Schema(type(value)))
                 # Create combo boxes if there are preset options
                 if input_specs := self.check_driver_variables(search_name):
-                    boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
+                    boxes[name] = self.create_attribute_widget(name, "combo", input_specs)
                 # If no found options, create an editable text box
                 else:
-                    boxes[name] = self.create_attribute_widget(name, 'text', value)
+                    boxes[name] = self.create_attribute_widget(name, "text", value)
 
             elif dict in type(value).__mro__:  # deal with dict like variables
                 setattr(self, f"{name}_schema", Schema(create_dict_schema(value)))
-                boxes[name] = create_widget('V', **self.create_property_widgets(
-                    {f'{name}.{k}': v for k, v in value.items()}, name))
+                boxes[name] = create_widget(
+                    "V", **self.create_property_widgets({f"{name}.{k}": v for k, v in value.items()}, name)
+                )
             elif list in type(value).__mro__:  # deal with list like variables
                 setattr(self, f"{name}_schema", Schema(create_list_schema(value)))
-                boxes[name] = create_widget('H', **self.create_property_widgets(
-                    {f'{name}.{i}': v for i, v in enumerate(value)}, name))
-            orientation = 'H'
-            if '.' in name: # see if parent list and format index label and input vertically
-                parent = pathGet(self.__dict__, name.split('.')[0:-1])
+                boxes[name] = create_widget(
+                    "H", **self.create_property_widgets({f"{name}.{i}": v for i, v in enumerate(value)}, name)
+                )
+            orientation = "H"
+            if "." in name:  # see if parent list and format index label and input vertically
+                parent = pathGet(self.__dict__, name.split(".")[0:-1])
                 if list in type(parent).__mro__:
-                    orientation = 'V'
+                    orientation = "V"
             widgets[name] = create_widget(orientation, **boxes)
 
             if attr is not None:  # if name is attribute of device
                 widgets[name].setToolTip(attr.__doc__)  # Set tooltip to properties docstring
-                if getattr(attr, 'fset', None) is None:  # Constant, unchangeable attribute
+                if getattr(attr, "fset", None) is None:  # Constant, unchangeable attribute
                     widgets[name].setDisabled(True)
 
         # Add attribute of grouped widgets for easy access
-        setattr(self, f'{widget_group}_widgets', widgets)
+        setattr(self, f"{widget_group}_widgets", widgets)
         return widgets
 
     def create_attribute_widget(self, name, widget_type, values):
         """Create a widget and create corresponding attribute
-                :param name: name of property
-                :param widget_type: widget type (QLineEdit or QCombobox)
-                :param values: input into widget"""
+        :param name: name of property
+        :param widget_type: widget type (QLineEdit or QCombobox)
+        :param values: input into widget"""
 
         # options = values.keys() if widget_type == 'combo' else values
-        box = getattr(self, f'create_{widget_type}_box')(name, values)
+        box = getattr(self, f"create_{widget_type}_box")(name, values)
         setattr(self, f"{name}_widget", box)  # add attribute for widget input for easy access
 
         return box
@@ -111,7 +116,7 @@ class BaseDeviceWidget(QMainWindow):
         driver_vars = self.device_driver.__dict__
         for variable in driver_vars:
             search_name = inflection.pluralize(name.replace(".", "_"))
-            x = re.search(variable, fr'\b{search_name}?\b', re.IGNORECASE)
+            x = re.search(variable, rf"\b{search_name}?\b", re.IGNORECASE)
             if x is not None:
                 if type(driver_vars[variable]) in [dict, list]:
                     return driver_vars[variable]
@@ -121,8 +126,8 @@ class BaseDeviceWidget(QMainWindow):
 
     def create_text_box(self, name, value):
         """Convenience function to build editable text boxes and add initial value and validator
-                :param name: name to emit when text is edited is changed
-                :param value: initial value to add to box"""
+        :param name: name to emit when text is edited is changed
+        :param value: initial value to add to box"""
 
         # TODO: better way to handle weird types that will crash QT?
         value_type = type(value)
@@ -146,10 +151,10 @@ class BaseDeviceWidget(QMainWindow):
         :return:
         """
 
-        name_lst = name.split('.')
+        name_lst = name.split(".")
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
-        value = getattr(self, name + '_widget').text()
-        value_type = type(getattr(self, name + '_schema').schema())
+        value = getattr(self, name + "_widget").text()
+        value_type = type(getattr(self, name + "_schema").schema())
         if dict in type(parent_attr).__mro__:  # name is a dictionary
             parent_attr[name_lst[-1]] = value_type(value)
         elif list in type(parent_attr).__mro__:
@@ -162,7 +167,7 @@ class BaseDeviceWidget(QMainWindow):
         :param name: name to emit when combobox index is changed
         :param items: items to add to combobox"""
 
-        options = items.keys() if hasattr(items, 'keys') else items
+        options = items.keys() if hasattr(items, "keys") else items
         box = QComboBox()
         box.addItems([str(x) for x in options])
         box.currentTextChanged.connect(lambda value: self.combo_box_changed(value, name))
@@ -178,18 +183,19 @@ class BaseDeviceWidget(QMainWindow):
         :return:
         """
 
-        name_lst = name.split('.')
+        name_lst = name.split(".")
 
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
-        value_type = type(getattr(self, name + '_schema').schema())
+        value_type = type(getattr(self, name + "_schema").schema())
 
-        if dict in type(parent_attr).__mro__: # name is a dict
+        if dict in type(parent_attr).__mro__:  # name is a dict
             parent_attr[str(name_lst[-1])] = value_type(value)
         elif list in type(parent_attr).__mro__:  # name is a list
 
             parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
+
     @Slot(str)
     def update_property_widget(self, name):
         """Update property widget. Triggers when attribute has been changed outside of widget
@@ -200,30 +206,30 @@ class BaseDeviceWidget(QMainWindow):
             self._set_widget_text(name, value)
         elif dict in type(value).__mro__:
             for k, v in value.items():  # multiple widgets to set values for
-                setattr(self, f'{name}.{k}', v)
-                self.update_property_widget(f'{name}.{k}')
+                setattr(self, f"{name}.{k}", v)
+                self.update_property_widget(f"{name}.{k}")
         else:
             for i, item in enumerate(value):
-                if hasattr(self, f'{name}.{i}'):  # can't handle added indexes yet
-                    setattr(self, f'{name}.{i}', item)
-                    self.update_property_widget(f'{name}.{i}')
+                if hasattr(self, f"{name}.{i}"):  # can't handle added indexes yet
+                    setattr(self, f"{name}.{i}", item)
+                    self.update_property_widget(f"{name}.{i}")
 
     def _set_widget_text(self, name, value):
         """Set widget text if widget is QLineEdit or QCombobox
         :param name: widget name to set text to
         :param value: value of text"""
 
-        if hasattr(self, f'{name}_widget'):
-            widget = getattr(self, f'{name}_widget')
+        if hasattr(self, f"{name}_widget"):
+            widget = getattr(self, f"{name}_widget")
             widget.blockSignals(True)  # block signal indicating change since changing internally
-            if hasattr(widget, 'setText'):
+            if hasattr(widget, "setText"):
                 if widget.validator() is None:
                     widget.setText(str(value))
                 elif type(widget.validator()) == QIntValidator:
                     widget.setValue(round(value))
                 elif type(widget.validator()) == QDoubleValidator:
                     widget.setValue(str(round(value, widget.validator().decimals())))
-            elif hasattr(widget, 'setCurrentText'):
+            elif hasattr(widget, "setCurrentText"):
                 widget.setCurrentText(str(value))
             widget.blockSignals(False)
         else:
@@ -232,15 +238,16 @@ class BaseDeviceWidget(QMainWindow):
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""
         # check that values adhere to schema of correlating variable
-        if f'{name}_schema' in self.__dict__.keys():
-            schema = getattr(self, f'{name}_schema')
+        if f"{name}_schema" in self.__dict__.keys():
+            schema = getattr(self, f"{name}_schema")
             valid = check_if_valid(schema, value)
             if not valid:
-                self.log.warning(f'Attribute {name} cannot be set to {value} since it does not adhere to the schema'
-                                 f' {schema}')
+                self.log.warning(
+                    f"Attribute {name} cannot be set to {value} since it does not adhere to the schema" f" {schema}"
+                )
                 return
         self.__dict__[name] = value
-        if currentframe().f_back.f_locals.get('self', None) != self:  # call from outside so update widgets
+        if currentframe().f_back.f_locals.get("self", None) != self:  # call from outside so update widgets
             self.ValueChangedOutside.emit(name)
 
 
@@ -265,10 +272,10 @@ def create_dict_schema(dictionary: dict):
 
 def create_list_schema(list_ob: dict):
     """
-        Helper function to create a schema for a list object
-        :param list_ob: list to create schema from
-        :return: schema of list_ob
-        """
+    Helper function to create a schema for a list object
+    :param list_ob: list to create schema from
+    :return: schema of list_ob
+    """
     schema = []
     for value in list_ob:
         if dict in type(value).__mro__:
@@ -294,9 +301,9 @@ def create_widget(struct: str, *args, **kwargs):
     :param kwargs: all widgets contained in layout
     :return QWidget()"""
 
-    layouts = {'H': QHBoxLayout(), 'V': QVBoxLayout()}
+    layouts = {"H": QHBoxLayout(), "V": QVBoxLayout()}
     widget = QWidget()
-    if struct == 'V' or struct == 'H':
+    if struct == "V" or struct == "H":
         layout = layouts[struct]
         for arg in [*kwargs.values(), *args]:
             try:
@@ -304,7 +311,7 @@ def create_widget(struct: str, *args, **kwargs):
             except TypeError:
                 layout.addLayout(arg)
 
-    elif struct == 'VH' or 'HV':
+    elif struct == "VH" or "HV":
         bin0 = {}
         bin1 = {}
         j = 0
@@ -327,14 +334,14 @@ def label_maker(string):
     :param string: string to make label out of
     """
 
-    possible_units = ['mm', 'um', 'px', 'mW', 'W', 'ms', 'C', 'V', 'us']
-    label = string.split('_')
+    possible_units = ["mm", "um", "px", "mW", "W", "ms", "C", "V", "us"]
+    label = string.split("_")
     label = [words.capitalize() for words in label]
 
     for i, word in enumerate(label):
         for unit in possible_units:
             if unit.lower() == word.lower():  # TODO: Consider using regular expression here for better results?
-                label[i] = f'[{unit}]'
+                label[i] = f"[{unit}]"
 
     label = " ".join(label)
     return label

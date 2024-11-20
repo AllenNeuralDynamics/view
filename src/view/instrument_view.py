@@ -563,7 +563,7 @@ class InstrumentView(QWidget):
 
             updating_props = specs.get("updating_properties", [])
             for prop_name in updating_props:
-                worker = self.grab_property_value(device, prop_name, getattr(gui, f"{prop_name}_widget"))
+                worker = self.grab_property_value(device, prop_name, gui)
                 worker.yielded.connect(lambda args: self.update_property_value(*args))
                 worker.start()
                 self.property_workers.append(worker)
@@ -580,12 +580,12 @@ class InstrumentView(QWidget):
         gui.setWindowTitle(f"{device_type} {device_name}")
 
     @thread_worker
-    def grab_property_value(self, device: object, property_name: str, widget) -> Iterator:
+    def grab_property_value(self, device: object, property_name: str, device_widget) -> Iterator:
         """
         Grab value of property and yield
         :param device: device to grab property from
         :param property_name: name of property to get
-        :param widget: corresponding device widget
+        :param device_widget: widget of entire device that is the parent of property widget
         :return: value of property and widget to update
         """
 
@@ -595,24 +595,25 @@ class InstrumentView(QWidget):
                 value = getattr(device, property_name)
             except ValueError:  # Tigerbox sometime coughs up garbage. Locking issue?
                 value = None
-            yield value, widget
+            yield value, device_widget, property_name
 
-    def update_property_value(self, value, widget) -> None:
+    def update_property_value(self, value, device_widget, property_name: str) -> None:
         """
         Update stage position in stage widget
-        :param widget: widget to update
+        :param device_widget: widget of entire device that is the parent of property widget
         :param value: value to update with
+        :param property_name: name of property to set
         """
 
         try:
-            if type(widget) in [QLineEdit, QScrollableLineEdit]:
-                widget.setText(str(value))
-            elif type(widget) in [QSpinBox, QDoubleSpinBox, QSlider, QScrollableFloatSlider]:
-                widget.setValue(value)
-            elif type(widget) == QComboBox:
-                index = widget.findText(value)
-                widget.setCurrentIndex(index)
-
+            # if type(widget) in [QLineEdit, QScrollableLineEdit]:
+            #     widget.setText(str(value))
+            # elif type(widget) in [QSpinBox, QDoubleSpinBox, QSlider, QScrollableFloatSlider]:
+            #     widget.setValue(value)
+            # elif type(widget) == QComboBox:
+            #     index = widget.findText(value)
+            #     widget.setCurrentIndex(index)
+            setattr(device_widget, property_name, value)  # setting attribute value will update widget
         except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
             pass
 
