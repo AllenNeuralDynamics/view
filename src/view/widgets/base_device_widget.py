@@ -1,6 +1,17 @@
 from qtpy.QtCore import Signal, Slot, QTimer
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow
+from qtpy.QtWidgets import (
+    QWidget,
+    QLabel,
+    QComboBox,
+    QHBoxLayout,
+    QVBoxLayout,
+    QMainWindow,
+    QLineEdit,
+    QSpinBox,
+    QDoubleSpinBox,
+    QSlider,
+)
 from inspect import currentframe
 from importlib import import_module
 import enum
@@ -9,6 +20,7 @@ import re
 import logging
 import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
+from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 import inspect
 from schema import Schema, SchemaError
 
@@ -215,25 +227,27 @@ class BaseDeviceWidget(QMainWindow):
                     self.update_property_widget(f"{name}.{i}")
 
     def _set_widget_text(self, name, value):
-        """Set widget text if widget is QLineEdit or QCombobox
+        """Set widget text based on widget type
         :param name: widget name to set text to
         :param value: value of text"""
 
         if hasattr(self, f"{name}_widget"):
             widget = getattr(self, f"{name}_widget")
             widget.blockSignals(True)  # block signal indicating change since changing internally
-            if hasattr(widget, "setText"):
+            if type(widget) in [QLineEdit, QScrollableLineEdit]:
                 if widget.validator() is None:
                     widget.setText(str(value))
                 elif type(widget.validator()) == QIntValidator:
                     widget.setValue(round(value))
                 elif type(widget.validator()) == QDoubleValidator:
                     widget.setValue(str(round(value, widget.validator().decimals())))
-            elif hasattr(widget, "setCurrentText"):
+            elif type(widget) in [QSpinBox, QDoubleSpinBox, QSlider, QScrollableFloatSlider]:
+                widget.setValue(value)
+            elif type(widget) == QComboBox:
                 widget.setCurrentText(str(value))
             widget.blockSignals(False)
         else:
-            self.log.debug(f"{name} doesn't correspond to a widget")
+            self.log.warning(f"{name} doesn't correspond to a widget")
 
     def __setattr__(self, name, value):
         """Overwrite __setattr__ to trigger update if property is changed"""

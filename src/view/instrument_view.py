@@ -606,13 +606,6 @@ class InstrumentView(QWidget):
         """
 
         try:
-            # if type(widget) in [QLineEdit, QScrollableLineEdit]:
-            #     widget.setText(str(value))
-            # elif type(widget) in [QSpinBox, QDoubleSpinBox, QSlider, QScrollableFloatSlider]:
-            #     widget.setValue(value)
-            # elif type(widget) == QComboBox:
-            #     index = widget.findText(value)
-            #     widget.setCurrentIndex(index)
             setattr(device_widget, property_name, value)  # setting attribute value will update widget
         except (RuntimeError, AttributeError):  # Pass when window's closed or widget doesn't have position_mm_widget
             pass
