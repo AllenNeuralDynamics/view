@@ -31,7 +31,7 @@ from qtpy.QtWidgets import (
     QFileDialog,
     QScrollArea,
 )
-from PIL import Image
+import tifffile
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils.theme import get_theme
 import napari
@@ -111,10 +111,11 @@ class InstrumentView(QWidget):
         # setup widget additional functionalities
         self.setup_camera_widgets()
         self.setup_channel_widget()
+        self.setup_stage_widgets()
         self.setup_laser_widgets()
         self.setup_daq_widgets()
         self.setup_filter_wheel_widgets()
-        self.setup_stage_widgets()
+        # self.setup_stage_widgets()
 
         # add undocked widget so everything closes together
         self.add_undocked_widgets()
@@ -475,9 +476,9 @@ class InstrumentView(QWidget):
 
         if event.button == 2:  # Left click
             if layer.multiscale:
-                image = Image.fromarray(layer.data[0])
+                image = layer.data[0]
             else:
-                image = Image.fromarray(layer.data)
+                image = layer.data
             fname = QFileDialog()
             folder = fname.getSaveFileName(
                 directory=str(
@@ -486,7 +487,7 @@ class InstrumentView(QWidget):
                 )
             )
             if folder[0] != "":  # user pressed cancel
-                image.save(folder[0])
+                tifffile.imwrite(f"{folder[0]}.tiff", image, imagej=True)
 
     def setup_channel_widget(self) -> None:
         """
