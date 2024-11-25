@@ -115,7 +115,6 @@ class InstrumentView(QWidget):
         self.setup_laser_widgets()
         self.setup_daq_widgets()
         self.setup_filter_wheel_widgets()
-        # self.setup_stage_widgets()
 
         # add undocked widget so everything closes together
         self.add_undocked_widgets()

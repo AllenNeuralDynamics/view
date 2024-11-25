@@ -128,7 +128,7 @@ class AcquisitionView(QWidget):
         splitter.addWidget(dock)
 
         # create dock widget for operations
-        for i, operation in enumerate(["writer", "transfer", "process", "routine"]):
+        for i, operation in enumerate(["writer", "file_transfer", "process", "routine"]):
             if hasattr(self, f"{operation}_widgets"):
                 stack = self.stack_device_widgets(operation)
                 stack.setFixedWidth(self.metadata_widget.size().width() - 20)
