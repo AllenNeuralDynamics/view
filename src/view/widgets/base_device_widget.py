@@ -1,6 +1,6 @@
 from qtpy.QtCore import Signal, Slot, QTimer
 from qtpy.QtGui import QIntValidator, QDoubleValidator
-from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow
+from qtpy.QtWidgets import QWidget, QLabel, QComboBox, QHBoxLayout, QVBoxLayout, QMainWindow, QCheckBox
 from inspect import currentframe
 from importlib import import_module
 import enum
@@ -11,7 +11,7 @@ import inflection
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 import inspect
 from schema import Schema, SchemaError
-
+from typing import Literal
 
 class BaseDeviceWidget(QMainWindow):
     ValueChangedOutside = Signal((str,))
@@ -54,18 +54,21 @@ class BaseDeviceWidget(QMainWindow):
                 # create schema validator so entries must adhere to specific format. Check to bypass ruamel types
                 if float in type(value).__mro__:    # set type to float
                     setattr(self, f"{name}_schema", Schema(float))
-                elif int in type(value).__mro__:
+                elif int in type(value).__mro__ and bool not in type(value).__mro__:
                     setattr(self, f"{name}_schema", Schema(int))
                 elif str in type(value).__mro__:
                     setattr(self, f"{name}_schema", Schema(str))
+                elif bool in type(value).__mro__:
+                    setattr(self, f"{name}_schema", Schema(bool))
                 else:
                     setattr(self, f"{name}_schema", Schema(type(value)))
                 # Create combo boxes if there are preset options
                 if input_specs := self.check_driver_variables(search_name):
                     boxes[name] = self.create_attribute_widget(name, 'combo', input_specs)
-                # If no found options, create an editable text box
+                # If no found options, create an editable text box or checkbox
                 else:
-                    boxes[name] = self.create_attribute_widget(name, 'text', value)
+                    box_type = 'text' if bool not in type(value).__mro__ else 'check'
+                    boxes[name] = self.create_attribute_widget(name, box_type, value)
 
             elif dict in type(value).__mro__:  # deal with dict like variables
                 setattr(self, f"{name}_schema", Schema(create_dict_schema(value)))
@@ -91,10 +94,10 @@ class BaseDeviceWidget(QMainWindow):
         setattr(self, f'{widget_group}_widgets', widgets)
         return widgets
 
-    def create_attribute_widget(self, name, widget_type, values):
+    def create_attribute_widget(self, name, widget_type: Literal['combo', 'text', 'check'], values):
         """Create a widget and create corresponding attribute
                 :param name: name of property
-                :param widget_type: widget type (QLineEdit or QCombobox)
+                :param widget_type: widget type ('combo', 'text', 'check')
                 :param values: input into widget"""
 
         # options = values.keys() if widget_type == 'combo' else values
@@ -119,7 +122,7 @@ class BaseDeviceWidget(QMainWindow):
                     enum_class = driver_vars[variable]
                     return {i.name: i.value for i in enum_class}
 
-    def create_text_box(self, name, value):
+    def create_text_box(self, name, value) -> QScrollableLineEdit:
         """Convenience function to build editable text boxes and add initial value and validator
                 :param name: name to emit when text is edited is changed
                 :param value: initial value to add to box"""
@@ -156,6 +159,17 @@ class BaseDeviceWidget(QMainWindow):
             parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
+
+    def create_check_box(self, name, value: bool) -> QCheckBox:
+        """Convenience function to build checkboxes
+        :param name: name to emit when text is edited is changed
+        :param value: initial value to add to box
+        """
+
+        checkbox = QCheckBox()
+        checkbox.setChecked(value)
+        checkbox.toggled.connect(lambda state: setattr(self, name, state))
+        return checkbox
 
     def create_combo_box(self, name, items):
         """Convenience function to build combo boxes and add items
