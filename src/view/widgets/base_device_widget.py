@@ -168,8 +168,25 @@ class BaseDeviceWidget(QMainWindow):
 
         checkbox = QCheckBox()
         checkbox.setChecked(value)
-        checkbox.toggled.connect(lambda state: setattr(self, name, state))
+        checkbox.toggled.connect(lambda state: self.check_box_toggled(name, state))
         return checkbox
+
+    def check_box_toggled(self, name: str, state: bool):
+        """
+        Correctly set attribute after combobox has been toggles
+        :param name: name of property that was edited
+        :param state: state of checkbox
+        :return:
+        """
+
+        name_lst = name.split('.')
+        parent_attr = pathGet(self.__dict__, name_lst[0:-1])
+        if dict in type(parent_attr).__mro__:  # name is a dictionary
+            parent_attr[name_lst[-1]] = state
+        elif list in type(parent_attr).__mro__:
+            parent_attr[int(name_lst[-1])] = state
+        setattr(self, name, state)
+        self.ValueChangedInside.emit(name)
 
     def create_combo_box(self, name, items):
         """Convenience function to build combo boxes and add items
@@ -204,6 +221,7 @@ class BaseDeviceWidget(QMainWindow):
             parent_attr[int(name_lst[-1])] = value_type(value)
         setattr(self, name, value_type(value))
         self.ValueChangedInside.emit(name)
+
     @Slot(str)
     def update_property_widget(self, name):
         """Update property widget. Triggers when attribute has been changed outside of widget
