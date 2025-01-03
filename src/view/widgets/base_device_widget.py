@@ -248,7 +248,7 @@ class BaseDeviceWidget(QMainWindow):
         if hasattr(self, f'{name}_widget'):
             widget = getattr(self, f'{name}_widget')
             widget.blockSignals(True)  # block signal indicating change since changing internally
-            if hasattr(widget, 'setText'):
+            if hasattr(widget, 'setText') and hasattr(widget, 'validator'):
                 if widget.validator() is None:
                     widget.setText(str(value))
                 elif type(widget.validator()) == QIntValidator:
@@ -257,6 +257,8 @@ class BaseDeviceWidget(QMainWindow):
                     widget.setText(str(round(value, widget.validator().decimals())))
             elif hasattr(widget, 'setCurrentText'):
                 widget.setCurrentText(str(value))
+            elif hasattr(widget, 'setChecked'):
+                widget.setChecked(value)
             widget.blockSignals(False)
         else:
             self.log.debug(f"{name} doesn't correspond to a widget")
