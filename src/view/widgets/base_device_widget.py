@@ -382,7 +382,7 @@ def label_maker(string):
     :param string: string to make label out of
     """
 
-    possible_units = ["mm", "um", "px", "mW", "W", "ms", "C", "V", "us", "s", "ms", "uL", "min"]
+    possible_units = ["mm", "um", "px", "mW", "W", "ms", "C", "V", "us", "s", "ms", "uL", "min", "g", "mL"]
     label = string.split("_")
     label = [words.capitalize() for words in label]
 
