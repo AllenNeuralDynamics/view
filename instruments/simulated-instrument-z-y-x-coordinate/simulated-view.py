@@ -1,14 +1,13 @@
-from qtpy.QtWidgets import QApplication, QMessageBox, QPushButton, QFileDialog
-import sys
-from view.instrument_view import InstrumentView
-from view.acquisition_view import AcquisitionView
-from voxel.instruments.instrument import Instrument
-from voxel.acquisition.acquisition import Acquisition
-from pathlib import Path
 import os
-import yaml
-import inflection
-from qtpy.QtCore import Qt
+import sys
+from pathlib import Path
+
+from qtpy.QtWidgets import QApplication
+
+from view.acquisition_view import AcquisitionView
+from view.instrument_view import InstrumentView
+from voxel.acquisition.acquisition import Acquisition
+from voxel.instruments.instrument import Instrument
 
 RESOURCES_DIR = (Path(os.path.dirname(os.path.realpath(__file__))))
 ACQUISITION_YAML = RESOURCES_DIR / 'test_acquisition.yaml'

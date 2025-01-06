@@ -1,15 +1,20 @@
-from voxel.devices.laser.simulated import SimulatedLaser
-from view.widgets.device_widgets.laser_widget import LaserWidget
-from qtpy.QtWidgets import QApplication
 import sys
+
 from qtpy.QtCore import Slot
+from qtpy.QtWidgets import QApplication
+
+from view.widgets.device_widgets.laser_widget import LaserWidget
+from voxel.devices.laser.simulated import SimulatedLaser
 
 
 def scan_for_properties(device):
-    """Scan for properties with setters and getters in class and return dictionary
-    :param device: object to scan through for properties
-    """
+    """_summary_
 
+    :param device: _description_
+    :type device: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     prop_dict = {}
     for attr_name in dir(device):
         attr = getattr(type(device), attr_name, None)
@@ -21,9 +26,15 @@ def scan_for_properties(device):
 
 @Slot(str)
 def widget_property_changed(name, device, widget):
-    """Slot to signal when widget has been changed
-    :param name: name of attribute and widget"""
+    """_summary_
 
+    :param name: _description_
+    :type name: _type_
+    :param device: _description_
+    :type device: _type_
+    :param widget: _description_
+    :type widget: _type_
+    """
     name_lst = name.split('.')
     print('widget', name, ' changed to ', getattr(widget, name_lst[0]))
     value = getattr(widget, name_lst[0])
@@ -42,18 +53,6 @@ if __name__ == "__main__":
     laser.show()
 
     laser.ValueChangedInside[str].connect(
-        lambda value, dev=laser_object, widget=laser,: widget_property_changed(value, dev, widget))
+        lambda value, dev=laser_object, widget=laser, : widget_property_changed(value, dev, widget))
     laser.setWindowTitle('Laser')
     sys.exit(app.exec_())
-    # app = QApplication(sys.argv)
-    # simulated_camera = Camera('camera')
-    # camera_properties = scan_for_properties(simulated_camera)
-    # print(camera_properties)
-    # base = BaseDeviceWidget(Camera, "examples.resources.simulated_camera", camera_properties)
-    # base.ValueChangedInside[str].connect(widget_property_changed)
-    # base.show()
-    #
-    # t1 = threading.Thread(target=device_change, args=())
-    # t1.start()
-    #
-    # sys.exit(app.exec_())

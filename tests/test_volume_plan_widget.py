@@ -1,9 +1,7 @@
-""" testing VolumePlanWidget """
-
 import unittest
 from view.widgets.acquisition_widgets.volume_plan_widget import VolumePlanWidget
 from qtpy.QtTest import QTest, QSignalSpy
-from qtpy.QtWidgets import QApplication, QWidget
+from qtpy.QtWidgets import QApplication
 from qtpy.QtCore import Qt
 import sys
 import numpy as np
@@ -12,13 +10,10 @@ app = QApplication(sys.argv)
 
 
 class VolumePlanWidgetTests(unittest.TestCase):
-    """Tests for VolumePlanWidget"""
-
-    # TODO: Test overlap, relative_to, order, apply_all
+    """_summary_"""
 
     def test_toggle_mode(self):
-        """Test functionality of number mode"""
-
+        """_summary_"""
         plan = VolumePlanWidget()
         plan.show()
 
@@ -27,7 +22,7 @@ class VolumePlanWidgetTests(unittest.TestCase):
         # check clicking radio button works
         QTest.mouseClick(plan.area_button, Qt.LeftButton)
         self.assertTrue(plan.area_button.isChecked())
-        self.assertEqual(plan.mode, 'area')
+        self.assertEqual(plan.mode, "area")
         self.assertEqual(len(valueChanged_spy), 1)  # triggered once
         self.assertTrue(valueChanged_spy.isValid())
         self.assertTrue(plan.area_widget.isEnabled())
@@ -35,7 +30,7 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertFalse(plan.bounds_widget.isEnabled())
 
         QTest.mouseClick(plan.number_button, Qt.LeftButton)
-        self.assertEqual(plan.mode, 'number')
+        self.assertEqual(plan.mode, "number")
         self.assertEqual(len(valueChanged_spy), 2)  # triggered twice
         self.assertTrue(valueChanged_spy.isValid())
         self.assertFalse(plan.area_widget.isEnabled())
@@ -43,7 +38,7 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertFalse(plan.bounds_widget.isEnabled())
 
         QTest.mouseClick(plan.bounds_button, Qt.LeftButton)
-        self.assertEqual(plan.mode, 'bounds')
+        self.assertEqual(plan.mode, "bounds")
         self.assertEqual(len(valueChanged_spy), 3)  # triggered thrice
         self.assertTrue(valueChanged_spy.isValid())
         self.assertFalse(plan.area_widget.isEnabled())
@@ -53,11 +48,10 @@ class VolumePlanWidgetTests(unittest.TestCase):
         plan.close()
 
     def test_number_mode(self):
-        """Test functionality of number mode"""
-
+        """_summary_"""
         plan = VolumePlanWidget()
         plan.show()
-        plan.mode = 'number'
+        plan.mode = "number"
 
         valueChanged_spy = QSignalSpy(plan.valueChanged)
 
@@ -101,11 +95,10 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
     def test_area_mode(self):
-        """Test functionality of area mode"""
-
+        """_summary_"""
         plan = VolumePlanWidget()
         plan.show()
-        plan.mode = 'area'
+        plan.mode = "area"
 
         valueChanged_spy = QSignalSpy(plan.valueChanged)
 
@@ -162,11 +155,10 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertTrue(plan.scan_ends.shape == (2, 2))
 
     def test_bounds_mode(self):
-        """Test functionality of bounds mode"""
-
+        """_summary_"""
         plan = VolumePlanWidget()
         plan.show()
-        plan.mode = 'bounds'
+        plan.mode = "bounds"
 
         valueChanged_spy = QSignalSpy(plan.valueChanged)
 
@@ -208,8 +200,7 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertTrue(np.array_equal(expected_tile_pos, actual_tile_pos))
 
     def test_update_fov_position(self):
-        """Test functionality of moving fov mode"""
-
+        """_summary_"""
         plan = VolumePlanWidget()
         plan.show()
         valueChanged_spy = QSignalSpy(plan.valueChanged)
@@ -244,11 +235,8 @@ class VolumePlanWidgetTests(unittest.TestCase):
         self.assertEqual(plan.grid_offset_widgets[2].value(), 3)
         self.assertEqual(plan.grid_offset, [1, 2, 3])
 
-
-
     def test_grid_offset_widgets(self):
-        """Test functionality of grid_offset_widgets"""
-
+        """_summary_"""
         plan = VolumePlanWidget()
         plan.show()
         valueChanged_spy = QSignalSpy(plan.valueChanged)
@@ -283,7 +271,6 @@ class VolumePlanWidgetTests(unittest.TestCase):
         expected_tiles = [[[1, 2, 3]]]
         actual_tiles = plan.tile_positions
         self.assertTrue(np.array_equal(expected_tiles, actual_tiles))
-
 
 
 if __name__ == "__main__":

@@ -1,41 +1,46 @@
-from qtpy.QtCore import Signal, Slot, QTimer
-from qtpy.QtGui import QIntValidator, QDoubleValidator
-from qtpy.QtWidgets import (
-    QWidget,
-    QLabel,
-    QComboBox,
-    QHBoxLayout,
-    QVBoxLayout,
-    QMainWindow,
-    QLineEdit,
-    QSpinBox,
-    QDoubleSpinBox,
-    QSlider,
-)
-from inspect import currentframe
-from importlib import import_module
 import enum
-import types
-import re
-import logging
-import inflection
-from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
-from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 import inspect
+import logging
+import re
+import types
+from importlib import import_module
+from inspect import currentframe
+
+import inflection
+from qtpy.QtCore import QTimer, Signal, Slot
+from qtpy.QtGui import QDoubleValidator, QIntValidator
+from qtpy.QtWidgets import (
+    QComboBox,
+    QDoubleSpinBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QSlider,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
 from schema import Schema, SchemaError
+
+from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
+from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
 
 
 class BaseDeviceWidget(QMainWindow):
+    """_summary_"""
+
     ValueChangedOutside = Signal((str,))
     ValueChangedInside = Signal((str,))
 
     def __init__(self, device_type: object = None, properties: dict = {}):
-        """Base widget for devices like camera, laser, stage, ect. Widget will scan properties of
-        device object and create editable inputs for each if not in device_widgets class of device. If no device_widgets
-        class is provided, then all properties are exposed
-        :param device_type: type of class or dictionary of device object
-        :param properties: dictionary contain properties displayed in widget as keys and initial values as values"""
+        """_summary_
 
+        :param device_type: _description_, defaults to None
+        :type device_type: object, optional
+        :param properties: _description_, defaults to {}
+        :type properties: dict, optional
+        """
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         super().__init__()
@@ -52,10 +57,15 @@ class BaseDeviceWidget(QMainWindow):
         self.ValueChangedOutside[str].connect(self.update_property_widget)  # Trigger update when property value changes
 
     def create_property_widgets(self, properties: dict, widget_group):
-        """Create input widgets based on properties
-        :param properties: dictionary containing properties within a class and mapping to values
-        :param widget_group: attribute name for dictionary of widgets"""
+        """_summary_
 
+        :param properties: _description_
+        :type properties: dict
+        :param widget_group: _description_
+        :type widget_group: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         widgets = {}
         for name, value in properties.items():
             setattr(self, name, value)  # Add device properties as widget properties
@@ -109,11 +119,17 @@ class BaseDeviceWidget(QMainWindow):
         return widgets
 
     def create_attribute_widget(self, name, widget_type, values):
-        """Create a widget and create corresponding attribute
-        :param name: name of property
-        :param widget_type: widget type (QLineEdit or QCombobox)
-        :param values: input into widget"""
+        """_summary_
 
+        :param name: _description_
+        :type name: _type_
+        :param widget_type: _description_
+        :type widget_type: _type_
+        :param values: _description_
+        :type values: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         # options = values.keys() if widget_type == 'combo' else values
         box = getattr(self, f"create_{widget_type}_box")(name, values)
         setattr(self, f"{name}_widget", box)  # add attribute for widget input for easy access
@@ -121,10 +137,13 @@ class BaseDeviceWidget(QMainWindow):
         return box
 
     def check_driver_variables(self, name: str):
-        """Check if there is variable in device driver that has name of
-        property to inform input widget type and values
-        :param name: name of property to search for"""
+        """_summary_
 
+        :param name: _description_
+        :type name: str
+        :return: _description_
+        :rtype: _type_
+        """
         driver_vars = self.device_driver.__dict__
         for variable in driver_vars:
             search_name = inflection.pluralize(name.replace(".", "_"))
@@ -137,10 +156,15 @@ class BaseDeviceWidget(QMainWindow):
                     return {i.name: i.value for i in enum_class}
 
     def create_text_box(self, name, value):
-        """Convenience function to build editable text boxes and add initial value and validator
-        :param name: name to emit when text is edited is changed
-        :param value: initial value to add to box"""
+        """_summary_
 
+        :param name: _description_
+        :type name: _type_
+        :param value: _description_
+        :type value: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         # TODO: better way to handle weird types that will crash QT?
         value_type = type(value)
         textbox = QScrollableLineEdit(str(value))
@@ -157,12 +181,11 @@ class BaseDeviceWidget(QMainWindow):
         return textbox
 
     def textbox_edited(self, name):
-        """
-        Correctly set attribute after textbox has been edited
-        :param name: name of property that was edited
-        :return:
-        """
+        """_summary_
 
+        :param name: _description_
+        :type name: _type_
+        """
         name_lst = name.split(".")
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
         value = getattr(self, name + "_widget").text()
@@ -175,10 +198,15 @@ class BaseDeviceWidget(QMainWindow):
         self.ValueChangedInside.emit(name)
 
     def create_combo_box(self, name, items):
-        """Convenience function to build combo boxes and add items
-        :param name: name to emit when combobox index is changed
-        :param items: items to add to combobox"""
+        """_summary_
 
+        :param name: _description_
+        :type name: _type_
+        :param items: _description_
+        :type items: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         options = items.keys() if hasattr(items, "keys") else items
         box = QComboBox()
         box.addItems([str(x) for x in options])
@@ -188,13 +216,13 @@ class BaseDeviceWidget(QMainWindow):
         return box
 
     def combo_box_changed(self, value, name):
-        """
-        Correctly set attribute after combobox index has been changed
-        :param value: new value combobox has been changed to
-        :param name: name of property that was edited
-        :return:
-        """
+        """_summary_
 
+        :param value: _description_
+        :type value: _type_
+        :param name: _description_
+        :type name: _type_
+        """
         name_lst = name.split(".")
 
         parent_attr = pathGet(self.__dict__, name_lst[0:-1])
@@ -210,9 +238,11 @@ class BaseDeviceWidget(QMainWindow):
 
     @Slot(str)
     def update_property_widget(self, name):
-        """Update property widget. Triggers when attribute has been changed outside of widget
-        :param name: name of attribute and widget"""
+        """_summary_
 
+        :param name: _description_
+        :type name: _type_
+        """
         value = getattr(self, name, None)
         if dict not in type(value).__mro__ and list not in type(value).__mro__:  # not a dictionary or list like value
             self._set_widget_text(name, value)
@@ -227,10 +257,13 @@ class BaseDeviceWidget(QMainWindow):
                     self.update_property_widget(f"{name}.{i}")
 
     def _set_widget_text(self, name, value):
-        """Set widget text based on widget type
-        :param name: widget name to set text to
-        :param value: value of text"""
+        """_summary_
 
+        :param name: _description_
+        :type name: _type_
+        :param value: _description_
+        :type value: _type_
+        """
         if hasattr(self, f"{name}_widget"):
             widget = getattr(self, f"{name}_widget")
             widget.blockSignals(True)  # block signal indicating change since changing internally
@@ -250,7 +283,13 @@ class BaseDeviceWidget(QMainWindow):
             self.log.warning(f"{name} doesn't correspond to a widget")
 
     def __setattr__(self, name, value):
-        """Overwrite __setattr__ to trigger update if property is changed"""
+        """_summary_
+
+        :param name: _description_
+        :type name: _type_
+        :param value: _description_
+        :type value: _type_
+        """
         # check that values adhere to schema of correlating variable
         if f"{name}_schema" in self.__dict__.keys():
             schema = getattr(self, f"{name}_schema")
@@ -267,10 +306,12 @@ class BaseDeviceWidget(QMainWindow):
 
 # Convenience Functions
 def create_dict_schema(dictionary: dict):
-    """
-    Helper function to create a schema for a dictionary object
-    :param dictionary: dictionary to create schema from
-    :return: schema of dictionary
+    """_summary_
+
+    :param dictionary: _description_
+    :type dictionary: dict
+    :return: _description_
+    :rtype: _type_
     """
     schema = {}
     for key, value in dictionary.items():
@@ -285,10 +326,12 @@ def create_dict_schema(dictionary: dict):
 
 
 def create_list_schema(list_ob: dict):
-    """
-    Helper function to create a schema for a list object
-    :param list_ob: list to create schema from
-    :return: schema of list_ob
+    """_summary_
+
+    :param list_ob: _description_
+    :type list_ob: dict
+    :return: _description_
+    :rtype: _type_
     """
     schema = []
     for value in list_ob:
@@ -302,6 +345,15 @@ def create_list_schema(list_ob: dict):
 
 
 def check_if_valid(schema, item):
+    """_summary_
+
+    :param schema: _description_
+    :type schema: _type_
+    :param item: _description_
+    :type item: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     try:
         schema.validate(item)
         return True
@@ -310,11 +362,13 @@ def check_if_valid(schema, item):
 
 
 def create_widget(struct: str, *args, **kwargs):
-    """Creates either a horizontal or vertical layout populated with widgets
-    :param struct: specifies whether the layout will be horizontal, vertical, or combo
-    :param kwargs: all widgets contained in layout
-    :return QWidget()"""
+    """_summary_
 
+    :param struct: _description_
+    :type struct: str
+    :return: _description_
+    :rtype: _type_
+    """
     layouts = {"H": QHBoxLayout(), "V": QVBoxLayout()}
     widget = QWidget()
     if struct == "V" or struct == "H":
@@ -344,10 +398,13 @@ def create_widget(struct: str, *args, **kwargs):
 
 
 def label_maker(string):
-    """Removes underscores from variable names and capitalizes words
-    :param string: string to make label out of
-    """
+    """_summary_
 
+    :param string: _description_
+    :type string: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     possible_units = ["mm", "um", "px", "mW", "W", "ms", "C", "V", "us"]
     label = string.split("_")
     label = [words.capitalize() for words in label]
@@ -362,8 +419,15 @@ def label_maker(string):
 
 
 def pathGet(iterable: dict or list, path: list):
-    """Based on list of nested dictionary keys or list indices, return inner dictionary"""
+    """_summary_
 
+    :param iterable: _description_
+    :type iterable: dictorlist
+    :param path: _description_
+    :type path: list
+    :return: _description_
+    :rtype: _type_
+    """
     for k in path:
         k = int(k) if type(iterable) == list else k
         iterable = iterable.__getitem__(k)
@@ -371,10 +435,13 @@ def pathGet(iterable: dict or list, path: list):
 
 
 def scan_for_properties(device):
-    """Scan for properties with setters and getters in class and return dictionary
-    :param device: object to scan through for properties
-    """
+    """_summary_
 
+    :param device: _description_
+    :type device: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     prop_dict = {}
     for attr_name in dir(device):
         try:
@@ -388,7 +455,12 @@ def scan_for_properties(device):
 
 
 def disable_button(button, pause=1000):
-    """Function to disable button clicks for a period of time to avoid crashing gui"""
+    """_summary_
 
+    :param button: _description_
+    :type button: _type_
+    :param pause: _description_, defaults to 1000
+    :type pause: int, optional
+    """
     button.setEnabled(False)
     QTimer.singleShot(pause, lambda: button.setDisabled(False))

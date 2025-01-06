@@ -1,32 +1,60 @@
-from pyqtgraph.opengl import GLImageItem
-from qtpy.QtWidgets import QMessageBox, QCheckBox, QGridLayout, QButtonGroup, QLabel, QRadioButton, QPushButton, QWidget
-from qtpy.QtCore import Signal, Qt
-from qtpy.QtGui import QMatrix4x4, QVector3D, QQuaternion
-from math import tan, radians, sqrt
+from math import radians, sqrt, tan
+
 import numpy as np
-from scipy import spatial
 from pyqtgraph import makeRGBA
+from pyqtgraph.opengl import GLImageItem
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QMatrix4x4, QQuaternion, QVector3D
+from qtpy.QtWidgets import QButtonGroup, QCheckBox, QGridLayout, QLabel, QMessageBox, QPushButton, QRadioButton, QWidget
+from scipy import spatial
+
 from view.widgets.miscellaneous_widgets.gl_ortho_view_widget import GLOrthoViewWidget
-from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 from view.widgets.miscellaneous_widgets.gl_path_item import GLPathItem
+from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxItem
 
 
 class SignalChangeVar:
+    """_summary_"""
 
     def __set_name__(self, owner, name):
+        """_summary_
+
+        :param owner: _description_
+        :type owner: _type_
+        :param name: _description_
+        :type name: _type_
+        """
         self.name = f"_{name}"
 
     def __set__(self, instance, value):
+        """_summary_
+
+        :param instance: _description_
+        :type instance: _type_
+        :param value: _description_
+        :type value: _type_
+        """
         setattr(instance, self.name, value)  # initially setting attr
         instance.valueChanged.emit(self.name[1:])
 
     def __get__(self, instance, value):
+        """_summary_
+
+        :param instance: _description_
+        :type instance: _type_
+        :param value: _description_
+        :type value: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         return getattr(instance, self.name)
 
 
 class VolumeModel(GLOrthoViewWidget):
-    """Widget to display configured acquisition grid.  Note that the x and y refer to the tiling
-    dimensions and z is the scanning dimension"""
+    """
+    Widget to display configured acquisition grid. Note that the x and y refer to the tiling
+    dimensions and z is the scanning dimension
+    """
 
     fov_dimensions = SignalChangeVar()
     fov_position = SignalChangeVar()
@@ -62,32 +90,51 @@ class VolumeModel(GLOrthoViewWidget):
         limits_color: str = "white",
         limits_opacity: float = 0.1,
     ):
-        """
-        GLViewWidget to display proposed grid of acquisition
+        """_summary_
 
-        :param unit: unit of the volume model.
-        :param coordinate_plane: coordinate plane displayed on widget.
-        :param fov_dimensions: dimensions of field of view in coordinate plane
-        :param fov_position: position of fov
-        :param limits: list of limits ordered in [tile_dim[0], tile_dim[1], scan_dim[0]]
-        :param fov_line_width: width of fov outline
-        :param fov_line_width: width of fov outline
-        :param fov_opacity: opacity of fov face where 1 is fully opaque
-        :param path_line_width: width of path line
-        :param path_arrow_size: size of arrow at the end of path as a percentage of the field of view
-        :param path_arrow_aspect_ratio: aspect ratio of arrow
-        :param path_start_color: start color of path
-        :param path_end_color: end color of path
-        :param active_tile_color: color of tiles when fov is within tile grid
-        :param active_tile_opacity: opacity of active tile grid faces where 1 is fully opaque
-        :param inactive_tile_color: color of tiles when fov is outside of tile grid
-        :param inactive_tile_opacity: opacity of inactive tile grid faces where 1 is fully opaque
-        :param tile_line_width: width of tiles
-        :param limits_line_width: width of limits box
-        :param limits_color: color of limits box
-        :param limits_opacity: opacity of limits box
+        :param unit: _description_, defaults to "mm"
+        :type unit: str, optional
+        :param limits: _description_, defaults to None
+        :type limits: list[[float, float], [float, float], [float, float]], optional
+        :param fov_dimensions: _description_, defaults to None
+        :type fov_dimensions: list[float, float, float], optional
+        :param fov_position: _description_, defaults to None
+        :type fov_position: list[float, float, float], optional
+        :param coordinate_plane: _description_, defaults to None
+        :type coordinate_plane: list[str, str, str], optional
+        :param fov_color: _description_, defaults to "yellow"
+        :type fov_color: str, optional
+        :param fov_line_width: _description_, defaults to 2
+        :type fov_line_width: int, optional
+        :param fov_opacity: _description_, defaults to 0.15
+        :type fov_opacity: float, optional
+        :param path_line_width: _description_, defaults to 2
+        :type path_line_width: int, optional
+        :param path_arrow_size: _description_, defaults to 6.0
+        :type path_arrow_size: float, optional
+        :param path_arrow_aspect_ratio: _description_, defaults to 4
+        :type path_arrow_aspect_ratio: int, optional
+        :param path_start_color: _description_, defaults to "magenta"
+        :type path_start_color: str, optional
+        :param path_end_color: _description_, defaults to "green"
+        :type path_end_color: str, optional
+        :param active_tile_color: _description_, defaults to "cyan"
+        :type active_tile_color: str, optional
+        :param active_tile_opacity: _description_, defaults to 0.075
+        :type active_tile_opacity: float, optional
+        :param inactive_tile_color: _description_, defaults to "red"
+        :type inactive_tile_color: str, optional
+        :param inactive_tile_opacity: _description_, defaults to 0.025
+        :type inactive_tile_opacity: float, optional
+        :param tile_line_width: _description_, defaults to 2
+        :type tile_line_width: int, optional
+        :param limits_line_width: _description_, defaults to 2
+        :type limits_line_width: int, optional
+        :param limits_color: _description_, defaults to "white"
+        :type limits_color: str, optional
+        :param limits_opacity: _description_, defaults to 0.1
+        :type limits_opacity: float, optional
         """
-
         super().__init__(rotationMethod="quaternion")
 
         # initialize attributes
@@ -165,17 +212,6 @@ class VolumeModel(GLOrthoViewWidget):
 
         if limits != [[float("-inf"), float("inf")], [float("-inf"), float("inf")], [float("-inf"), float("inf")]]:
             size = [((max(limits[i]) - min(limits[i])) + self.fov_dimensions[i]) for i in range(3)]
-            pos = np.array(
-                [
-                    [
-                        [
-                            min([x * self.polarity[0] for x in limits[0]]),
-                            min([y * self.polarity[1] for y in limits[1]]),
-                            min([z * self.polarity[2] for z in limits[2]]),
-                        ]
-                    ]
-                ]
-            )
             stage_limits = GLShadedBoxItem(
                 width=self.limits_line_width,
                 pos=np.array(
@@ -234,9 +270,11 @@ class VolumeModel(GLOrthoViewWidget):
         self.widgets.show()
 
     def update_model(self, attribute_name) -> None:
-        """Update attributes of grid
-        :param attribute_name: name of attribute to update"""
+        """_summary_
 
+        :param attribute_name: _description_
+        :type attribute_name: _type_
+        """
         # update color of tiles based on z position
         flat_coords = self.grid_coords.reshape([-1, 3])  # flatten array
         flat_dims = self.scan_volumes.flatten()  # flatten array
@@ -319,18 +357,20 @@ class VolumeModel(GLOrthoViewWidget):
         self._update_opts()
 
     def toggle_view_plane(self, button) -> None:
-        """
-        Update view plane optics
-        :param button: button pressed to change view
-        """
+        """_summary_
 
+        :param button: _description_
+        :type button: _type_
+        """
         view_plane = tuple(x for x in button.text() if x.isalpha())
         self.view_plane = view_plane
 
     def set_path_pos(self, coord_order: list) -> None:
-        """Set the pos of path in correct order
-        :param coord_order: ordered list of coords for path"""
+        """_summary_
 
+        :param coord_order: _description_
+        :type coord_order: list
+        """
         path = np.array(
             [
                 [
@@ -343,10 +383,13 @@ class VolumeModel(GLOrthoViewWidget):
         self.path.setData(pos=path)
 
     def add_fov_image(self, image: np.ndarray, levels: list[float]) -> None:
-        """add image to model assuming image has same fov dimensions and orientation
-        :param image: numpy array of image to display in model
-        :param levels: levels for passed in image"""
+        """_summary_
 
+        :param image: _description_
+        :type image: np.ndarray
+        :param levels: _description_
+        :type levels: list[float]
+        """
         image_rgba = makeRGBA(image, levels=levels)
         image_rgba[0][:, :, 3] = 200
 
@@ -379,28 +422,29 @@ class VolumeModel(GLOrthoViewWidget):
             gl_image.setVisible(False)
 
     def adjust_glimage_contrast(self, image: np.ndarray, contrast_levels: list[float]) -> None:
-        """
-        Adjust image in model contrast levels
-        :param image: numpy array of image key in fov_images
-        :param contrast_levels: levels for passed in image
-        """
+        """_summary_
 
+        :param image: _description_
+        :type image: np.ndarray
+        :param contrast_levels: _description_
+        :type contrast_levels: list[float]
+        """
         if image.tobytes() in self.fov_images.keys():  # check if image has been deleted
             glimage = self.fov_images[image.tobytes()]
-            coords = [glimage.transform()[i, 3] / pol for i, pol in zip(range(3), self.polarity)]
             self.removeItem(glimage)
             self.add_fov_image(image, contrast_levels)
 
     def toggle_fov_image_visibility(self, visible: bool) -> None:
-        """Function to hide all fov_images
-        :param visible: boolean for if fov_images should be visible"""
+        """_summary_
 
+        :param visible: _description_
+        :type visible: bool
+        """
         for image in self.fov_images.values():
             image.setVisible(visible)
 
     def _update_opts(self) -> None:
-        """Update view of widget. Note that x/y notation refers to horizontal/vertical dimensions of grid view"""
-
+        """_summary_"""
         view_plane = self.view_plane
         view_pol = [
             self.polarity[self.coordinate_plane.index(view_plane[0])],
@@ -497,11 +541,13 @@ class VolumeModel(GLOrthoViewWidget):
         self.update()
 
     def move_fov_query(self, new_fov_pos: list[float]) -> [int, bool]:
-        """Message box asking if user wants to move fov position
-        :param new_fov_pos: position to move the fov to in um
-        :return: user reply to pop up and whether to move to the tile nearest the new_fov_pos
-        """
+        """_summary_
 
+        :param new_fov_pos: _description_
+        :type new_fov_pos: list[float]
+        :return: _description_
+        :rtype: [int, bool]
+        """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(
@@ -519,10 +565,13 @@ class VolumeModel(GLOrthoViewWidget):
         return msgBox.exec(), checkbox.isChecked()
 
     def delete_fov_image_query(self, fov_image_pos: list[float]) -> int:
-        """Message box asking if user wants to move fov position
-        :param fov_image_pos: coordinates of fov image
-        :return: user reply to deleting image"""
+        """_summary_
 
+        :param fov_image_pos: _description_
+        :type fov_image_pos: list[float]
+        :return: _description_
+        :rtype: int
+        """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(f"Do you want to delete image at {fov_image_pos} [{self.unit}]?")
@@ -532,10 +581,11 @@ class VolumeModel(GLOrthoViewWidget):
         return msgBox.exec()
 
     def mousePressEvent(self, event) -> None:
-        """Override mouseMoveEvent so user can't change view
-        and allow user to move fov easier
-        :param event: QMouseEvent of users mouse"""
+        """_summary_
 
+        :param event: _description_
+        :type event: _type_
+        """
         plane = list(self.view_plane) + [ax for ax in self.coordinate_plane if ax not in self.view_plane]
         view_pol = [
             self.polarity[self.coordinate_plane.index(plane[0])],
@@ -602,17 +652,25 @@ class VolumeModel(GLOrthoViewWidget):
                 del self.fov_images[delete_key]
 
     def mouseMoveEvent(self, event):
-        """Override mouseMoveEvent so user can't change view"""
+        """
+        Override mouseMoveEvent so user can't change view.
+        """
         pass
 
     def wheelEvent(self, event):
-        """Override wheelEvent so user can't change view"""
+        """
+        Override wheelEvent so user can't change view.
+        """
         pass
 
     def keyPressEvent(self, event):
-        """Override keyPressEvent so user can't change view"""
+        """
+        Override keyPressEvent so user can't change view.
+        """
         pass
 
     def keyReleaseEvent(self, event):
-        """Override keyPressEvent so user can't change view"""
+        """
+        Override keyPressEvent so user can't change view.
+        """
         pass

@@ -1,16 +1,20 @@
-from qtpy.QtWidgets import QLabel
 from qtpy.QtCore import Signal
 from qtpy.QtGui import QMouseEvent
+from qtpy.QtWidgets import QLabel
+
 
 class QClickableLabel(QLabel):
-    """QLabel that emits signal when clicked"""
+    """
+    QLabel that emits signal when clicked.
+    """
 
     clicked = Signal()
 
     def mousePressEvent(self, ev: QMouseEvent, **kwargs) -> None:
-        """
-        Overwriting to emit signal
-        :param ev: mouse click event
+        """_summary_
+
+        :param ev: _description_
+        :type ev: QMouseEvent
         """
         self.clicked.emit()
         super().mousePressEvent(ev, **kwargs)

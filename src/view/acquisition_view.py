@@ -1,54 +1,58 @@
-import logging
 import importlib
-from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties, create_widget, label_maker
-from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
-from view.widgets.acquisition_widgets.volume_plan_widget import (
-    VolumePlanWidget,
-    GridFromEdges,
-    GridWidthHeight,
-    GridRowsColumns,
-)
-from view.widgets.acquisition_widgets.volume_model import VolumeModel
-from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidget
-from qtpy.QtCore import Slot, Qt
-import inflection
+import logging
+from pathlib import Path
 from time import sleep
-from qtpy.QtWidgets import (
-    QGridLayout,
-    QWidget,
-    QComboBox,
-    QSizePolicy,
-    QScrollArea,
-    QDockWidget,
-    QLabel,
-    QPushButton,
-    QSplitter,
-    QLineEdit,
-    QSpinBox,
-    QDoubleSpinBox,
-    QProgressBar,
-    QSlider,
-    QApplication,
-    QHBoxLayout,
-    QFrame,
-    QFileDialog,
-    QMessageBox,
-)
+from typing import Iterator, Literal, Union
+
+import inflection
+import napari
+import numpy as np
+from napari.qt import get_stylesheet
+from napari.qt.threading import create_worker, thread_worker
+from napari.settings import get_settings
+from qtpy.QtCore import Qt, Slot
 from qtpy.QtGui import QFont
-from napari.qt.threading import thread_worker, create_worker
+from qtpy.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDockWidget,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSlider,
+    QSpinBox,
+    QSplitter,
+    QWidget,
+)
+
+from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidget
+from view.widgets.acquisition_widgets.metadata_widget import MetadataWidget
+from view.widgets.acquisition_widgets.volume_model import VolumeModel
+from view.widgets.acquisition_widgets.volume_plan_widget import (
+    GridFromEdges,
+    GridRowsColumns,
+    GridWidthHeight,
+    VolumePlanWidget,
+)
+from view.widgets.base_device_widget import BaseDeviceWidget, create_widget, label_maker, scan_for_properties
 from view.widgets.miscellaneous_widgets.q_dock_widget_title_bar import QDockWidgetTitleBar
 from view.widgets.miscellaneous_widgets.q_scrollable_float_slider import QScrollableFloatSlider
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
-from pathlib import Path
-from typing import Literal, Union, Iterator
-import numpy as np
-import napari
-from napari.qt import get_stylesheet
-from napari.settings import get_settings
 
 
 class AcquisitionView(QWidget):
-    """ "Class to act as a general acquisition view model to voxel instrument"""
+    """
+    Class to act as a general acquisition view model to voxel instrument.
+    """
 
     def __init__(
         self,
@@ -154,22 +158,22 @@ class AcquisitionView(QWidget):
         app.lastWindowClosed.connect(self.close)  # shut everything down when closing
 
     def create_start_button(self) -> QPushButton:
-        """
-        Create button to start acquisition
-        :return: start button
-        """
+        """_summary_
 
+        :return: _description_
+        :rtype: QPushButton
+        """
         start = QPushButton("Start")
         start.clicked.connect(self.start_acquisition)
         start.setStyleSheet("background-color: green")
         return start
 
     def create_stop_button(self) -> QPushButton:
-        """
-        Create button to stop acquisition
-        :return: stop button
-        """
+        """_summary_
 
+        :return: _description_
+        :rtype: QPushButton
+        """
         stop = QPushButton("Stop")
         stop.clicked.connect(self.acquisition.stop_acquisition)
         stop.setStyleSheet("background-color: red")
@@ -178,10 +182,7 @@ class AcquisitionView(QWidget):
         return stop
 
     def start_acquisition(self) -> None:
-        """
-        Start acquisition and disable widgets
-        """
-
+        """_summary_"""
         # add tiles to acquisition config
         self.update_tiles()
 
@@ -222,10 +223,7 @@ class AcquisitionView(QWidget):
             sleep(1)
 
     def acquisition_ended(self) -> None:
-        """
-        Re-enable UI's and threads after acquisition has ended
-        """
-
+        """_summary_"""
         # enable acquisition view
         self.start_button.setEnabled(True)
         self.metadata_widget.setEnabled(True)
@@ -257,12 +255,13 @@ class AcquisitionView(QWidget):
             worker.pause()
 
     def stack_device_widgets(self, device_type: str) -> QWidget:
-        """
-        Stack like device widgets in layout and hide/unhide with combo box
-        :param device_type: type of device being stacked
-        :return: widget containing all widgets pertaining to device type stacked ontop of each other
-        """
+        """_summary_
 
+        :param device_type: _description_
+        :type device_type: str
+        :return: _description_
+        :rtype: QWidget
+        """
         device_widgets = {
             f"{inflection.pluralize(device_type)} {device_name}": create_widget("V", **widgets)
             for device_name, widgets in getattr(self, f"{device_type}_widgets").items()
@@ -288,12 +287,13 @@ class AcquisitionView(QWidget):
 
     @staticmethod
     def hide_devices(text: str, device_widgets: dict) -> None:
-        """
-        Hide device widget if not selected in combo box
-        :param text: selected text of combo box
-        :param device_widgets: dictionary of widget groups
-        """
+        """_summary_
 
+        :param text: _description_
+        :type text: str
+        :param device_widgets: _description_
+        :type device_widgets: dict
+        """
         for name, widget in device_widgets.items():
             if name != text:
                 widget.setVisible(False)
@@ -301,26 +301,27 @@ class AcquisitionView(QWidget):
                 widget.setVisible(True)
 
     def create_metadata_widget(self) -> MetadataWidget:
-        """
-        Create custom widget for metadata in config
-        :return: widget for metadata
-        """
+        """_summary_
 
+        :return: _description_
+        :rtype: MetadataWidget
+        """
         metadata_widget = MetadataWidget(self.acquisition.metadata)
         metadata_widget.ValueChangedInside[str].connect(
             lambda name: setattr(self.acquisition.metadata, name, getattr(metadata_widget, name))
         )
         for name, widget in metadata_widget.property_widgets.items():
             widget.setToolTip("")  # reset tooltips
-        metadata_widget.setWindowTitle(f"Metadata")
+        metadata_widget.setWindowTitle("Metadata")
         return metadata_widget
 
     def create_acquisition_widget(self) -> QSplitter:
-        """
-        Create widget to visualize acquisition grid
-        :return: splitter widget containing the volume model, volume plan, and channel plan widget
-        """
+        """_summary_
 
+        :raises KeyError: _description_
+        :return: _description_
+        :rtype: QSplitter
+        """
         # find limits of all axes
         lim_dict = {}
         # add tiling stages
@@ -408,22 +409,22 @@ class AcquisitionView(QWidget):
         return acquisition_widget
 
     def channel_plan_changed(self, channel: str) -> None:
-        """
-        Handle channel being added to scan
-        :param channel: channel added
-        """
+        """_summary_
 
+        :param channel: _description_
+        :type channel: str
+        """
         tile_order = [[t.row, t.col] for t in self.volume_plan.value()]
         if len(tile_order) != 0:
             self.channel_plan.add_channel_rows(channel, tile_order)
         self.update_tiles()
 
     def volume_plan_changed(self, value: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]) -> None:
-        """
-        Update channel plan and volume model when volume plan is changed
-        :param value: new value from volume_plan
-        """
+        """_summary_
 
+        :param value: _description_
+        :type value: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]
+        """
         tile_volumes = self.volume_plan.scan_ends - self.volume_plan.scan_starts
 
         # update volume model
@@ -443,16 +444,14 @@ class AcquisitionView(QWidget):
         self.update_tiles()
 
     def update_tiles(self) -> None:
-        """
-        Update config with the latest tiles
-        """
-
+        """_summary_"""
         self.acquisition.config["acquisition"]["tiles"] = self.create_tile_list()
 
     def move_stage(self, fov_position: list[float, float, float]) -> None:
-        """
-        Slot for moving stage when fov_position is changed internally by grid_widget
-        :param fov_position: new fov position to move to
+        """_summary_
+
+        :param fov_position: _description_
+        :type fov_position: list[float, float, float]
         """
         scalar_coord_plane = [x.strip("-") for x in self.coordinate_plane]
         stage_names = {stage.instrument_axis: name for name, stage in self.instrument.tiling_stages.items()}
@@ -463,10 +462,7 @@ class AcquisitionView(QWidget):
         scan_stage.move_absolute_mm(fov_position[2], wait=False)
 
     def stop_stage(self) -> None:
-        """
-        Slot for stop stage
-        """
-
+        """_summary_"""
         for name, stage in {
             **getattr(self.instrument, "scanning_stages", {}),
             **getattr(self.instrument, "tiling_stages", {}),
@@ -474,10 +470,7 @@ class AcquisitionView(QWidget):
             stage.halt()
 
     def setup_fov_position(self) -> None:
-        """
-        Set up live position thread
-        """
-
+        """_summary_"""
         self.grab_fov_positions_worker = self.grab_fov_positions()
         self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_plan, "fov_position", pos))
         self.grab_fov_positions_worker.yielded.connect(lambda pos: setattr(self.volume_model, "fov_position", pos))
@@ -485,8 +478,10 @@ class AcquisitionView(QWidget):
 
     @thread_worker
     def grab_fov_positions(self) -> Iterator[list[float, float, float]]:
-        """
-        Grab stage position from all stage objects and yield positions
+        """_summary_
+
+        :yield: _description_
+        :rtype: Iterator[list[float, float, float]]
         """
         scalar_coord_plane = [x.strip("-") for x in self.coordinate_plane]
         while True:  # best way to do this or have some sort of break?
@@ -501,19 +496,21 @@ class AcquisitionView(QWidget):
                     try:
                         pos = stage.position_mm
                         fov_pos[index] = pos if pos is not None else self.volume_plan.fov_position[index]
-                    except ValueError as e:  # Tigerbox sometime coughs up garbage. Locking issue?
+                    except ValueError:  # Tigerbox sometime coughs up garbage. Locking issue?
                         pass
                     sleep(0.1)
             yield fov_pos
 
     def create_operation_widgets(self, device_name: str, operation_name: str, operation_specs: dict) -> None:
-        """
-        Create widgets based on operation dictionary attributes from instrument or acquisition
-         :param operation_name: name of operation
-         :param device_name: name of device correlating to operation
-         :param operation_specs: dictionary describing set up of operation
-        """
+        """_summary_
 
+        :param device_name: _description_
+        :type device_name: str
+        :param operation_name: _description_
+        :type operation_name: str
+        :param operation_specs: _description_
+        :type operation_specs: dict
+        """
         operation_type = operation_specs["type"]
         operation = getattr(self.acquisition, inflection.pluralize(operation_type))[device_name][operation_name]
 
@@ -574,12 +571,13 @@ class AcquisitionView(QWidget):
         labeled.show()
 
     def update_acquisition_layer(self, image: np.ndarray, camera_name: str) -> None:
-        """
-        Update viewer with latest frame taken during acquisition
-        :param image: numpy array to add to viewer
-        :param camera_name: name of camera that image came off
-        """
+        """_summary_
 
+        :param image: _description_
+        :type image: np.ndarray
+        :param camera_name: _description_
+        :type camera_name: str
+        """
         if image is not None:
             # TODO: How to get current channel
             layer_name = f"{camera_name}"
@@ -591,26 +589,30 @@ class AcquisitionView(QWidget):
 
     @thread_worker
     def grab_property_value(self, device: object, property_name: str, widget) -> Iterator:
-        """
-        Grab value of property and yield
-        :param device: device to grab property from
-        :param property_name: name of property to get
-        :param widget: corresponding device widget
-        :return: value of property and widget to update
-        """
+        """_summary_
 
+        :param device: _description_
+        :type device: object
+        :param property_name: _description_
+        :type property_name: str
+        :param widget: _description_
+        :type widget: _type_
+        :yield: _description_
+        :rtype: Iterator
+        """
         while True:  # best way to do this or have some sort of break?
             sleep(1)
             value = getattr(device, property_name)
             yield value, widget
 
     def update_property_value(self, value, widget) -> None:
-        """
-        Update stage position in stage widget
-        :param widget: widget to update
-        :param value: value to update with
-        """
+        """_summary_
 
+        :param value: _description_
+        :type value: _type_
+        :param widget: _description_
+        :type widget: _type_
+        """
         try:
             if type(widget) in [QLineEdit, QScrollableLineEdit]:
                 widget.setText(str(value))
@@ -626,13 +628,15 @@ class AcquisitionView(QWidget):
 
     @Slot(str)
     def operation_property_changed(self, attr_name: str, operation: object, widget) -> None:
-        """
-        Slot to signal when operation widget has been changed
-        :param widget: widget object relating to operation
-        :param operation: operation object
-        :param attr_name: name of attribute
-        """
+        """_summary_
 
+        :param attr_name: _description_
+        :type attr_name: str
+        :param operation: _description_
+        :type operation: object
+        :param widget: _description_
+        :type widget: _type_
+        """
         name_lst = attr_name.split(".")
         self.log.debug(f"widget {attr_name} changed to {getattr(widget, name_lst[0])}")
         value = getattr(widget, name_lst[0])
@@ -654,11 +658,11 @@ class AcquisitionView(QWidget):
             pass
 
     def create_tile_list(self) -> list:
-        """
-        Return a list of tiles for a scan
-        :return: list of tiles
-        """
+        """_summary_
 
+        :return: _description_
+        :rtype: list
+        """
         tiles = []
         tile_slice = slice(self.volume_plan.start, self.volume_plan.stop)
         value = self.volume_plan.value()
@@ -674,13 +678,15 @@ class AcquisitionView(QWidget):
         return tiles
 
     def write_tile(self, channel: str, tile) -> dict:
-        """
-        Write dictionary describing tile parameters
-        :param channel: channel the tile is in
-        :param tile: tile object
-        :return
-        """
+        """_summary_
 
+        :param channel: _description_
+        :type channel: str
+        :param tile: _description_
+        :type tile: _type_
+        :return: _description_
+        :rtype: dict
+        """
         row, column = tile.row, tile.col
         table_row = self.volume_plan.tile_table.findItems(str([row, column]), Qt.MatchExactly)[0].row()
 
@@ -722,18 +728,17 @@ class AcquisitionView(QWidget):
         return tile_dict
 
     def update_config_on_quit(self) -> None:
-        """
-        Add functionality to close function to save device properties to instrument config
-        """
-
+        """_summary_"""
         return_value = self.update_config_query()
         if return_value == QMessageBox.Ok:
             self.acquisition.update_current_state_config()
             self.acquisition.save_config(self.config_save_to)
 
     def update_config_query(self) -> None:
-        """
-        Pop up message asking if configuration would like to be saved
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
         """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -751,12 +756,13 @@ class AcquisitionView(QWidget):
         return msgBox.exec()
 
     def select_directory(self, pressed: bool, msgBox: QMessageBox) -> None:
-        """
-        Select directory
-        :param pressed: boolean for button press
-        :param msgBox:
-        """
+        """_summary_
 
+        :param pressed: _description_
+        :type pressed: bool
+        :param msgBox: _description_
+        :type msgBox: QMessageBox
+        """
         fname = QFileDialog()
         folder = fname.getSaveFileName(directory=str(self.acquisition.config_path))
         if folder[0] != "":  # user pressed cancel
@@ -767,10 +773,7 @@ class AcquisitionView(QWidget):
             self.config_save_to = Path(folder[0])
 
     def close(self) -> None:
-        """
-        Close operations and end threads
-        """
-
+        """_summary_"""
         for worker in self.property_workers:
             worker.quit()
         self.grab_fov_positions_worker.quit()

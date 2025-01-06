@@ -1,53 +1,73 @@
-import useq
-from view.widgets.base_device_widget import create_widget
-from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
-from view.widgets.miscellaneous_widgets.q_start_stop_table_header import QStartStopTableHeader
+from typing import Generator, Literal, Union
+
 import numpy as np
+import useq
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QButtonGroup,
-    QDoubleSpinBox,
-    QLabel,
-    QRadioButton,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-    QComboBox,
-    QMainWindow,
-    QFrame,
     QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFrame,
+    QLabel,
+    QMainWindow,
+    QRadioButton,
+    QSizePolicy,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from typing import Literal, Union, Generator
+
+from view.widgets.base_device_widget import create_widget
+from view.widgets.miscellaneous_widgets.q_item_delegates import QSpinItemDelegate
+from view.widgets.miscellaneous_widgets.q_start_stop_table_header import QStartStopTableHeader
 
 
 class GridFromEdges(useq.GridFromEdges):
-    """Subclassing useq.GridFromEdges to add row and column attributes and allow reversible order"""
+    """
+    Subclassing useq.GridFromEdges to add row and column attributes and allow reversible order.
+    """
 
     reverse = property()  # initialize property
 
     def __init__(self, reverse=False, *args, **kwargs):
+        """_summary_
+
+        :param reverse: _description_, defaults to False
+        :type reverse: bool, optional
+        """
         # rewrite property since pydantic doesn't allow to add attr
         setattr(type(self), "reverse", property(fget=lambda x: reverse))
         super().__init__(*args, **kwargs)
 
     @property
     def rows(self) -> int:
-        """Property that returns number of rows in configured scan"""
+        """_summary_
+
+        :return: _description_
+        :rtype: int
+        """
         dx, _ = self._step_size(self.fov_width, self.fov_height)
         return self._nrows(dx)
 
     @property
     def columns(self) -> int:
-        """Property that returns number of columns in configured scan"""
+        """_summary_
+
+        :return: _description_
+        :rtype: int
+        """
         _, dy = self._step_size(self.fov_width, self.fov_height)
         return self._ncolumns(dy)
 
     def iter_grid_positions(self, *args, **kwargs) -> Generator:
-        """Return generator that contains positions of tiles. If reversed property is True, yield in revere order"""
+        """_summary_
 
+        :yield: _description_
+        :rtype: Generator
+        """
         if not self.reverse:
             for tile in super().iter_grid_positions(*args, **kwargs):
                 yield tile
@@ -57,30 +77,48 @@ class GridFromEdges(useq.GridFromEdges):
 
 
 class GridWidthHeight(useq.GridWidthHeight):
-    """Subclassing useq.GridWidthHeight to add row and column attributes and allow reversible order"""
+    """
+    Subclassing useq.GridWidthHeight to add row and column attributes and allow reversible order.
+    """
 
     reverse = property()
 
     def __init__(self, reverse=False, *args, **kwargs):
+        """_summary_
+
+        :param reverse: _description_, defaults to False
+        :type reverse: bool, optional
+        """
         # rewrite property since pydantic doesn't allow to add attr
         setattr(type(self), "reverse", property(fget=lambda x: reverse))
         super().__init__(*args, **kwargs)
 
     @property
     def rows(self) -> int:
-        """Property that returns number of rows in configured scan"""
+        """_summary_
+
+        :return: _description_
+        :rtype: int
+        """
         dx, _ = self._step_size(self.fov_width, self.fov_height)
         return self._nrows(dx)
 
     @property
     def columns(self) -> int:
-        """Property that returns number of rows in configured scan"""
+        """_summary_
+
+        :return: _description_
+        :rtype: int
+        """
         _, dy = self._step_size(self.fov_width, self.fov_height)
         return self._ncolumns(dy)
 
     def iter_grid_positions(self, *args, **kwargs) -> Generator:
-        """Return generator that contains positions of tiles. If reversed property is True, yield in revere order"""
+        """_summary_
 
+        :yield: _description_
+        :rtype: Generator
+        """
         if not self.reverse:
             for tile in super().iter_grid_positions(*args, **kwargs):
                 yield tile
@@ -90,17 +128,27 @@ class GridWidthHeight(useq.GridWidthHeight):
 
 
 class GridRowsColumns(useq.GridRowsColumns):
-    """Subclass useq.GridRowsColumns to allow reversible order"""
+    """
+    Subclass useq.GridRowsColumns to allow reversible order.
+    """
 
     reverse = property()
 
     def __init__(self, reverse=False, *args, **kwargs):
+        """_summary_
+
+        :param reverse: _description_, defaults to False
+        :type reverse: bool, optional
+        """
         setattr(type(self), "reverse", property(fget=lambda x: reverse))
         super().__init__(*args, **kwargs)
 
     def iter_grid_positions(self, *args, **kwargs) -> Generator:
-        """Return generator that contains positions of tiles. If reversed property is True, yield in revere order"""
+        """_summary_
 
+        :yield: _description_
+        :rtype: Generator
+        """
         if not self.reverse:
             for tile in super().iter_grid_positions(*args, **kwargs):
                 yield tile
@@ -110,7 +158,9 @@ class GridRowsColumns(useq.GridRowsColumns):
 
 
 class VolumePlanWidget(QMainWindow):
-    """Widget to plan out volume. Grid aspect based on pymmcore GridPlanWidget"""
+    """
+    Widget to plan out volume. Grid aspect based on pymmcore GridPlanWidget.
+    """
 
     valueChanged = Signal(object)
 
@@ -122,16 +172,18 @@ class VolumePlanWidget(QMainWindow):
         coordinate_plane: list[str, str, str] = None,
         unit: str = "um",
     ):
-        """
-        :param limits: 2D list containing min and max stage limits for each coordinate plane in the order of [
-        tiling_dim[0], tiling_dim[1], scanning_dim[0]]
-        :param fov_dimensions: dimensions of field of view in
-        specified unit in order of [tiling_dim[0], tiling_dim[1], scanning_dim[0]]
-        :param fov_position:  position of
-        field of view in specified unit in order of [tiling_dim[0], tiling_dim[1], scanning_dim[0]]
-        :param coordinate_plane: coordinate plane describing the [tiling_dim[0], tiling_dim[1], scanning_dim[0]]. Can
-        contain negatives.
-        :param unit: common unit of all arguments. Defaults to um
+        """_summary_
+
+        :param limits: _description_, defaults to None
+        :type limits: list[[float, float], [float, float], [float, float]], optional
+        :param fov_dimensions: _description_, defaults to None
+        :type fov_dimensions: list[float, float, float], optional
+        :param fov_position: _description_, defaults to None
+        :type fov_position: list[float, float, float], optional
+        :param coordinate_plane: _description_, defaults to None
+        :type coordinate_plane: list[str, str, str], optional
+        :param unit: _description_, defaults to "um"
+        :type unit: str, optional
         """
         super().__init__()
 
@@ -360,11 +412,11 @@ class VolumePlanWidget(QMainWindow):
         self.update_tile_table(self.value())  # initialize table
 
     def update_tile_table(self, value: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]) -> None:
-        """
-        Update tile table when value changes
-        :param value: newest value containing details of scan
-        """
+        """_summary_
 
+        :param value: _description_
+        :type value: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]
+        """
         # check if order changed
         table_order = [
             [int(x) for x in self.tile_table.item(i, 0).text() if x.isdigit()]
@@ -398,7 +450,7 @@ class VolumePlanWidget(QMainWindow):
         #     return
 
     def refill_table(self) -> None:
-        """Function to clear and populate tile table with current tile configuration"""
+        """_summary_"""
         value = self.value()
         self.tile_table.clearContents()
         self.tile_table.setRowCount(0)
@@ -412,12 +464,13 @@ class VolumePlanWidget(QMainWindow):
         self.header.blockSignals(False)
 
     def add_tile_to_table(self, row: int, column: int) -> None:
-        """
-        Add a configured tile into tile_table
-        :param row: row of tile
-        :param column: column of value
-        """
+        """_summary_
 
+        :param row: _description_
+        :type row: int
+        :param column: _description_
+        :type column: int
+        """
         self.tile_table.blockSignals(True)
         # add new row to table
         table_row = self.tile_table.rowCount()
@@ -462,13 +515,15 @@ class VolumePlanWidget(QMainWindow):
         self.tile_table.blockSignals(False)
 
     def toggle_visibility(self, checked: bool, row: int, column: int) -> None:
-        """
-        Handle visibility checkbox being toggled
-        :param checked: check state of checkbox
-        :param row: row of tile
-        :param column: column of tile
-        """
+        """_summary_
 
+        :param checked: _description_
+        :type checked: bool
+        :param row: _description_
+        :type row: int
+        :param column: _description_
+        :type column: int
+        """
         self._tile_visibility[row, column] = checked
         if self.apply_all and [row, column] == [0, 0]:  # trigger update of all subsequent checkboxes
             for r in range(self.tile_table.rowCount()):
@@ -479,11 +534,11 @@ class VolumePlanWidget(QMainWindow):
             self.valueChanged.emit(self.value())
 
     def tile_table_changed(self, item: QTableWidgetItem) -> None:
-        """
-        Update values if item is changed
-        :param item: item that has been changed
-        """
+        """_summary_
 
+        :param item: _description_
+        :type item: QTableWidgetItem
+        """
         row, column = [int(x) for x in self.tile_table.item(item.row(), 0).text() if x.isdigit()]
         col_title = self.table_columns[item.column()]
         titles = [f"{self.coordinate_plane[2]} [{self.unit}]", f"{self.coordinate_plane[2]} max [{self.unit}]"]
@@ -504,12 +559,13 @@ class VolumePlanWidget(QMainWindow):
                 self.grid_offset_widgets[2].setValue(value)
 
     def toggle_grid_position(self, enable: bool, index: Literal[0, 1, 2]) -> None:
-        """
-        Function connected to the anchor checkboxes. If grid is anchored, allow user to input grid position
-        :param enable: State checkbox was toggled to
-        :param index: Index of what anchor was checked (0-2)
-        """
+        """_summary_
 
+        :param enable: _description_
+        :type enable: bool
+        :param index: _description_
+        :type index: Literal[0, 1, 2]
+        """
         self.grid_offset_widgets[index].setEnabled(enable)
         if not enable:  # Graph is not anchored
             self.grid_offset_widgets[index].setValue(self.fov_position[index])
@@ -519,19 +575,20 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def apply_all(self) -> bool:
-        """
-        Return boolean specifying if settings for the 0, 0 tile apply to all tiles
-        :return: boolean specifying if settings for the 0, 0 tile apply to all tiles
+        """_summary_
+
+        :return: _description_
+        :rtype: bool
         """
         return self._apply_all
 
     @apply_all.setter
     def apply_all(self, value: bool) -> None:
-        """
-        Setting for the 0, 0 tile apply all. If True, will update all tiles
-        :param value: boolean to set apply all
-        """
+        """_summary_
 
+        :param value: _description_
+        :type value: bool
+        """
         self._apply_all = value
 
         # correctly configure anchor and grid_offset_widget
@@ -554,17 +611,20 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def fov_position(self) -> list[float, float, float]:
-        """
-        Current position of the field of view in the specified unit
-        :return: list of length 3 specifying current position of fov
+        """_summary_
+
+        :return: _description_
+        :rtype: list[float, float, float]
         """
         return self._fov_position
 
     @fov_position.setter
     def fov_position(self, value: list[float, float, float]) -> None:
-        """
-        Set the current position of the field of view in the specified unit
-        :param value: list of length 3 specifying new position of fov
+        """_summary_
+
+        :param value: _description_
+        :type value: list[float, float, float]
+        :raises ValueError: _description_
         """
         if type(value) is not list and len(value) != 3:
             raise ValueError
@@ -580,17 +640,20 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def fov_dimensions(self) -> list[float, float, float]:
-        """
-        Returns current field of view dimensions
-        :return: list of 3 floats defining the field of view dimensions
+        """_summary_
+
+        :return: _description_
+        :rtype: list[float, float, float]
         """
         return self._fov_dimensions
 
     @fov_dimensions.setter
     def fov_dimensions(self, value: list[float, float, float]) -> None:
-        """
-        Setting the fov dimension in the specified unit
-        :param value: list of length 3 specifying dimension for field of view
+        """_summary_
+
+        :param value: _description_
+        :type value: list[float, float, float]
+        :raises ValueError: _description_
         """
         if type(value) is not list and len(value) != 2:
             raise ValueError
@@ -599,14 +662,20 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def grid_offset(self) -> list[float, float, float]:
-        """Returns off set from 0 of tile positions"""
+        """_summary_
+
+        :return: _description_
+        :rtype: list[float, float, float]
+        """
         return self._grid_offset
 
     @grid_offset.setter
     def grid_offset(self, value: list[float, float, float]) -> None:
-        """
-        Setting offset from 0 of tile positions in the 3 dimensions of coordinate plane
-        :param value: a list of len 3 specifying offset for tile starts
+        """_summary_
+
+        :param value: _description_
+        :type value: list[float, float, float]
+        :raises ValueError: _description_
         """
         if type(value) is not list and len(value) != 3:
             raise ValueError
@@ -616,11 +685,11 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def tile_positions(self) -> [[float, float, float]]:
-        """
-        Creates 3d list of tile positions based on widget values
-        :return: 3D list of tile coordinates
-        """
+        """_summary_
 
+        :return: _description_
+        :rtype: [[float, float, float]]
+        """
         value = self.value()
         coords = np.zeros((value.rows, value.columns, 3))
         if self._mode != "bounds":
@@ -637,35 +706,36 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def tile_visibility(self) -> np.ndarray:
-        """
-        2D matrix of boolean values specifying if tile should be visible
-        :return: 2D numpy array containing the start coordinates where the i, j position of start coordinates correlates
-        to the i, j position of tile in scan
+        """_summary_
+
+        :return: _description_
+        :rtype: np.ndarray
         """
         return self._tile_visibility
 
     @property
     def scan_starts(self) -> np.ndarray:
-        """
-        2D matrix of tile start position in scan dimension
-        :return: 2D numpy array containing the start coordinates where the i, j position of start coordinates correlates
-        to the i, j position of tile in scan
+        """_summary_
+
+        :return: _description_
+        :rtype: np.ndarray
         """
         return self._scan_starts
 
     @property
     def scan_ends(self) -> np.ndarray:
-        """
-        2D matrix of tile start position in scan dimension
-        :return: 2D numpy array containing the end coordinates where the i, j position of end coordinates correlates to
-        the i, j position of tile in scan
+        """_summary_
+
+        :return: _description_
+        :rtype: np.ndarray
         """
         return self._scan_ends
 
     def _on_change(self) -> None:
-        """
-        Function called when things are changed within the widget. Handles formatting start, end, and visibility
-        of tiles and emits signal when done.
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
         """
         if (val := self.value()) is None:
             return  # pragma: no cover
@@ -679,18 +749,21 @@ class VolumePlanWidget(QMainWindow):
 
     @property
     def mode(self) -> Literal["number", "area", "bounds"]:
-        """Mode used to calculate tile position
-        :return: current mode of widget
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
         """
         return self._mode
 
     @mode.setter
     def mode(self, value: Literal["number", "area", "bounds"]) -> None:
-        """
-        Set mode of widget
-        :param value: value to change mode to. Must be 'number', 'area', or 'bounds'
-        """
+        """_summary_
 
+        :param value: _description_
+        :type value: Literal[&quot;number&quot;, &quot;area&quot;, &quot;bounds&quot;]
+        :raises ValueError: _description_
+        """
         if value not in ["number", "area", "bounds"]:
             raise ValueError
         self._mode = value
@@ -710,9 +783,11 @@ class VolumePlanWidget(QMainWindow):
         self._on_change()
 
     def value(self) -> Union[GridRowsColumns, GridFromEdges, GridWidthHeight]:
-        """
-        Value based on widget values
-        :return: value containing information about tiles
+        """_summary_
+
+        :raises NotImplementedError: _description_
+        :return: _description_
+        :rtype: Union[GridRowsColumns, GridFromEdges, GridWidthHeight]
         """
         over = self.overlap.value()
         common = {
@@ -748,6 +823,11 @@ class VolumePlanWidget(QMainWindow):
 
 
 def line():
+    """_summary_
+
+    :return: _description_
+    :rtype: _type_
+    """
     frame = QFrame()
     frame.setFrameShape(QFrame.HLine)
     return frame

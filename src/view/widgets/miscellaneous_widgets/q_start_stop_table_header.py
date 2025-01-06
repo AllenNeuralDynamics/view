@@ -1,16 +1,23 @@
-from qtpy.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QAction, QStyle
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QMouseEvent
+from qtpy.QtWidgets import QAction, QHeaderView, QMenu, QStyle, QTableWidgetItem
 
 
 class QStartStopTableHeader(QHeaderView):
-    """QTableWidgetItem to be used to select certain tiles to start at"""
+    """
+    QTableWidgetItem to be used to select certain tiles to start at.
+    """
 
     sectionRightClicked = Signal(QMouseEvent)
     startChanged = Signal(int)
     stopChanged = Signal(int)
 
     def __init__(self, parent):
+        """_summary_
+
+        :param parent: _description_
+        :type parent: _type_
+        """
         super().__init__(Qt.Vertical, parent)
 
         self.start = None
@@ -19,8 +26,10 @@ class QStartStopTableHeader(QHeaderView):
         self.sectionRightClicked.connect(self.menu_popup)
 
     def mousePressEvent(self, event, **kwargs):
-        """Detect click event and set correct setting
-        :param **kwargs:
+        """_summary_
+
+        :param event: _description_
+        :type event: _type_
         """
         super().mousePressEvent(event, **kwargs)
 
@@ -28,12 +37,11 @@ class QStartStopTableHeader(QHeaderView):
             self.sectionRightClicked.emit(event)
 
     def menu_popup(self, event: QMouseEvent):
-        """
-        Function to set tile start or stop
-        :param event: mousePressEvent of click
-        :return:
-        """
+        """_summary_
 
+        :param event: _description_
+        :type event: QMouseEvent
+        """
         index = self.logicalIndexAt(event.pos())
 
         start_act = QAction("Set Start", self)
@@ -55,12 +63,11 @@ class QStartStopTableHeader(QHeaderView):
         menu.popup(self.mapToGlobal(event.pos()))
 
     def set_start(self, index: int):
-        """
-        Set start tile
-        :param index: index to set to start at
-        :return:
-        """
+        """_summary_
 
+        :param index: _description_
+        :type index: int
+        """
         if self.start is not None:
             self.clear(self.start)
 
@@ -73,12 +80,11 @@ class QStartStopTableHeader(QHeaderView):
         self.startChanged.emit(index)
 
     def set_stop(self, index: int):
-        """
-        Set stop tile
-        :param index: index to set to stop at
-        :return:
-        """
+        """_summary_
 
+        :param index: _description_
+        :type index: int
+        """
         if self.stop is not None:
             self.clear(self.stop)
 
@@ -91,18 +97,16 @@ class QStartStopTableHeader(QHeaderView):
         self.stopChanged.emit(index)
 
     def clear(self, index: int):
-        """
-        Clear index of start or stop
-        :param index:
-        :return:
-        """
+        """_summary_
 
-
+        :param index: _description_
+        :type index: int
+        """
         if index == self.stop:
             self.stop = None
         elif index == self.start:
             self.start = None
 
         item = QTableWidgetItem()
-        item.setText(str(index+1))
+        item.setText(str(index + 1))
         self.parent().setVerticalHeaderItem(index, item)
