@@ -121,6 +121,8 @@ class VolumePlanWidget(QMainWindow):
         fov_position: list[float, float, float] = None,
         coordinate_plane: list[str, str, str] = None,
         unit: str = "um",
+        default_overlap: float = 15,
+        default_order: str = "row_wise",
     ):
         """
         :param limits: 2D list containing min and max stage limits for each coordinate plane in the order of [
@@ -132,6 +134,8 @@ class VolumePlanWidget(QMainWindow):
         :param coordinate_plane: coordinate plane describing the [tiling_dim[0], tiling_dim[1], scanning_dim[0]]. Can
         contain negatives.
         :param unit: common unit of all arguments. Defaults to um
+        :param default_overlap: default tile overlap in percentage
+        :param default_order: default tiling order
         """
         super().__init__()
 
@@ -242,16 +246,21 @@ class VolumePlanWidget(QMainWindow):
 
         self.overlap = QDoubleSpinBox()
         self.overlap.setRange(-100, 100)
-        self.overlap.setValue(0)
+        self.overlap.setValue(default_overlap)
         self.overlap.setSuffix(" %")
         overlap_widget = create_widget("H", QLabel("Overlap: "), self.overlap)
         overlap_widget.layout().setAlignment(Qt.AlignLeft)
         layout.addWidget(overlap_widget)
 
         self.order = QComboBox()
-        self.order.addItems(["row_wise_snake", "column_wise_snake", "spiral", "row_wise", "column_wise"])
+        valid_orders = ["row_wise_snake", "column_wise_snake", "spiral", "row_wise", "column_wise"]
+        self.order.addItems(valid_orders)
+        if default_order not in valid_orders:
+            raise ValueError(f"Invalid default order {default_order}. Must be one of {valid_orders}")
+        self.order.setCurrentText(default_order)
         self.reverse = QCheckBox("Reverse")
-        order_widget = create_widget("H", QLabel("Order: "), self.order, self.reverse)
+        self.dual_sided = QCheckBox("Dual-sided")
+        order_widget = create_widget("H", QLabel("Order: "), self.order, self.reverse, self.dual_sided)
         order_widget.layout().setAlignment(Qt.AlignLeft)
         layout.addWidget(order_widget)
 
@@ -318,6 +327,7 @@ class VolumePlanWidget(QMainWindow):
         self.order.currentIndexChanged.connect(self._on_change)
         self.relative_to.currentIndexChanged.connect(self._on_change)
         self.reverse.toggled.connect(self._on_change)
+        self.dual_sided.toggled.connect(self._on_change)
 
         # create table portion
         self.table_columns = [
@@ -717,6 +727,7 @@ class VolumePlanWidget(QMainWindow):
         over = self.overlap.value()
         common = {
             "reverse": self.reverse.isChecked(),
+            "dual_sided": self.dual_sided.isChecked(),
             "overlap": (over, over),
             "mode": self.order.currentText(),
             "fov_width": self.fov_dimensions[0],
