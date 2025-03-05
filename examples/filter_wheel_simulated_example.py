@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QApplication
 
 from view.widgets.device_widgets.filter_wheel_widget import FilterWheelWidget
 from voxel.devices.filter.simulated import Filter
-from voxel.devices.filterwheel.simulated import FilterWheel
+from voxel.devices.filterwheel.simulated import SimulatedFilterWheel
 
 
 def move_filter():
@@ -39,7 +39,7 @@ def widget_property_changed(name, device, widget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    filter_wheel = FilterWheel(
+    filter_wheel = SimulatedFilterWheel(
         0,
         {
             "BP405": 0,
@@ -60,15 +60,15 @@ if __name__ == "__main__":
     BP488_filter = Filter(filter_wheel, "BP488")
 
     colors = {
-        "BP405": "purple",
-        "BP488": "blue",
-        "BP561": "yellowgreen",
-        "LP638": "red",
-        "MB405/488/561/638": "pink",
-        "Empty1": "black",
-        "Empty2": "black",
-        "Empty3": "black",
-        "Empty4": "black",
+        "BP405": "#C875C4",
+        "BP488": "#1F77B4",
+        "BP561": "#2CA02C",
+        "LP638": "#D62768",
+        "MB405/488/561/638": "#17BECF",
+        "Empty1": "#262930",
+        "Empty2": "#262930",
+        "Empty3": "#262930",
+        "Empty4": "#262930",
     }
 
     widget = FilterWheelWidget(filter_wheel, colors)

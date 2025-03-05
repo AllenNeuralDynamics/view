@@ -1,4 +1,4 @@
-from voxel.devices.camera.simulated import Camera
+from voxel.devices.camera.simulated import SimulatedCamera
 from view.widgets.device_widgets.camera_widget import CameraWidget
 from qtpy.QtWidgets import QApplication
 import sys
@@ -43,12 +43,13 @@ def widget_property_changed(name, device, widget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    camera_object = Camera("")
+    camera_object = SimulatedCamera("")
     props = {
         "exposure_time_ms": 20.0,
         "pixel_type": "mono16",
         "width_px": 1152,
         "height_px": 1152,
+        "um_px": 1.0
     }
     for k, v in props.items():
         setattr(camera_object, k, v)

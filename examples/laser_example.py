@@ -49,7 +49,7 @@ def widget_property_changed(name, device, widget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     laser_object = SimulatedLaser(id='', wavelength=488)
-    laser = LaserWidget(laser_object, color='blue', advanced_user=False)
+    laser = LaserWidget(laser_object, color='#1F77B4', advanced_user=False)
     laser.show()
 
     laser.ValueChangedInside[str].connect(

@@ -5,6 +5,7 @@ import numpy as np
 import pint
 from inflection import singularize
 from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QMouseEvent
 from qtpy.QtWidgets import (
     QAction,
     QComboBox,
@@ -19,6 +20,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from view.instrument_view import InstrumentView
 from view.widgets.base_device_widget import label_maker
 from view.widgets.miscellaneous_widgets.q_item_delegates import QComboItemDelegate, QSpinItemDelegate, QTextItemDelegate
 from view.widgets.miscellaneous_widgets.q_scrollable_line_edit import QScrollableLineEdit
@@ -32,16 +34,17 @@ class ChannelPlanWidget(QTabWidget):
     channelAdded = Signal([str])
     channelChanged = Signal()
 
-    def __init__(self, instrument_view, channels: dict, properties: dict, unit: str = "um"):
-        """_summary_
+    def __init__(self, instrument_view: InstrumentView, channels: dict, properties: dict, unit: str = "um"):
+        """
+        Initialize the ChannelPlanWidget.
 
-        :param instrument_view: _description_
-        :type instrument_view: _type_
-        :param channels: _description_
+        :param instrument_view: The instrument view
+        :type instrument_view: InstrumentView
+        :param channels: Dictionary of channels
         :type channels: dict
-        :param properties: _description_
+        :param properties: Dictionary of properties
         :type properties: dict
-        :param unit: _description_, defaults to 'um'
+        :param unit: Unit of measurement, defaults to 'um'
         :type unit: str, optional
         """
         super().__init__()
@@ -99,11 +102,12 @@ class ChannelPlanWidget(QTabWidget):
         )
         self._apply_all = True  # external flag to dictate behaviour of added tab
 
-    def initialize_tables(self, instrument_view) -> None:
-        """_summary_
+    def initialize_tables(self, instrument_view: InstrumentView) -> None:
+        """
+        Initialize the tables for each channel.
 
-        :param instrument_view: _description_
-        :type instrument_view: _type_
+        :param instrument_view: The instrument view
+        :type instrument_view: InstrumentView
         """
         # TODO: Checks here if prop or device isn't part of the instrument? Or go in instrument validation?
         for channel in self.possible_channels:
@@ -183,18 +187,20 @@ class ChannelPlanWidget(QTabWidget):
 
     @property
     def apply_all(self) -> bool:
-        """_summary_
+        """
+        Get the apply_all property.
 
-        :return: _description_
+        :return: Whether to apply all settings
         :rtype: bool
         """
         return self._apply_all
 
     @apply_all.setter
     def apply_all(self, value: bool) -> None:
-        """_summary_
+        """
+        Set the apply_all property.
 
-        :param value: _description_
+        :param value: Whether to apply all settings
         :type value: bool
         """
         if self._apply_all != value:
@@ -211,18 +217,20 @@ class ChannelPlanWidget(QTabWidget):
 
     @property
     def tile_volumes(self) -> np.ndarray:
-        """_summary_
+        """
+        Get the tile volumes.
 
-        :return: _description_
+        :return: The tile volumes
         :rtype: np.ndarray
         """
         return self._tile_volumes
 
     @tile_volumes.setter
     def tile_volumes(self, value: np.ndarray) -> None:
-        """_summary_
+        """
+        Set the tile volumes.
 
-        :param value: _description_
+        :param value: The tile volumes
         :type value: np.ndarray
         """
         self._tile_volumes = value
@@ -244,11 +252,12 @@ class ChannelPlanWidget(QTabWidget):
                     self.update_steps(tile_index, row, channel)
 
     def enable_item(self, item: QTableWidgetItem, enable: bool) -> None:
-        """_summary_
+        """
+        Enable or disable a table item.
 
-        :param item: _description_
+        :param item: The table item
         :type item: QTableWidgetItem
-        :param enable: _description_
+        :param enable: Whether to enable the item
         :type enable: bool
         """
         flags = QTableWidgetItem().flags()
@@ -261,9 +270,10 @@ class ChannelPlanWidget(QTabWidget):
         item.setFlags(flags)
 
     def add_channel(self, channel: str) -> None:
-        """_summary_
+        """
+        Add a channel to the widget.
 
-        :param channel: _description_
+        :param channel: The channel to add
         :type channel: str
         """
         table = getattr(self, f"{channel}_table")
@@ -312,11 +322,12 @@ class ChannelPlanWidget(QTabWidget):
         self.channelAdded.emit(channel)
 
     def add_channel_rows(self, channel: str, order: list) -> None:
-        """_summary_
+        """
+        Add rows to the channel table.
 
-        :param channel: _description_
+        :param channel: The channel to add rows to
         :type channel: str
-        :param order: _description_
+        :param order: The order of the rows
         :type order: list
         """
         table = getattr(self, f"{channel}_table")
@@ -348,9 +359,10 @@ class ChannelPlanWidget(QTabWidget):
         table.blockSignals(False)
 
     def remove_channel(self, channel: str) -> None:
-        """_summary_
+        """
+        Remove a channel from the widget.
 
-        :param channel: _description_
+        :param channel: The channel to remove
         :type channel: str
         """
         self.channels.remove(channel)
@@ -378,13 +390,14 @@ class ChannelPlanWidget(QTabWidget):
         self.channelChanged.emit()
 
     def cell_edited(self, row: int, column: int, channel: str = None) -> None:
-        """_summary_
+        """
+        Handle cell edits in the table.
 
-        :param row: _description_
+        :param row: The row of the edited cell
         :type row: int
-        :param column: _description_
+        :param column: The column of the edited cell
         :type column: int
-        :param channel: _description_, defaults to None
+        :param channel: The channel of the edited cell, defaults to None
         :type channel: str, optional
         """
         channel = self.tabText(self.currentIndex()) if channel is None else channel
@@ -420,15 +433,16 @@ class ChannelPlanWidget(QTabWidget):
         self.channelChanged.emit()
 
     def update_steps(self, tile_index: list[int], row: int, channel: str) -> list[float, int]:
-        """_summary_
+        """
+        Update the steps for a given tile.
 
-        :param tile_index: _description_
+        :param tile_index: The index of the tile
         :type tile_index: list[int]
-        :param row: _description_
+        :param row: The row of the tile
         :type row: int
-        :param channel: _description_
+        :param channel: The channel of the tile
         :type channel: str
-        :return: _description_
+        :return: The updated step size and steps
         :rtype: list[float, int]
         """
         volume_um = (self.tile_volumes[*tile_index] * self.unit).to(self.micron)
@@ -447,15 +461,16 @@ class ChannelPlanWidget(QTabWidget):
         return step_size, steps
 
     def update_step_size(self, tile_index: list[int], row: int, channel: str) -> list[float, int]:
-        """_summary_
+        """
+        Update the step size for a given tile.
 
-        :param tile_index: _description_
+        :param tile_index: The index of the tile
         :type tile_index: list[int]
-        :param row: _description_
+        :param row: The row of the tile
         :type row: int
-        :param channel: _description_
+        :param channel: The channel of the tile
         :type channel: str
-        :return: _description_
+        :return: The updated step size and steps
         :rtype: list[float, int]
         """
         volume_um = (self.tile_volumes[*tile_index] * self.unit).to(self.micron)
@@ -478,26 +493,30 @@ class ChannelPlanTabBar(QTabBar):
     """
 
     def __init__(self):
-        """_summary_"""
+        """
+        Initialize the ChannelPlanTabBar.
+        """
         super(ChannelPlanTabBar, self).__init__()
         self.tabMoved.connect(self.tab_index_check)
 
     def tab_index_check(self, prev_index: int, curr_index: int) -> None:
-        """_summary_
+        """
+        Ensure the add channel tab stays at the end.
 
-        :param prev_index: _description_
+        :param prev_index: The previous index of the tab
         :type prev_index: int
-        :param curr_index: _description_
+        :param curr_index: The current index of the tab
         :type curr_index: int
         """
         if prev_index == self.count() - 1:
             self.moveTab(curr_index, prev_index)
 
-    def mouseMoveEvent(self, ev) -> None:
-        """_summary_
+    def mouseMoveEvent(self, ev: QMouseEvent) -> None:
+        """
+        Handle mouse move events.
 
-        :param ev: _description_
-        :type ev: _type_
+        :param ev: The mouse event
+        :type ev: QMouseEvent
         """
         index = self.currentIndex()
         if index == self.count() - 1:  # last tab is immovable

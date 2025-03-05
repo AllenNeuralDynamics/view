@@ -7,7 +7,7 @@ from tigerasi.tiger_controller import TigerController
 
 from view.widgets.device_widgets.filter_wheel_widget import FilterWheelWidget
 from voxel.devices.filter.asi import Filter
-from voxel.devices.filterwheel.asi import FilterWheel
+from voxel.devices.filterwheel.asi.fw1000 import FW1000FilterWheel
 
 
 def move_filter():
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     stage = TigerController("COM4")
-    filter_wheel = FilterWheel(
+    filter_wheel = FW1000FilterWheel(
         stage,
         0,
         {

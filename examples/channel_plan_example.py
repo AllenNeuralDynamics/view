@@ -7,7 +7,7 @@ from view.widgets.acquisition_widgets.channel_plan_widget import ChannelPlanWidg
 from view.widgets.device_widgets.laser_widget import LaserWidget
 from view.widgets.device_widgets.stage_widget import StageWidget
 from voxel.devices.laser.simulated import SimulatedLaser
-from voxel.devices.stage.simulated import Stage
+from voxel.devices.stage.simulated import SimulatedStage
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     lasers = {"488nm": SimulatedLaser(id="hello", wavelength=488), "639nm": SimulatedLaser(id="there", wavelength=639)}
 
-    focusing_stages = {"n": Stage(hardware_axis="n", instrument_axis="n")}
+    focusing_stages = {"n": SimulatedStage(hardware_axis="n", instrument_axis="n")}
 
     laser_widgets = {"488nm": LaserWidget(lasers["488nm"]), "639nm": LaserWidget(lasers["639nm"])}
 

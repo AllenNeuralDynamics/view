@@ -10,12 +10,13 @@ class MetadataWidget(BaseDeviceWidget):
     Widget for handling metadata class.
     """
 
-    def __init__(self, metadata_class, advanced_user: bool = True) -> None:
-        """_summary_
+    def __init__(self, metadata_class) -> None:
+        """
+        Initialize the MetadataWidget.
 
-        :param metadata_class: _description_
+        :param metadata_class: The metadata class
         :type metadata_class: _type_
-        :param advanced_user: _description_, defaults to True
+        :param advanced_user: Whether the user is advanced, defaults to True
         :type advanced_user: bool, optional
         """
         properties = scan_for_properties(metadata_class)
@@ -42,20 +43,22 @@ class MetadataWidget(BaseDeviceWidget):
                 )
 
     def name_property_change_wrapper(self, func: Callable) -> Callable:
-        """_summary_
+        """
+        Wrap the property setter to update the acquisition name.
 
-        :param func: _description_
+        :param func: The property setter function
         :type func: Callable
-        :return: _description_
+        :return: The wrapped function
         :rtype: Callable
         """
 
         def wrapper(object, value):
-            """_summary_
+            """
+            Wrapper function to update the acquisition name.
 
-            :param object: _description_
+            :param object: The object
             :type object: _type_
-            :param value: _description_
+            :param value: The value to set
             :type value: _type_
             """
             func(object, value)

@@ -1,10 +1,11 @@
 from math import radians, sqrt, tan
+from typing import List, Optional, Tuple
 
 import numpy as np
 from pyqtgraph import makeRGBA
 from pyqtgraph.opengl import GLImageItem
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QMatrix4x4, QQuaternion, QVector3D
+from qtpy.QtGui import QMatrix4x4, QQuaternion, QVector3D, QKeyEvent, QMouseEvent, QWheelEvent
 from qtpy.QtWidgets import QButtonGroup, QCheckBox, QGridLayout, QLabel, QMessageBox, QPushButton, QRadioButton, QWidget
 from scipy import spatial
 
@@ -14,38 +15,43 @@ from view.widgets.miscellaneous_widgets.gl_shaded_box_item import GLShadedBoxIte
 
 
 class SignalChangeVar:
-    """_summary_"""
+    """
+    Descriptor class to emit a signal when a variable is changed.
+    """
 
-    def __set_name__(self, owner, name):
-        """_summary_
+    def __set_name__(self, owner: type, name: str) -> None:
+        """
+        Set the name of the variable.
 
-        :param owner: _description_
-        :type owner: _type_
-        :param name: _description_
-        :type name: _type_
+        :param owner: The owner class
+        :type owner: type
+        :param name: The name of the variable
+        :type name: str
         """
         self.name = f"_{name}"
 
-    def __set__(self, instance, value):
-        """_summary_
+    def __set__(self, instance: object, value: object) -> None:
+        """
+        Set the value of the variable and emit a signal.
 
-        :param instance: _description_
-        :type instance: _type_
-        :param value: _description_
-        :type value: _type_
+        :param instance: The instance of the class
+        :type instance: object
+        :param value: The value to set
+        :type value: object
         """
         setattr(instance, self.name, value)  # initially setting attr
         instance.valueChanged.emit(self.name[1:])
 
-    def __get__(self, instance, value):
-        """_summary_
+    def __get__(self, instance: object, owner: type) -> object:
+        """
+        Get the value of the variable.
 
-        :param instance: _description_
-        :type instance: _type_
-        :param value: _description_
-        :type value: _type_
-        :return: _description_
-        :rtype: _type_
+        :param instance: The instance of the class
+        :type instance: object
+        :param owner: The owner class
+        :type owner: type
+        :return: The value of the variable
+        :rtype: object
         """
         return getattr(instance, self.name)
 
@@ -53,7 +59,7 @@ class SignalChangeVar:
 class VolumeModel(GLOrthoViewWidget):
     """
     Widget to display configured acquisition grid. Note that the x and y refer to the tiling
-    dimensions and z is the scanning dimension
+    dimensions and z is the scanning dimension.
     """
 
     fov_dimensions = SignalChangeVar()
@@ -69,10 +75,10 @@ class VolumeModel(GLOrthoViewWidget):
     def __init__(
         self,
         unit: str = "mm",
-        limits: list[[float, float], [float, float], [float, float]] = None,
-        fov_dimensions: list[float, float, float] = None,
-        fov_position: list[float, float, float] = None,
-        coordinate_plane: list[str, str, str] = None,
+        limits: Optional[List[Tuple[float, float]]] = None,
+        fov_dimensions: Optional[List[float]] = None,
+        fov_position: Optional[List[float]] = None,
+        coordinate_plane: Optional[List[str]] = None,
         fov_color: str = "yellow",
         fov_line_width: int = 2,
         fov_opacity: float = 0.15,
@@ -89,50 +95,51 @@ class VolumeModel(GLOrthoViewWidget):
         limits_line_width: int = 2,
         limits_color: str = "white",
         limits_opacity: float = 0.1,
-    ):
-        """_summary_
+    ) -> None:
+        """
+        Initialize the VolumeModel.
 
-        :param unit: _description_, defaults to "mm"
+        :param unit: Unit of measurement, defaults to "mm"
         :type unit: str, optional
-        :param limits: _description_, defaults to None
+        :param limits: Limits for the volume, defaults to None
         :type limits: list[[float, float], [float, float], [float, float]], optional
-        :param fov_dimensions: _description_, defaults to None
+        :param fov_dimensions: Dimensions of the field of view, defaults to None
         :type fov_dimensions: list[float, float, float], optional
-        :param fov_position: _description_, defaults to None
+        :param fov_position: Position of the field of view, defaults to None
         :type fov_position: list[float, float, float], optional
-        :param coordinate_plane: _description_, defaults to None
+        :param coordinate_plane: Coordinate plane, defaults to None
         :type coordinate_plane: list[str, str, str], optional
-        :param fov_color: _description_, defaults to "yellow"
+        :param fov_color: Color of the field of view, defaults to "yellow"
         :type fov_color: str, optional
-        :param fov_line_width: _description_, defaults to 2
+        :param fov_line_width: Line width of the field of view, defaults to 2
         :type fov_line_width: int, optional
-        :param fov_opacity: _description_, defaults to 0.15
+        :param fov_opacity: Opacity of the field of view, defaults to 0.15
         :type fov_opacity: float, optional
-        :param path_line_width: _description_, defaults to 2
+        :param path_line_width: Line width of the path, defaults to 2
         :type path_line_width: int, optional
-        :param path_arrow_size: _description_, defaults to 6.0
+        :param path_arrow_size: Arrow size of the path, defaults to 6.0
         :type path_arrow_size: float, optional
-        :param path_arrow_aspect_ratio: _description_, defaults to 4
+        :param path_arrow_aspect_ratio: Arrow aspect ratio of the path, defaults to 4
         :type path_arrow_aspect_ratio: int, optional
-        :param path_start_color: _description_, defaults to "magenta"
+        :param path_start_color: Start color of the path, defaults to "magenta"
         :type path_start_color: str, optional
-        :param path_end_color: _description_, defaults to "green"
+        :param path_end_color: End color of the path, defaults to "green"
         :type path_end_color: str, optional
-        :param active_tile_color: _description_, defaults to "cyan"
+        :param active_tile_color: Color of the active tile, defaults to "cyan"
         :type active_tile_color: str, optional
-        :param active_tile_opacity: _description_, defaults to 0.075
+        :param active_tile_opacity: Opacity of the active tile, defaults to 0.075
         :type active_tile_opacity: float, optional
-        :param inactive_tile_color: _description_, defaults to "red"
+        :param inactive_tile_color: Color of the inactive tile, defaults to "red"
         :type inactive_tile_color: str, optional
-        :param inactive_tile_opacity: _description_, defaults to 0.025
+        :param inactive_tile_opacity: Opacity of the inactive tile, defaults to 0.025
         :type inactive_tile_opacity: float, optional
-        :param tile_line_width: _description_, defaults to 2
+        :param tile_line_width: Line width of the tile, defaults to 2
         :type tile_line_width: int, optional
-        :param limits_line_width: _description_, defaults to 2
+        :param limits_line_width: Line width of the limits, defaults to 2
         :type limits_line_width: int, optional
-        :param limits_color: _description_, defaults to "white"
+        :param limits_color: Color of the limits, defaults to "white"
         :type limits_color: str, optional
-        :param limits_opacity: _description_, defaults to 0.1
+        :param limits_opacity: Opacity of the limits, defaults to 0.1
         :type limits_opacity: float, optional
         """
         super().__init__(rotationMethod="quaternion")
@@ -269,11 +276,12 @@ class VolumeModel(GLOrthoViewWidget):
         self.widgets.setMaximumHeight(70)
         self.widgets.show()
 
-    def update_model(self, attribute_name) -> None:
-        """_summary_
+    def update_model(self, attribute_name: str) -> None:
+        """
+        Update the model based on the changed attribute.
 
-        :param attribute_name: _description_
-        :type attribute_name: _type_
+        :param attribute_name: The name of the changed attribute
+        :type attribute_name: str
         """
         # update color of tiles based on z position
         flat_coords = self.grid_coords.reshape([-1, 3])  # flatten array
@@ -356,19 +364,21 @@ class VolumeModel(GLOrthoViewWidget):
 
         self._update_opts()
 
-    def toggle_view_plane(self, button) -> None:
-        """_summary_
+    def toggle_view_plane(self, button: QRadioButton) -> None:
+        """
+        Toggle the view plane based on the selected button.
 
-        :param button: _description_
-        :type button: _type_
+        :param button: The radio button that was clicked
+        :type button: QRadioButton
         """
         view_plane = tuple(x for x in button.text() if x.isalpha())
         self.view_plane = view_plane
 
-    def set_path_pos(self, coord_order: list) -> None:
-        """_summary_
+    def set_path_pos(self, coord_order: List[List[float]]) -> None:
+        """
+        Set the path position based on the coordinate order.
 
-        :param coord_order: _description_
+        :param coord_order: The order of coordinates
         :type coord_order: list
         """
         path = np.array(
@@ -382,12 +392,13 @@ class VolumeModel(GLOrthoViewWidget):
         )
         self.path.setData(pos=path)
 
-    def add_fov_image(self, image: np.ndarray, levels: list[float]) -> None:
-        """_summary_
+    def add_fov_image(self, image: np.ndarray, levels: List[float]) -> None:
+        """
+        Add a field of view image.
 
-        :param image: _description_
+        :param image: The image to add
         :type image: np.ndarray
-        :param levels: _description_
+        :param levels: The levels for the image
         :type levels: list[float]
         """
         image_rgba = makeRGBA(image, levels=levels)
@@ -421,12 +432,13 @@ class VolumeModel(GLOrthoViewWidget):
         if self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
             gl_image.setVisible(False)
 
-    def adjust_glimage_contrast(self, image: np.ndarray, contrast_levels: list[float]) -> None:
-        """_summary_
+    def adjust_glimage_contrast(self, image: np.ndarray, contrast_levels: List[float]) -> None:
+        """
+        Adjust the contrast of a GL image.
 
-        :param image: _description_
+        :param image: The image to adjust
         :type image: np.ndarray
-        :param contrast_levels: _description_
+        :param contrast_levels: The contrast levels
         :type contrast_levels: list[float]
         """
         if image.tobytes() in self.fov_images.keys():  # check if image has been deleted
@@ -435,16 +447,19 @@ class VolumeModel(GLOrthoViewWidget):
             self.add_fov_image(image, contrast_levels)
 
     def toggle_fov_image_visibility(self, visible: bool) -> None:
-        """_summary_
+        """
+        Toggle the visibility of the field of view images.
 
-        :param visible: _description_
+        :param visible: Whether the images should be visible
         :type visible: bool
         """
         for image in self.fov_images.values():
             image.setVisible(visible)
 
     def _update_opts(self) -> None:
-        """_summary_"""
+        """
+        Update the options for the view.
+        """
         view_plane = self.view_plane
         view_pol = [
             self.polarity[self.coordinate_plane.index(view_plane[0])],
@@ -540,13 +555,14 @@ class VolumeModel(GLOrthoViewWidget):
 
         self.update()
 
-    def move_fov_query(self, new_fov_pos: list[float]) -> [int, bool]:
-        """_summary_
+    def move_fov_query(self, new_fov_pos: List[float]) -> Tuple[int, bool]:
+        """
+        Query the user to move the field of view.
 
-        :param new_fov_pos: _description_
+        :param new_fov_pos: The new position of the field of view
         :type new_fov_pos: list[float]
-        :return: _description_
-        :rtype: [int, bool]
+        :return: The result of the query and whether to move to the nearest tile
+        :rtype: tuple[int, bool]
         """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -564,12 +580,13 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec(), checkbox.isChecked()
 
-    def delete_fov_image_query(self, fov_image_pos: list[float]) -> int:
-        """_summary_
+    def delete_fov_image_query(self, fov_image_pos: List[float]) -> int:
+        """
+        Query the user to delete a field of view image.
 
-        :param fov_image_pos: _description_
+        :param fov_image_pos: The position of the field of view image
         :type fov_image_pos: list[float]
-        :return: _description_
+        :return: The result of the query
         :rtype: int
         """
         msgBox = QMessageBox()
@@ -580,11 +597,12 @@ class VolumeModel(GLOrthoViewWidget):
 
         return msgBox.exec()
 
-    def mousePressEvent(self, event) -> None:
-        """_summary_
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """
+        Handle mouse press events.
 
-        :param event: _description_
-        :type event: _type_
+        :param event: The mouse event
+        :type event: QMouseEvent
         """
         plane = list(self.view_plane) + [ax for ax in self.coordinate_plane if ax not in self.view_plane]
         view_pol = [
@@ -651,26 +669,38 @@ class VolumeModel(GLOrthoViewWidget):
             if delete_key is not None:
                 del self.fov_images[delete_key]
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """
         Override mouseMoveEvent so user can't change view.
+
+        :param event: The mouse event
+        :type event: QMouseEvent
         """
         pass
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event: QWheelEvent) -> None:
         """
         Override wheelEvent so user can't change view.
+
+        :param event: The wheel event
+        :type event: QWheelEvent
         """
         pass
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         """
         Override keyPressEvent so user can't change view.
+
+        :param event: The key event
+        :type event: QKeyEvent
         """
         pass
 
-    def keyReleaseEvent(self, event):
+    def keyReleaseEvent(self, event: QKeyEvent) -> None:
         """
-        Override keyPressEvent so user can't change view.
+        Override keyReleaseEvent so user can't change view.
+
+        :param event: The key event
+        :type event: QKeyEvent
         """
         pass

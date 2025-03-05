@@ -1,33 +1,31 @@
 from math import atan, cos, degrees, pi, radians, sin
 from typing import Callable, Union
 
-from pyqtgraph import (PlotWidget, ScatterPlotItem, TextItem, mkBrush, mkPen,
-                       setConfigOptions)
+from pyqtgraph import PlotWidget, ScatterPlotItem, TextItem, mkBrush, mkPen, setConfigOptions
 from qtpy.QtCore import Property, QObject, QTimer, Signal, Slot
 from qtpy.QtGui import QColor, QFont
 from qtpy.QtWidgets import QComboBox, QGraphicsEllipseItem
 
-from view.widgets.base_device_widget import (BaseDeviceWidget,
-                                             scan_for_properties)
+from view.widgets.base_device_widget import BaseDeviceWidget, scan_for_properties
 
 setConfigOptions(antialias=True)
 
 
 class FilterWheelWidget(BaseDeviceWidget):
-    """_summary_"""
+    """Widget for controlling a filter wheel device."""
 
-    def __init__(self, filter_wheel, colors: dict = None, advanced_user: bool = True):
-        """_summary_
+    def __init__(self, filter_wheel: object, colors: dict = None, advanced_user: bool = True):
+        """
+        Initialize the FilterWheelWidget.
 
-        :param filter_wheel: _description_
-        :type filter_wheel: _type_
-        :param colors: _description_, defaults to None
+        :param filter_wheel: The filter wheel device.
+        :type filter_wheel: object
+        :param colors: Dictionary of colors for the filters, defaults to None.
         :type colors: dict, optional
-        :param advanced_user: _description_, defaults to True
+        :param advanced_user: Flag to enable advanced user features, defaults to True.
         :type advanced_user: bool, optional
         """
         properties = scan_for_properties(filter_wheel)
-
         # wrap filterwheel filter property to emit signal when set
         filter_setter = getattr(type(filter_wheel).filter, "fset")
         filter_getter = getattr(type(filter_wheel).filter, "fget")
@@ -66,21 +64,23 @@ class FilterWheelWidget(BaseDeviceWidget):
             self.filter_widget.setDisabled(True)
 
     def filter_change_wrapper(self, func: Callable) -> Callable:
-        """_summary_
+        """
+        Wrap the filter change function to emit a signal when the filter is changed.
 
-        :param func: _description_
+        :param func: The original filter change function.
         :type func: Callable
-        :return: _description_
+        :return: The wrapped function.
         :rtype: Callable
         """
 
-        def wrapper(object, value):
-            """_summary_
+        def wrapper(object: object, value: str) -> None:
+            """
+            Wrapper function to emit signal on filter change.
 
-            :param object: _description_
-            :type object: _type_
-            :param value: _description_
-            :type value: _type_
+            :param object: The filter wheel object.
+            :type object: object
+            :param value: The new filter value.
+            :type value: str
             """
             func(object, value)
             self.filter = value
@@ -97,9 +97,10 @@ class FilterItem(ScatterPlotItem):
     pressed = Signal(str)
 
     def __init__(self, filter_name: str, *args, **kwargs):
-        """_summary_
+        """
+        Initialize the FilterItem.
 
-        :param filter_name: _description_
+        :param filter_name: The name of the filter.
         :type filter_name: str
         """
         self.filter_name = filter_name
@@ -107,26 +108,29 @@ class FilterItem(ScatterPlotItem):
 
     def mousePressEvent(self, ev) -> None:
         """
-        Emit signal containing filter_name when item is pressed
-        :param ev: QMousePressEvent triggered when item is clicked
+        Emit signal containing filter_name when item is pressed.
+
+        :param ev: QMousePressEvent triggered when item is clicked.
+        :type ev: QMousePressEvent
         """
         super().mousePressEvent(ev)
         self.pressed.emit(self.filter_name)
 
 
 class FilterWheelGraph(PlotWidget):
-    """_summary_"""
+    """Graphical representation of the filter wheel."""
 
     ValueChangedInside = Signal((str,))
 
     def __init__(self, filters: dict, colors: dict, diameter: float = 10.0, **kwargs):
-        """_summary_
+        """
+        Initialize the FilterWheelGraph.
 
-        :param filters: _description_
+        :param filters: Dictionary of filters.
         :type filters: dict
-        :param colors: _description_
+        :param colors: Dictionary of colors for the filters.
         :type colors: dict
-        :param diameter: _description_, defaults to 10.0
+        :param diameter: Diameter of the filter wheel, defaults to 10.0.
         :type diameter: float, optional
         """
         super().__init__(**kwargs)
@@ -142,7 +146,7 @@ class FilterWheelGraph(PlotWidget):
         # create wheel graphic
         wheel = QGraphicsEllipseItem(-self.diameter, -self.diameter, self.diameter * 2, self.diameter * 2)
         wheel.setPen(mkPen((0, 0, 0, 100)))  # outline of wheel
-        wheel.setBrush(mkBrush((128, 128, 128)))  # color of wheel
+        wheel.setBrush(mkBrush((65, 75, 70)))  # color of wheel
         self.addItem(wheel)
 
         self.filter_path = self.diameter - 3
@@ -155,11 +159,21 @@ class FilterWheelGraph(PlotWidget):
         angles = [pi / 2 + (2 * pi / l * i) for i in range(l)]
         self.points = {}
         for angle, (filter, i) in zip(angles, self.filters.items()):
-            color = QColor(colors.get(filter, "black")).getRgb()
+            color = colors.get(filter, "black")
+            if type(color) is str:
+                color = QColor(color).getRgb()
+            else:
+                color = QColor().fromRgb(*color).getRgb()
+            color = list(color)
             pos = [self.filter_path * cos(angle), self.filter_path * sin(angle)]
             # create scatter point filter
             point = FilterItem(filter_name=filter, size=filter_diameter, pxMode=False, pos=[pos])
-            point.setPen(mkPen((0, 0, 0, 100), width=2))  # outline of filter
+            # update opacity of filter outline color
+            color[-1] = 255
+            point.setBrush(mkBrush(tuple(color)))  # color of filter
+            # update opacity of filter outline color
+            color[-1] = 128
+            point.setPen(mkPen(tuple(color), width=3))  # outline of filter
             point.setBrush(mkBrush(color))  # color of filter
             point.pressed.connect(self.move_wheel)
             self.addItem(point)
@@ -168,7 +182,7 @@ class FilterWheelGraph(PlotWidget):
             # create label
             index = TextItem(text=str(i), anchor=(0.5, 0.5), color="white")
             font = QFont()
-            font.setPointSize(round(filter_diameter**2))
+            font.setPointSize(round(filter_diameter**2 - 6))
             index.setFont(font)
             index.setPos(*pos)
             self.addItem(index)
@@ -186,9 +200,10 @@ class FilterWheelGraph(PlotWidget):
         self.setAspectLocked(1)
 
     def move_wheel(self, name: str) -> None:
-        """_summary_
+        """
+        Move the wheel to the specified filter.
 
-        :param name: _description_
+        :param name: The name of the filter to move to.
         :type name: str
         """
         self.ValueChangedInside.emit(name)
@@ -240,17 +255,18 @@ class FilterWheelGraph(PlotWidget):
 
     @Slot(float)
     def move_point(self, angle: float, point: Union[FilterItem, TextItem]) -> None:
-        """_summary_
+        """
+        Move a point to a new angle.
 
-        :param angle: _description_
+        :param angle: The angle to move the point to.
         :type angle: float
-        :param point: _description_
+        :param point: The point to move.
         :type point: Union[FilterItem, TextItem]
         """
         pos = [self.filter_path * cos(radians(angle)), self.filter_path * sin(radians(angle))]
-        if type(point) == FilterItem:
+        if type(point) is FilterItem:
             point.setData(pos=[pos])
-        elif type(point) == TextItem:
+        elif type(point) is TextItem:
             point.setPos(*pos)
 
 
@@ -261,17 +277,18 @@ class TimeLine(QObject):
 
     frameChanged = Signal(float)
 
-    def __init__(self, interval: int = 60, loopCount: int = 1, step_size: float = 1, parent=None):
-        """_summary_
+    def __init__(self, interval: int = 60, loopCount: int = 1, step_size: float = 1, parent: QObject = None):
+        """
+        Initialize the TimeLine.
 
-        :param interval: _description_, defaults to 60
+        :param interval: Interval between steps in milliseconds, defaults to 60.
         :type interval: int, optional
-        :param loopCount: _description_, defaults to 1
+        :param loopCount: Number of times to loop, defaults to 1.
         :type loopCount: int, optional
-        :param step_size: _description_, defaults to 1
+        :param step_size: Size of each step, defaults to 1.
         :type step_size: float, optional
-        :param parent: _description_, defaults to None
-        :type parent: _type_, optional
+        :param parent: Parent QObject, defaults to None.
+        :type parent: QObject, optional
         """
         super(TimeLine, self).__init__(parent)
         self._stepSize = step_size
@@ -285,7 +302,7 @@ class TimeLine(QObject):
 
     def on_timeout(self) -> None:
         """
-        Function called by Qtimer that will trigger a step of current step_size and emit new counter value.
+        Function called by QTimer that will trigger a step of current step_size and emit new counter value.
         """
         if (self._startFrame <= self._counter <= self._endFrame and self._stepSize > 0) or (
             self._startFrame >= self._counter >= self._endFrame and self._stepSize < 0
@@ -300,47 +317,48 @@ class TimeLine(QObject):
                 self._timer.stop()
 
     def setLoopCount(self, loopCount: int) -> None:
-        """_summary_
+        """
+        Set the number of times to loop.
 
-        :param loopCount: _description_
+        :param loopCount: Number of times to loop.
         :type loopCount: int
         """
         self._loopCount = loopCount
 
     def loopCount(self) -> int:
-        """_summary_
+        """
+        Get the number of times to loop.
 
-        :return: _description_
+        :return: Number of times to loop.
         :rtype: int
         """
         return self._loopCount
 
-    interval = Property(int, fget=loopCount, fset=setLoopCount)
-
     def setInterval(self, interval: int) -> None:
-        """_summary_
+        """
+        Set the interval between steps.
 
-        :param interval: _description_
+        :param interval: Interval between steps in milliseconds.
         :type interval: int
         """
         self._timer.setInterval(interval)
 
     def interval(self) -> int:
-        """_summary_
+        """
+        Get the interval between steps.
 
-        :return: _description_
+        :return: Interval between steps in milliseconds.
         :rtype: int
         """
         return self._timer.interval()
 
-    interval = Property(int, fget=interval, fset=setInterval)
-
     def setFrameRange(self, startFrame: float, endFrame: float) -> None:
-        """_summary_
+        """
+        Set the range of frames to step through.
 
-        :param startFrame: _description_
+        :param startFrame: The starting frame.
         :type startFrame: float
-        :param endFrame: _description_
+        :param endFrame: The ending frame.
         :type endFrame: float
         """
         self._startFrame = startFrame
@@ -349,12 +367,14 @@ class TimeLine(QObject):
     @Slot()
     def start(self) -> None:
         """
-        Function to start QTimer and begin emitting and stepping through value.
+        Start the QTimer and begin emitting and stepping through values.
         """
         self._counter = self._startFrame
         self._loop_counter = 0
         self._timer.start()
 
     def stop(self) -> None:
-        """Function to stop QTimer and stop stepping through values."""
+        """
+        Stop the QTimer and stop stepping through values.
+        """
         self._timer.stop()
