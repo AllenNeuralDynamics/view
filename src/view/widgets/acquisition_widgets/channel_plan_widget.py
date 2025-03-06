@@ -9,6 +9,8 @@ from inflection import singularize
 from math import isnan
 import pint
 import inspect
+
+
 class ChannelPlanWidget(QTabWidget):
     """Widget defining parameters per tile per channel """
 
@@ -28,6 +30,8 @@ class ChannelPlanWidget(QTabWidget):
         self.possible_channels = channels
         self.channels = []
         self.properties = properties
+        self.default_prefix = properties['default_prefix'] if 'default_prefix' in properties.keys() else ''
+        self.default_step_size = properties['default_step_size'] if 'default_step_size' in properties.keys() else 0.0
         self.column_data_types = {'step size [um]': float, 'steps': int, 'prefix': str}
 
         # setup units for step size and step calculation
@@ -252,7 +256,9 @@ class ChannelPlanWidget(QTabWidget):
 
         self.steps[channel] = np.zeros(self._tile_volumes.shape, dtype=int)
         self.step_size[channel] = np.zeros(self._tile_volumes.shape, dtype=float)
+        self.step_size[channel][:, :] = self.default_step_size
         self.prefix[channel] = np.zeros(self._tile_volumes.shape, dtype='U100')
+        self.prefix[channel][:,:] = self.default_prefix
 
         self.insertTab(0, table, channel)
         self.setCurrentIndex(0)
@@ -418,6 +424,7 @@ class ChannelPlanWidget(QTabWidget):
             step_size = 0
         self.step_size[channel][*index] = step_size
         return step_size, steps
+
 
 class ChannelPlanTabBar(QTabBar):
     """TabBar that will keep add channel tab at end"""

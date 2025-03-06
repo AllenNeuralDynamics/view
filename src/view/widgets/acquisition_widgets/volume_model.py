@@ -51,16 +51,19 @@ class VolumeModel(GLOrthoViewWidget):
         path_line_width: int = 2,
         path_arrow_size: float = 6.0,
         path_arrow_aspect_ratio: int = 4,
-        path_start_color: str = "magenta",
+        path_start_color: str = "yellow",
         path_end_color: str = "green",
         active_tile_color: str = "cyan",
         active_tile_opacity: float = 0.075,
+        dual_active_tile_color: str = "magenta",
+        dual_active_tile_opacity: float = 0.075,
         inactive_tile_color: str = "red",
         inactive_tile_opacity: float = 0.025,
         tile_line_width: int = 2,
         limits_line_width: int = 2,
         limits_color: str = "white",
         limits_opacity: float = 0.1,
+        dual_sided: bool = True,
     ):
         """
         GLViewWidget to display proposed grid of acquisition
@@ -106,8 +109,11 @@ class VolumeModel(GLOrthoViewWidget):
         self.tile_visibility = np.array([[True]])  # 2d list detailing visibility of tiles
 
         # tile aesthetic properties
+        self.dual_sided = dual_sided
         self.active_tile_color = active_tile_color
         self.active_tile_opacity = active_tile_opacity
+        self.dual_active_tile_color = dual_active_tile_color
+        self.dual_active_tile_opacity = dual_active_tile_opacity
         self.inactive_tile_color = inactive_tile_color
         self.inactive_tile_opacity = inactive_tile_opacity
         self.tile_line_width = tile_line_width
@@ -290,25 +296,48 @@ class VolumeModel(GLOrthoViewWidget):
             total_rows = len(self.grid_coords)
             total_columns = len(self.grid_coords[0])
 
+            # determine middle x coordinate
+            center_line = np.mean(coords[:, 0])
+
             for row in range(total_rows):
                 for column in range(total_columns):
 
                     coord = [x * pol for x, pol in zip(self.grid_coords[row][column], self.polarity)]
                     size = [*self.fov_dimensions[:2], self.scan_volumes[row, column]]
 
-                    # scale opacity for viewing
-                    if self.view_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
-                        opacity = self.active_tile_opacity
-                    elif self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
-                        opacity = self.active_tile_opacity / total_columns
+                    # determine color
+                    if in_grid:
+                        color = self.active_tile_color if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_color
+                        opacity = self.active_tile_opacity if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_opacity
                     else:
-                        opacity = self.active_tile_opacity / total_rows
+                        color = self.inactive_tile_color
+                        opacity = self.inactive_tile_opacity
+
+                    # if coord[0] < center_line and in_grid:
+                    #     color = self.active_tile_color
+                    #     opacity = self.active_tile_opacity
+                    # elif coord[0] >= center_line and in_grid:
+                    #     if self.dual_sided:
+                    #         color = self.dual_active_tile_color
+                    #         opacity = self.dual_active_tile_opacity
+                    #     else:
+                    #         color = self.active_tile_color
+                    #         opacity = self.active_tile_opacity
+                    # else:
+                    #     color = self.inactive_tile_color
+                    #     opacity = self.inactive_tile_opacity
+
+                    # scale opacity for viewing
+                    if self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
+                        opacity = opacity / total_columns
+                    elif self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
+                        opacity = opacity / total_rows
 
                     box = GLShadedBoxItem(
                         width=self.tile_line_width,
                         pos=np.array([[coord]]),
                         size=np.array(size),
-                        color=self.active_tile_color if in_grid else self.inactive_tile_color,
+                        color=color,
                         opacity=opacity,
                         glOptions="additive",
                     )
