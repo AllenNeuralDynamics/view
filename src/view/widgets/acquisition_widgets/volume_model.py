@@ -306,26 +306,31 @@ class VolumeModel(GLOrthoViewWidget):
                     size = [*self.fov_dimensions[:2], self.scan_volumes[row, column]]
 
                     # determine color
-                    if coord[0] < center_line and in_grid:
-                        color = self.active_tile_color
-                        opacity = self.active_tile_opacity
-                    elif coord[0] >= center_line and in_grid:
-                        if self.dual_sided:
-                            color = self.dual_active_tile_color
-                            opacity = self.dual_active_tile_opacity
-                        else:
-                            color = self.active_tile_color
-                            opacity = self.active_tile_opacity
+                    if in_grid:
+                        color = self.active_tile_color if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_color
+                        opacity = self.active_tile_opacity if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_opacity
                     else:
                         color = self.inactive_tile_color
                         opacity = self.inactive_tile_opacity
 
+                    # if coord[0] < center_line and in_grid:
+                    #     color = self.active_tile_color
+                    #     opacity = self.active_tile_opacity
+                    # elif coord[0] >= center_line and in_grid:
+                    #     if self.dual_sided:
+                    #         color = self.dual_active_tile_color
+                    #         opacity = self.dual_active_tile_opacity
+                    #     else:
+                    #         color = self.active_tile_color
+                    #         opacity = self.active_tile_opacity
+                    # else:
+                    #     color = self.inactive_tile_color
+                    #     opacity = self.inactive_tile_opacity
+
                     # scale opacity for viewing
-                    if self.view_plane == (self.coordinate_plane[0], self.coordinate_plane[1]):
-                        opacity = opacity
-                    elif self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
+                    if self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
                         opacity = opacity / total_columns
-                    else:
+                    elif self.view_plane != (self.coordinate_plane[0], self.coordinate_plane[1]):
                         opacity = opacity / total_rows
 
                     box = GLShadedBoxItem(
