@@ -307,8 +307,16 @@ class VolumeModel(GLOrthoViewWidget):
 
                     # determine color
                     if in_grid:
-                        color = self.active_tile_color if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_color
-                        opacity = self.active_tile_opacity if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_opacity
+                        color = (
+                            self.active_tile_color
+                            if coord[0] < center_line or not self.dual_sided
+                            else self.dual_active_tile_color
+                        )
+                        opacity = (
+                            self.active_tile_opacity
+                            if coord[0] < center_line or not self.dual_sided
+                            else self.dual_active_tile_opacity
+                        )
                     else:
                         color = self.inactive_tile_color
                         opacity = self.inactive_tile_opacity
@@ -530,13 +538,12 @@ class VolumeModel(GLOrthoViewWidget):
         :param new_fov_pos: position to move the fov to in um
         :return: user reply to pop up and whether to move to the tile nearest the new_fov_pos
         """
-
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(
             f"Do you want to move the field of view from "
-            f"{[round(x, 2) for x in self.fov_position]} [{self.unit}] to "
-            f"{[round(x, 2) for x in new_fov_pos]} [{self.unit}]?"
+            f"{[round(float(x), 2) for x in self.fov_position]} [{self.unit}] to "
+            f"{[round(float(x), 2) for x in new_fov_pos]} [{self.unit}]?"
         )
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
