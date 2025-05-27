@@ -252,10 +252,15 @@ class VolumeModel(GLOrthoViewWidget):
             [min(coords[:, 1]), max(coords[:, 1])],
             [min(coords[:, 2]), max(coords[:, 2])],
         ]
+
+        # determine if fov is within grid
         in_grid = not any(
             [pos > pos_max or pos < pos_min for (pos_min, pos_max), pos in zip(extrema, self.fov_position)]
         )
 
+        # determine middle x coordinate
+        center_line = np.mean(coords[:, 0])
+        
         if attribute_name == "fov_position":
             # update fov_pos
             self.fov_view.setTransform(
@@ -278,13 +283,16 @@ class VolumeModel(GLOrthoViewWidget):
                     1,
                 )
             )
-
             color = self.grid_box_items[0].color() if len(self.grid_box_items) != 0 else None
             if (not in_grid and color != self.inactive_tile_color) or (in_grid and color != self.active_tile_color):
-                new_color = self.inactive_tile_color if not in_grid else self.active_tile_color
+                box_ind = 0
                 for box in self.grid_box_items:
+                    if in_grid:
+                        new_color = self.active_tile_color if coords[box_ind, 0] < center_line or not self.dual_sided else self.dual_active_tile_color
+                    else:
+                        new_color = self.inactive_tile_color
                     box.setColor(color=new_color)
-
+                    box_ind += 1
         else:
             self.fov_view.setSize(x=self.fov_dimensions[0], y=self.fov_dimensions[1], z=0.0)
 
@@ -296,9 +304,6 @@ class VolumeModel(GLOrthoViewWidget):
             total_rows = len(self.grid_coords)
             total_columns = len(self.grid_coords[0])
 
-            # determine middle x coordinate
-            center_line = np.mean(coords[:, 0])
-
             for row in range(total_rows):
                 for column in range(total_columns):
 
@@ -307,25 +312,19 @@ class VolumeModel(GLOrthoViewWidget):
 
                     # determine color
                     if in_grid:
-                        color = self.active_tile_color if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_color
-                        opacity = self.active_tile_opacity if coord[0] < center_line or not self.dual_sided else self.dual_active_tile_opacity
+                        color = (
+                            self.active_tile_color
+                            if coord[0] < center_line or not self.dual_sided
+                            else self.dual_active_tile_color
+                        )
+                        opacity = (
+                            self.active_tile_opacity
+                            if coord[0] < center_line or not self.dual_sided
+                            else self.dual_active_tile_opacity
+                        )
                     else:
                         color = self.inactive_tile_color
                         opacity = self.inactive_tile_opacity
-
-                    # if coord[0] < center_line and in_grid:
-                    #     color = self.active_tile_color
-                    #     opacity = self.active_tile_opacity
-                    # elif coord[0] >= center_line and in_grid:
-                    #     if self.dual_sided:
-                    #         color = self.dual_active_tile_color
-                    #         opacity = self.dual_active_tile_opacity
-                    #     else:
-                    #         color = self.active_tile_color
-                    #         opacity = self.active_tile_opacity
-                    # else:
-                    #     color = self.inactive_tile_color
-                    #     opacity = self.inactive_tile_opacity
 
                     # scale opacity for viewing
                     if self.view_plane == (self.coordinate_plane[2], self.coordinate_plane[1]):
@@ -530,13 +529,12 @@ class VolumeModel(GLOrthoViewWidget):
         :param new_fov_pos: position to move the fov to in um
         :return: user reply to pop up and whether to move to the tile nearest the new_fov_pos
         """
-
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setText(
             f"Do you want to move the field of view from "
-            f"{[round(x, 2) for x in self.fov_position]} [{self.unit}] to "
-            f"{[round(x, 2) for x in new_fov_pos]} [{self.unit}]?"
+            f"{[round(float(x), 2) for x in self.fov_position]} [{self.unit}] to "
+            f"{[round(float(x), 2) for x in new_fov_pos]} [{self.unit}]?"
         )
         msgBox.setWindowTitle("Moving FOV")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)

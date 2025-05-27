@@ -360,7 +360,7 @@ class ChannelPlanWidget(QTabWidget):
 
         if column in [0, 1]:
             step_size, steps = self.update_steps(tile_index, row, channel) if column == 0 else \
-                self.update_step_size(tile_index, row, channel)
+                self.update_steps(tile_index, row, channel)
             table.item(row, 0).setData(Qt.EditRole,step_size)
             table.item(row, 1).setData(Qt.EditRole,steps)
 
