@@ -95,6 +95,7 @@ class AcquisitionView(QWidget):
         self.acquisition_widget = self.create_acquisition_widget()
         self.start_button = self.create_start_button()
         self.stop_button = self.create_stop_button()
+        self.save_button = self.create_save_button()
 
         # setup stage thread
         self.setup_fov_position()
@@ -103,8 +104,9 @@ class AcquisitionView(QWidget):
         self.main_layout = QGridLayout()
 
         # Add start and stop button
-        self.main_layout.addWidget(self.start_button, 0, 0, 1, 2)
-        self.main_layout.addWidget(self.stop_button, 0, 2, 1, 2)
+        self.main_layout.addWidget(self.start_button, 0, 0, 1, 1)
+        self.main_layout.addWidget(self.stop_button, 0, 1, 1, 1)
+        self.main_layout.addWidget(self.save_button, 0, 2, 1, 1)
 
         # add volume widget
         self.main_layout.addWidget(self.acquisition_widget, 1, 0, 5, 3)
@@ -155,27 +157,40 @@ class AcquisitionView(QWidget):
 
     def create_start_button(self) -> QPushButton:
         """
-        Create button to start acquisition
-        :return: start button
-        """
+        Create the start button.
 
+        :return: Start button
+        :rtype: QPushButton
+        """
         start = QPushButton("Start")
         start.clicked.connect(self.start_acquisition)
-        start.setStyleSheet("background-color: green")
+        start.setStyleSheet("background-color: #55a35d; color: black; border-radius: 10px;")
         return start
 
     def create_stop_button(self) -> QPushButton:
         """
-        Create button to stop acquisition
-        :return: stop button
+        Create the stop button.
+
+        :return: Stop button
+        :rtype: QPushButton
         """
-
         stop = QPushButton("Stop")
-        stop.clicked.connect(self.acquisition.stop_acquisition)
-        stop.setStyleSheet("background-color: red")
+        stop.clicked.connect(self.stop_acquisition)
+        stop.setStyleSheet("background-color: #a3555b; color: black; border-radius: 10px;")
         stop.setDisabled(True)
-
         return stop
+
+    def create_save_button(self) -> QPushButton:
+        """
+        Create the save button.
+
+        :return: Save button
+        :rtype: QPushButton
+        """
+        save = QPushButton("Save")
+        save.clicked.connect(self.save_acquisition)
+        save.setStyleSheet("background-color: #ffca33; color: black; border-radius: 10px;")
+        return save
 
     def start_acquisition(self) -> None:
         """

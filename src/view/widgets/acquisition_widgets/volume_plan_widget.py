@@ -116,6 +116,7 @@ class VolumePlanWidget(QMainWindow):
 
     def __init__(
         self,
+        instrument,
         limits: list[[float, float], [float, float], [float, float]] = None,
         fov_dimensions: list[float, float, float] = None,
         fov_position: list[float, float, float] = None,
@@ -138,7 +139,7 @@ class VolumePlanWidget(QMainWindow):
         :param default_order: default tiling order
         """
         super().__init__()
-
+        self.instrument = instrument
         layout = QVBoxLayout()
         self.button_group = QButtonGroup()
         self.button_group.setExclusive(True)
@@ -541,6 +542,9 @@ class VolumePlanWidget(QMainWindow):
         Setting for the 0, 0 tile apply all. If True, will update all tiles
         :param value: boolean to set apply all
         """
+        for controller_name, controller in self.instrument.controllers.items():
+            if hasattr(controller, "property_updater"):
+                controller.property_updater.get_properties = False
 
         self._apply_all = value
 
@@ -561,6 +565,10 @@ class VolumePlanWidget(QMainWindow):
 
         self._on_change()
         self.refill_table()  # order, pos, and visibilty doesn't change, so update table to reconfigure editablility
+
+        for controller_name, _controller in self.instrument.controllers.items():
+            if hasattr(controller, "property_updater"):
+                controller.property_updater.get_properties = True
 
     @property
     def fov_position(self) -> list[float, float, float]:
