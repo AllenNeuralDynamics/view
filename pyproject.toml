@@ -18,7 +18,7 @@ dependencies = [
     'qtpy >= 2.2.0',
     'pyqtgraph >= 0.12.4',
     'numpy >= 1.23.5',
-    'napari >= 0.4.19',
+    'napari == 0.5.0',
     'inflection >= 0.5.1',
     'pymmcore-widgets >= 0.7.1',
     'pint >= 0.24',
