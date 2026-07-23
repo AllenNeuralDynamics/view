@@ -254,7 +254,17 @@ class VolumePlanWidget(QMainWindow):
         layout.addWidget(overlap_widget)
 
         self.order = QComboBox()
-        valid_orders = ["row_wise_snake", "column_wise_snake", "spiral", "row_wise", "column_wise"]
+        valid_orders = [
+            "row_wise",
+            "row_wise_flip",
+            "column_wise",
+            "column_wise_flip",
+            "row_wise_snake",
+            "row_wise_snake_flip",
+            "column_wise_snake",
+            "column_wise_snake_flip",
+            "spiral"
+            ]
         self.order.addItems(valid_orders)
         if default_order not in valid_orders:
             raise ValueError(f"Invalid default order {default_order}. Must be one of {valid_orders}")
@@ -544,7 +554,7 @@ class VolumePlanWidget(QMainWindow):
         """
         for controller_name, controller in self.instrument.controllers.items():
             if hasattr(controller, "property_updater"):
-                controller.property_updater.get_properties = False
+                controller.property_updater.get_properties.set()
 
         self._apply_all = value
 
@@ -568,7 +578,7 @@ class VolumePlanWidget(QMainWindow):
 
         for controller_name, _controller in self.instrument.controllers.items():
             if hasattr(controller, "property_updater"):
-                controller.property_updater.get_properties = True
+                controller.property_updater.get_properties.clear()
 
     @property
     def fov_position(self) -> list[float, float, float]:
