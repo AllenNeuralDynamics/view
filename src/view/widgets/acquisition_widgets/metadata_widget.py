@@ -19,26 +19,26 @@ ICON_SIZE = 140
 BRAIN_ORIENTATION_LOOKUP = {
     "option1": {
         "image": "dorsal_1.png",
-        "x_anatomical_direction": "Anterior_to_posterior",
+        "x_anatomical_direction": "Posterior_to_anterior",
         "y_anatomical_direction": "Right_to_left",
         "z_anatomical_direction": "Superior_to_inferior",
     },
     "option2": {
         "image": "dorsal_2.png",
-        "x_anatomical_direction": "Posterior_to_anterior",
+        "x_anatomical_direction": "Anterior_to_posterior",
         "y_anatomical_direction": "Left_to_right",
         "z_anatomical_direction": "Superior_to_inferior",
     },
     "option3": {
         "image": "ventral_1.png",
-        "x_anatomical_direction": "Posterior_to_anterior",
-        "y_anatomical_direction": "Left_to_right",
+        "x_anatomical_direction": "Anterior_to_posterior",
+        "y_anatomical_direction": "Right_to_left",
         "z_anatomical_direction": "Inferior_to_superior",
     },
     "option4": {
         "image": "ventral_2.png",
-        "x_anatomical_direction": "Anterior_to_posterior",
-        "y_anatomical_direction": "Right_to_left",
+        "x_anatomical_direction": "Posterior_to_anterior",
+        "y_anatomical_direction": "Left_to_right",
         "z_anatomical_direction": "Inferior_to_superior",
     },
 }
